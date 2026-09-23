@@ -104,7 +104,7 @@ export async function getOfficialStatementDocumentForDownload(id: string) {
      FROM official_statement_documents WHERE id = ?`,
   ).get(id) as { file_name: string; storage_name: string; file_size: number } | undefined;
   if (!row || !storageNamePattern.test(row.storage_name)) return null;
-  return { fileName: row.file_name, fileSize: row.file_size, filePath: path.join(storageDirectory, row.storage_name) };
+  return { fileName: row.file_name, fileSize: row.file_size, storageName: row.storage_name, filePath: path.join(storageDirectory, row.storage_name) };
 }
 
 export async function deleteOfficialStatementDocument(id: string) {

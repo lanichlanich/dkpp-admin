@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises";
 import { getOfficialStatementDocumentForDownload } from "@/lib/official-statement-documents";
 import { getCurrentUser } from "@/lib/session";
+import { downloadStorageObject } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -14,7 +14,7 @@ export async function GET(
   const document = await getOfficialStatementDocumentForDownload(id);
   if (!document) return Response.json({ message: "Dokumen tidak ditemukan." }, { status: 404 });
   try {
-    const file = await readFile(document.filePath);
+    const file = await downloadStorageObject(document.storageName, document.filePath);
     return new Response(new Uint8Array(file), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

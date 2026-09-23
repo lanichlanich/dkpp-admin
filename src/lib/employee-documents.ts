@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { database as db } from "@/lib/database";
 import type {
@@ -10,6 +10,7 @@ import type {
   SkpPredicate,
 } from "@/lib/employee-document-types";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
+import { downloadStorageObject } from "@/lib/storage";
 
 const storageDirectory = path.join(process.cwd(), "data", "employee-documents");
 const storageNamePattern = /^[0-9a-f-]{36}\.(pdf|doc|docx)$/i;
@@ -232,7 +233,7 @@ export async function getEmployeeDocumentForDownload(employeeNip: string, id: st
     fileName: row.original_file_name,
     mimeType: row.mime_type,
     fileSize: row.file_size,
-    file: await readFile(path.join(storageDirectory, row.storage_name)),
+    file: await downloadStorageObject(row.storage_name, path.join(storageDirectory, row.storage_name)),
   };
 }
 
@@ -253,7 +254,7 @@ export async function getEmployeeDocumentsForArchive(employeeNip: string) {
     }
     return {
       fileName: row.original_file_name,
-      file: await readFile(path.join(storageDirectory, row.storage_name)),
+      file: await downloadStorageObject(row.storage_name, path.join(storageDirectory, row.storage_name)),
     };
   }));
 }

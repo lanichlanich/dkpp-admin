@@ -115,6 +115,7 @@ export async function getDpcpDocumentForDownload(id: string) {
   return {
     fileName: row.file_name,
     fileSize: row.file_size,
+    storageName: row.storage_name,
     filePath: path.join(storageDirectory, row.storage_name),
   };
 }

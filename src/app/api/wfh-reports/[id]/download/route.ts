@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises";
 import { getCurrentUser } from "@/lib/session";
 import { findReport, reportFilePath } from "@/lib/wfh-report-store";
+import { downloadStorageObject } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,7 +10,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const report = await findReport(id, user.id);
   if (!report) return Response.json({ message: "Laporan tidak ditemukan." }, { status: 404 });
   try {
-    return new Response(new Uint8Array(await readFile(reportFilePath(id))), { headers: {
+    return new Response(new Uint8Array(await downloadStorageObject(`${id}.docx`, reportFilePath(id))), { headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "Content-Disposition": `attachment; filename="${report.file_name}"`, "Cache-Control": "private, no-store",
     } });

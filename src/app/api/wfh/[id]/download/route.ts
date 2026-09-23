@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises";
 import { getCurrentUser } from "@/lib/session";
 import { getWfhDocumentForDownload } from "@/lib/wfh-documents";
+import { downloadStorageObject } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -13,7 +13,7 @@ export async function GET(_request: Request, context: RouteContext<"/api/wfh/[id
   if (!document) return Response.json({ message: "Dokumen tidak ditemukan." }, { status: 404 });
 
   try {
-    const file = await readFile(document.filePath);
+    const file = await downloadStorageObject(document.storageName, document.filePath);
     return new Response(new Uint8Array(file), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

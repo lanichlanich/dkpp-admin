@@ -28,5 +28,5 @@ export async function getPakHistory(): Promise<PakDocumentHistory[]> {
 export async function getPakDocumentForDownload(id: string) {
   const row = await db.prepare("SELECT file_name, storage_name FROM pak_documents WHERE id = ?").get(id) as { file_name: string; storage_name: string } | undefined;
   if (!row || !/^[0-9a-f-]{36}\.docx$/i.test(row.storage_name)) return null;
-  return { fileName: row.file_name, filePath: path.join(directory, row.storage_name) };
+  return { fileName: row.file_name, storageName: row.storage_name, filePath: path.join(directory, row.storage_name) };
 }

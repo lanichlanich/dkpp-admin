@@ -21,6 +21,7 @@
     "backup:adminflow": "node scripts/backup-adminflow.mjs",
     "verify:backup": "node scripts/verify-adminflow-backup.mjs",
     "export:supabase": "node scripts/export-sqlite-for-supabase.mjs",
+    "migrate:storage": "node scripts/migrate-supabase-storage.mjs",
     "verify:postgres": "node --conditions=react-server --experimental-strip-types scripts/verify-postgres-runtime.mjs"
   },
   "dependencies": {

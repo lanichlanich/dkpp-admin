@@ -13,7 +13,9 @@ export async function getReportEmployees() {
 }
 export type ReportHistory = { id: string; employee_name: string; report_date: string; created_at: string; file_name: string };
 export async function getReportHistory(userId: string) {
-  return await db.prepare("SELECT id, employee_name, report_date, created_at, file_name FROM wfh_reports WHERE user_id = ? ORDER BY created_at DESC").all(userId) as ReportHistory[];
+  // PostgreSQL returns DATE/TIMESTAMP columns as Date objects. Cast them in
+  // SQL so the server component always passes renderable strings to React.
+  return await db.prepare("SELECT id, employee_name, CAST(report_date AS TEXT) AS report_date, CAST(created_at AS TEXT) AS created_at, file_name FROM wfh_reports WHERE user_id = ? ORDER BY created_at DESC").all(userId) as ReportHistory[];
 }
 export function reportFilePath(id: string) {
   if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id)) throw new Error("ID laporan tidak valid.");

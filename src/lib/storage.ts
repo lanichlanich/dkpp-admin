@@ -17,10 +17,26 @@ export async function downloadStorageObject(storageName: string, fallbackPath?: 
     if (!fallbackPath) throw new Error("Supabase Storage belum dikonfigurasi.");
     return readFile(fallbackPath);
   }
+  const headers = { apikey: secretKey!, authorization: `Bearer ${secretKey!}` };
   const response = await fetch(url, {
-    headers: { apikey: secretKey!, authorization: `Bearer ${secretKey!}` },
+    headers,
     cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
   });
-  if (!response.ok) throw new Error(`Storage download failed: ${response.status}`);
-  return Buffer.from(await response.arrayBuffer());
+
+  if (response.ok) return Buffer.from(await response.arrayBuffer());
+
+  // Private buckets also expose the authenticated download path. Keep this
+  // fallback for projects whose Storage gateway does not accept the generic
+  // object path with a server key.
+  const authenticatedUrl = `${supabaseUrl}/storage/v1/object/authenticated/${encodeURIComponent(bucket)}/${encodeURIComponent(storageName)}`;
+  const authenticatedResponse = await fetch(authenticatedUrl, {
+    headers,
+    cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!authenticatedResponse.ok) {
+    throw new Error(`Storage download failed: ${response.status}/${authenticatedResponse.status}`);
+  }
+  return Buffer.from(await authenticatedResponse.arrayBuffer());
 }

@@ -70,19 +70,34 @@ export async function loginAction(
     return { status: "error", errors: parsed.error.flatten().fieldErrors };
   }
 
-  const user = await db
-    .prepare(
-      "SELECT id, password_hash FROM users WHERE lower(email) = lower(?) OR lower(username) = lower(?) LIMIT 1",
-    )
-    .get(parsed.data.identity, parsed.data.identity) as
-    | { id: string; password_hash: string }
-    | undefined;
+  let user: { id: string; password_hash: string } | undefined;
+  try {
+    user = await db
+      .prepare(
+        "SELECT id, password_hash FROM users WHERE lower(email) = lower(?) OR lower(username) = lower(?) LIMIT 1",
+      )
+      .get(parsed.data.identity, parsed.data.identity) as
+      | { id: string; password_hash: string }
+      | undefined;
+  } catch {
+    return {
+      status: "error",
+      message: "Login sementara tidak tersedia karena koneksi database belum tersambung.",
+    };
+  }
 
   if (!user || !(await compare(parsed.data.password, user.password_hash))) {
     return { status: "error", message: "Email/username atau password tidak sesuai." };
   }
 
-  await createSession(user.id);
+  try {
+    await createSession(user.id);
+  } catch {
+    return {
+      status: "error",
+      message: "Sesi login tidak dapat dibuat. Silakan coba lagi.",
+    };
+  }
   redirect("/dashboard");
 }
 

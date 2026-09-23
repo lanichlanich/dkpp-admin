@@ -3,6 +3,8 @@ import "server-only";
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+export { mapPublicUser } from "@/lib/db-types";
+export type { Employee, PublicUser } from "@/lib/db-types";
 
 const dataDirectory = path.join(process.cwd(), "data");
 mkdirSync(dataDirectory, { recursive: true });
@@ -450,44 +452,4 @@ if (employeeCount === 0) {
 
 if (process.env.NODE_ENV !== "production") {
   globalForDatabase.adminDatabase = db;
-}
-
-export type PublicUser = {
-  id: string;
-  name: string;
-  username: string;
-  email: string;
-  createdAt: string;
-};
-
-export type Employee = {
-  nip: string;
-  name: string;
-  parentUnit: string;
-  unit: string;
-  position: string;
-  positionType: string;
-  echelon: string;
-  rank: string;
-  asnType: string;
-  status: string;
-  retirementAge: number | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export function mapPublicUser(row: {
-  id: string;
-  name: string;
-  username: string;
-  email: string;
-  created_at: string;
-}): PublicUser {
-  return {
-    id: row.id,
-    name: row.name,
-    username: row.username,
-    email: row.email,
-    createdAt: row.created_at,
-  };
 }

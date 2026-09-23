@@ -1,6 +1,6 @@
 import "server-only";
 
-import { mapPublicUser, type PublicUser } from "@/lib/db";
+import { mapPublicUser, type PublicUser } from "@/lib/db-types";
 import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
 

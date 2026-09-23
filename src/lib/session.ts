@@ -4,7 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { mapPublicUser, type PublicUser } from "@/lib/db";
+import { mapPublicUser, type PublicUser } from "@/lib/db-types";
 import { database as db } from "@/lib/database";
 
 const SESSION_COOKIE = "admin_session";

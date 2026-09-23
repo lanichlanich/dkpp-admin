@@ -19,7 +19,8 @@
     "verify:employees": "node scripts/verify-employee-import.mjs",
     "migrate:penyuluh": "node scripts/migrate-penyuluh-status.mjs",
     "backup:adminflow": "node scripts/backup-adminflow.mjs",
-    "verify:backup": "node scripts/verify-adminflow-backup.mjs"
+    "verify:backup": "node scripts/verify-adminflow-backup.mjs",
+    "export:supabase": "node scripts/export-sqlite-for-supabase.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

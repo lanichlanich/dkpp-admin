@@ -6,7 +6,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const bucket = process.env.SUPABASE_STORAGE_BUCKET || "dkpp-admin";
 const baseUrl = process.env.SUPABASE_URL?.replace(/\/$/, "");
 const secretKey = process.env.SUPABASE_SECRET_KEY;
-const maxBytes = Number(process.env.SUPABASE_STORAGE_MIGRATION_MAX_BYTES || 2 * 1024 * 1024);
+const maxBytes = Number(process.env.SUPABASE_STORAGE_MIGRATION_MAX_BYTES ?? 0);
 const dryRun = process.argv.includes("--dry-run");
 
 if (!dryRun && (!baseUrl || !secretKey)) {
@@ -40,7 +40,7 @@ let uploaded = 0;
 let skipped = 0;
 for (const file of files) {
   const bytes = await readFile(file.filePath);
-  if (bytes.length > maxBytes) {
+  if (maxBytes > 0 && bytes.length > maxBytes) {
     skipped += 1;
     console.log(`SKIP ${file.name}: ${bytes.length} bytes > ${maxBytes}`);
     continue;

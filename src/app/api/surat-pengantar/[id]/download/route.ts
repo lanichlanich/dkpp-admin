@@ -12,7 +12,7 @@ export async function GET(
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 
   const { id } = await context.params;
-  const document = getSuratPengantarDocumentForDownload(id);
+  const document = await getSuratPengantarDocumentForDownload(id);
   if (!document) return Response.json({ message: "Dokumen tidak ditemukan." }, { status: 404 });
 
   try {

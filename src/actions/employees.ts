@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { createNotification } from "@/lib/notifications";
 import { requireUser } from "@/lib/session";
 
@@ -57,12 +57,12 @@ export async function saveEmployeeAction(
   const now = new Date().toISOString();
 
   if (mode === "create") {
-    const duplicate = db.prepare("SELECT 1 FROM employees WHERE nip = ?").get(employee.nip);
+    const duplicate = await db.prepare("SELECT 1 FROM employees WHERE nip = ?").get(employee.nip);
     if (duplicate) {
       return { status: "error", message: "NIP sudah terdaftar.", submittedAt: Date.now() };
     }
 
-    db.prepare(
+    await db.prepare(
       `INSERT INTO employees (
         nip, name, parent_unit, unit, position, position_type, echelon,
         rank, asn_type, status, created_at, updated_at
@@ -72,12 +72,12 @@ export async function saveEmployeeAction(
       employee.position, employee.positionType, employee.echelon, employee.rank,
       employee.asnType, employee.status, now, now,
     );
-    createNotification(user.id, "success", "Pegawai ditambahkan", `${employee.name} (${employee.nip}) berhasil ditambahkan.`);
+    await createNotification(user.id, "success", "Pegawai ditambahkan", `${employee.name} (${employee.nip}) berhasil ditambahkan.`);
   } else {
     if (!originalNip || originalNip !== employee.nip) {
       return { status: "error", message: "NIP primary key tidak dapat diubah.", submittedAt: Date.now() };
     }
-    const result = db.prepare(
+    const result = await db.prepare(
       `UPDATE employees SET
         name = ?, parent_unit = ?, unit = ?, position = ?, position_type = ?,
         echelon = ?, rank = ?, asn_type = ?, status = ?, updated_at = ?
@@ -90,7 +90,7 @@ export async function saveEmployeeAction(
     if (result.changes === 0) {
       return { status: "error", message: "Data pegawai tidak ditemukan.", submittedAt: Date.now() };
     }
-    createNotification(user.id, "info", "Data pegawai diperbarui", `${employee.name} (${employee.nip}) berhasil diperbarui.`);
+    await createNotification(user.id, "info", "Data pegawai diperbarui", `${employee.name} (${employee.nip}) berhasil diperbarui.`);
   }
 
   revalidatePath("/dashboard/pegawai");
@@ -115,17 +115,17 @@ export async function bulkEmployeeAction(input: z.infer<typeof bulkSchema>) {
   const placeholders = parsed.data.nips.map(() => "?").join(",");
   let changes = 0;
   if (parsed.data.operation === "delete") {
-    changes = db.prepare(`DELETE FROM employees WHERE nip IN (${placeholders})`).run(...parsed.data.nips).changes;
+    changes = (await db.prepare(`DELETE FROM employees WHERE nip IN (${placeholders})`).run(...parsed.data.nips)).changes;
   } else {
     const status = parsed.data.operation === "activate" ? "Aktif" : parsed.data.operation === "mutate" ? "Mutasi" : "Pensiun";
-    changes = db.prepare(
+    changes = (await db.prepare(
       `UPDATE employees SET status = ?, updated_at = ? WHERE nip IN (${placeholders})`,
-    ).run(status, new Date().toISOString(), ...parsed.data.nips).changes;
+    ).run(status, new Date().toISOString(), ...parsed.data.nips)).changes;
   }
 
   const notificationType = parsed.data.operation === "delete" ? "warning" : "success";
   const operationLabel = parsed.data.operation === "delete" ? "dihapus" : parsed.data.operation === "activate" ? "diaktifkan" : parsed.data.operation === "mutate" ? "dimutasikan" : "dipensiunkan";
-  createNotification(user.id, notificationType, "Aksi massal pegawai", `${changes} data pegawai berhasil ${operationLabel}.`);
+  await createNotification(user.id, notificationType, "Aksi massal pegawai", `${changes} data pegawai berhasil ${operationLabel}.`);
   revalidatePath("/dashboard/pegawai");
   revalidatePath("/dashboard", "layout");
   return { success: true, message: `${changes} pegawai berhasil ${operationLabel}.` };

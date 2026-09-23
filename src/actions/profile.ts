@@ -2,7 +2,7 @@
 
 import { compare, hash } from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
 import { passwordSchema, profileSchema, type ActionState } from "@/lib/validation";
 
@@ -21,9 +21,9 @@ export async function updateProfileAction(
     return { status: "error", errors: parsed.error.flatten().fieldErrors };
   }
 
-  const conflict = db
+  const conflict = await db
     .prepare(
-      "SELECT email, username FROM users WHERE id != ? AND (email = ? OR username = ?)",
+      "SELECT email, username FROM users WHERE id != ? AND (lower(email) = lower(?) OR lower(username) = lower(?))",
     )
     .get(user.id, parsed.data.email, parsed.data.username) as
     | { email: string; username: string }
@@ -39,7 +39,7 @@ export async function updateProfileAction(
     };
   }
 
-  db.prepare(
+  await db.prepare(
     "UPDATE users SET name = ?, username = ?, email = ?, updated_at = ? WHERE id = ?",
   ).run(
     parsed.data.name,
@@ -68,7 +68,7 @@ export async function updatePasswordAction(
     return { status: "error", errors: parsed.error.flatten().fieldErrors };
   }
 
-  const row = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(user.id) as
+  const row = await db.prepare("SELECT password_hash FROM users WHERE id = ?").get(user.id) as
     | { password_hash: string }
     | undefined;
 
@@ -77,7 +77,7 @@ export async function updatePasswordAction(
   }
 
   const passwordHash = await hash(parsed.data.newPassword, 12);
-  db.prepare("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?").run(
+  await db.prepare("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?").run(
     passwordHash,
     new Date().toISOString(),
     user.id,

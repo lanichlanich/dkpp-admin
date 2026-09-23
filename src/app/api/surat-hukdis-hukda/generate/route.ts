@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { generateOfficialStatementDocument, formatOfficialNip } from "@/lib/official-statement-document";
 import { saveOfficialStatementDocument } from "@/lib/official-statement-documents";
 import { officialStatementSchema, officialStatementTypeLabels } from "@/lib/official-statement-validation";
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   }
 
   const input = result.data;
-  const employee = db.prepare(
+  const employee = await db.prepare(
     `SELECT nip, name, rank, position
      FROM employees
      WHERE nip = ? AND asn_type = 'PNS' AND status = 'Aktif'`,
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       tanggalSurat: input.tanggalSurat,
       document,
     });
-    createNotification(user.id, "success", `${label} dibuat`, `${label} untuk ${employee.name} berhasil dibuat dan disimpan.`);
+    await createNotification(user.id, "success", `${label} dibuat`, `${label} untuk ${employee.name} berhasil dibuat dan disimpan.`);
     return new Response(new Uint8Array(document), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Official statement generation failed", error);
-    createNotification(user.id, "error", `${label} gagal dibuat`, "Dokumen gagal diproses.");
+    await createNotification(user.id, "error", `${label} gagal dibuat`, "Dokumen gagal diproses.");
     return Response.json({ message: `${label} gagal dibuat. Silakan coba kembali.` }, { status: 500 });
   }
 }

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   if (!user) return Response.json({ message: "Silakan masuk kembali." }, { status: 401 });
   const input = reportContextSchema.safeParse(await request.json().catch(() => null));
   if (!input.success) return Response.json({ message: "Pilih pegawai dan tanggal yang valid." }, { status: 422 });
-  const employee = getReportEmployee(input.data.nip);
+  const employee = await getReportEmployee(input.data.nip);
   if (!employee?.position || !employee.unit) return Response.json({ message: "Pegawai aktif dengan jabatan dan unit kerja lengkap diperlukan." }, { status: 422 });
   const now = Date.now();
   for (const [id, at] of lastRequest) if (now - at > 60000) lastRequest.delete(id);

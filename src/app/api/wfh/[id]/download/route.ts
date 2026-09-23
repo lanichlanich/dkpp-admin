@@ -9,7 +9,7 @@ export async function GET(_request: Request, context: RouteContext<"/api/wfh/[id
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 
   const { id } = await context.params;
-  const document = getWfhDocumentForDownload(id);
+  const document = await getWfhDocumentForDownload(id);
   if (!document) return Response.json({ message: "Dokumen tidak ditemukan." }, { status: 404 });
 
   try {

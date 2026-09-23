@@ -1,5 +1,5 @@
 import PizZip from "pizzip";
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { getEmployeeDocumentsForArchive } from "@/lib/employee-documents";
 import { getCurrentUser } from "@/lib/session";
 
@@ -44,7 +44,7 @@ export async function GET(
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 
   const { nip } = await context.params;
-  const employee = db.prepare("SELECT nip, name FROM employees WHERE nip = ?").get(nip) as {
+  const employee = await db.prepare("SELECT nip, name FROM employees WHERE nip = ?").get(nip) as {
     nip: string;
     name: string;
   } | undefined;

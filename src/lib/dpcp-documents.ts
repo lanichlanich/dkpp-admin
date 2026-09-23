@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
 
 const storageDirectory = path.join(process.cwd(), "data", "dpcp-documents");
@@ -42,7 +42,7 @@ export async function saveDpcpDocument({
   await writeFile(filePath, document, { flag: "wx" });
 
   try {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO dpcp_documents (
         id, user_id, employee_nip, employee_name, tgl_dpcp,
         file_name, storage_name, file_size, created_at
@@ -68,7 +68,7 @@ export async function saveDpcpDocument({
 
 export async function getDpcpHistory(): Promise<DpcpDocumentHistory[]> {
   await requireUser();
-  const rows = db.prepare(
+  const rows = await db.prepare(
     `SELECT
       documents.id,
       documents.employee_nip,
@@ -104,8 +104,8 @@ export async function getDpcpHistory(): Promise<DpcpDocumentHistory[]> {
   }));
 }
 
-export function getDpcpDocumentForDownload(id: string) {
-  const row = db.prepare(
+export async function getDpcpDocumentForDownload(id: string) {
+  const row = await db.prepare(
     `SELECT file_name, storage_name, file_size
      FROM dpcp_documents WHERE id = ?`,
   ).get(id) as { file_name: string; storage_name: string; file_size: number } | undefined;

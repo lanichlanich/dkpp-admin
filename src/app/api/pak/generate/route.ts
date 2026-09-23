@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { generatePakDocument } from "@/lib/pak-document";
 import { savePakDocument } from "@/lib/pak-documents";
 import { pakSchema } from "@/lib/pak-validation";
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return Response.json({ message: "Data permintaan tidak valid." }, { status: 400 }); }
   const result = pakSchema.safeParse(body);
   if (!result.success) return Response.json({ message: "Periksa kembali isian PAK.", errors: result.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })) }, { status: 422 });
-  const employee = db.prepare("SELECT name, status FROM employees WHERE nip = ? AND asn_type = 'PNS' AND status IN ('Aktif', 'Mutasi', 'Pensiun')").get(result.data.nip) as { name: string; status: string } | undefined;
+  const employee = await db.prepare("SELECT name, status FROM employees WHERE nip = ? AND asn_type = 'PNS' AND status IN ('Aktif', 'Mutasi', 'Pensiun')").get(result.data.nip) as { name: string; status: string } | undefined;
   if (!employee) return Response.json({ message: "Pegawai PNS aktif, mutasi, atau pensiun tidak ditemukan." }, { status: 422 });
   try {
     const document = await generatePakDocument(result.data, employee.name);

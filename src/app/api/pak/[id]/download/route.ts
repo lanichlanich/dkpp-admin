@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   if (!await getCurrentUser()) return Response.json({ message: "Silakan masuk kembali." }, { status: 401 });
   const { id } = await context.params;
-  const document = getPakDocumentForDownload(id);
+  const document = await getPakDocumentForDownload(id);
   if (!document) return Response.json({ message: "Dokumen tidak ditemukan." }, { status: 404 });
   try {
     const file = await readFile(document.filePath);

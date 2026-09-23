@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   if (!user) return Response.json({ message: "Silakan masuk kembali." }, { status: 401 });
   const parsed = wfhReportSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ message: parsed.error.issues[0]?.message ?? "Periksa isian laporan." }, { status: 422 });
-  const employee = getReportEmployee(parsed.data.nip);
+  const employee = await getReportEmployee(parsed.data.nip);
   if (!employee) return Response.json({ message: "Pegawai aktif tidak ditemukan." }, { status: 422 });
   try {
     const document = await generateWfhReport(employee, parsed.data);

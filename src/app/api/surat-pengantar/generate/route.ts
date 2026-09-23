@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       jumlah: input.jumlah,
       document,
     });
-    createNotification(
+    await createNotification(
       user.id,
       "success",
       "Surat pengantar dibuat",
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Surat pengantar generation failed", error);
-    createNotification(user.id, "error", "Surat pengantar gagal dibuat", "Dokumen gagal diproses.");
+    await createNotification(user.id, "error", "Surat pengantar gagal dibuat", "Dokumen gagal diproses.");
     return Response.json({ message: "Surat pengantar gagal dibuat. Silakan coba kembali." }, { status: 500 });
   }
 }

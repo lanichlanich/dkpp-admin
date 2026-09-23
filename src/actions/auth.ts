@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { compare, hash } from "bcryptjs";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { createNotification } from "@/lib/notifications";
 import { createSession, deleteSession } from "@/lib/session";
 import { loginSchema, registerSchema, type ActionState } from "@/lib/validation";
@@ -25,8 +25,8 @@ export async function registerAction(
   }
 
   const { name, username, email, password } = parsed.data;
-  const existing = db
-    .prepare("SELECT email, username FROM users WHERE email = ? OR username = ?")
+  const existing = await db
+    .prepare("SELECT email, username FROM users WHERE lower(email) = lower(?) OR lower(username) = lower(?)")
     .get(email, username) as { email: string; username: string } | undefined;
 
   if (existing) {
@@ -44,7 +44,7 @@ export async function registerAction(
   const passwordHash = await hash(password, 12);
 
   try {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO users (id, name, username, email, password_hash, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ).run(userId, name, username, email.toLowerCase(), passwordHash, now, now);
@@ -53,7 +53,7 @@ export async function registerAction(
   }
 
   await createSession(userId);
-  createNotification(userId, "info", "Akun berhasil dibuat", "Selamat datang. Akun administrator Anda siap digunakan.");
+  await createNotification(userId, "info", "Akun berhasil dibuat", "Selamat datang. Akun administrator Anda siap digunakan.");
   redirect("/dashboard");
 }
 
@@ -70,9 +70,9 @@ export async function loginAction(
     return { status: "error", errors: parsed.error.flatten().fieldErrors };
   }
 
-  const user = db
+  const user = await db
     .prepare(
-      "SELECT id, password_hash FROM users WHERE email = ? OR username = ? LIMIT 1",
+      "SELECT id, password_hash FROM users WHERE lower(email) = lower(?) OR lower(username) = lower(?) LIMIT 1",
     )
     .get(parsed.data.identity, parsed.data.identity) as
     | { id: string; password_hash: string }

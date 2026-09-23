@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { generateKgbDocument } from "@/lib/kgb-document";
 import { saveKgbDocument } from "@/lib/kgb-documents";
 import {
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   }
 
   const input = result.data;
-  const employee = db.prepare(
+  const employee = await db.prepare(
     "SELECT nip, name, rank, asn_type, status FROM employees WHERE nip = ?",
   ).get(input.nip) as EmployeeRow | undefined;
   if (!employee || employee.asn_type !== "PNS" || employee.status !== "Aktif") {
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
       tglSurat: input.tglSurat,
       document: output,
     });
-    createNotification(user.id, "success", "SK KGB dibuat", `Dokumen SK KGB ${employee.name} berhasil dibuat dan disimpan ke histori.`);
+    await createNotification(user.id, "success", "SK KGB dibuat", `Dokumen SK KGB ${employee.name} berhasil dibuat dan disimpan ke histori.`);
     return new Response(new Uint8Array(output), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("KGB document generation failed", error);
-    createNotification(user.id, "error", "SK KGB gagal dibuat", `Dokumen untuk ${employee.name} gagal diproses.`);
+    await createNotification(user.id, "error", "SK KGB gagal dibuat", `Dokumen untuk ${employee.name} gagal diproses.`);
     return Response.json({ message: "Dokumen gagal dibuat. Silakan coba kembali." }, { status: 500 });
   }
 }

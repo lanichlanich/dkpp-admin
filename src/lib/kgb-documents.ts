@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
 
 const storageDirectory = path.join(process.cwd(), "data", "kgb-documents");
@@ -44,7 +44,7 @@ export async function saveKgbDocument({
   await mkdir(storageDirectory, { recursive: true });
   await writeFile(filePath, document, { flag: "wx" });
   try {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO kgb_documents (
         id, user_id, employee_nip, employee_name, nomor_surat, tgl_surat,
         file_name, storage_name, file_size, created_at
@@ -63,7 +63,7 @@ export async function saveKgbDocument({
 
 export async function getKgbHistory(): Promise<KgbDocumentHistory[]> {
   await requireUser();
-  const rows = db.prepare(
+  const rows = await db.prepare(
     `SELECT
       documents.id,
       documents.employee_nip,
@@ -102,8 +102,8 @@ export async function getKgbHistory(): Promise<KgbDocumentHistory[]> {
   }));
 }
 
-export function getKgbDocumentForDownload(id: string) {
-  const row = db.prepare(
+export async function getKgbDocumentForDownload(id: string) {
+  const row = await db.prepare(
     `SELECT file_name, storage_name, file_size
      FROM kgb_documents WHERE id = ?`,
   ).get(id) as { file_name: string; storage_name: string; file_size: number } | undefined;

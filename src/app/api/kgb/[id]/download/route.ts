@@ -9,7 +9,7 @@ export async function GET(_request: Request, context: RouteContext<"/api/kgb/[id
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 
   const { id } = await context.params;
-  const document = getKgbDocumentForDownload(id);
+  const document = await getKgbDocumentForDownload(id);
   if (!document) return Response.json({ message: "Dokumen tidak ditemukan." }, { status: 404 });
 
   try {

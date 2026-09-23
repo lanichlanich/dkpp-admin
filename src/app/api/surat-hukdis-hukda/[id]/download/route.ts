@@ -11,7 +11,7 @@ export async function GET(
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
   const { id } = await context.params;
-  const document = getOfficialStatementDocumentForDownload(id);
+  const document = await getOfficialStatementDocumentForDownload(id);
   if (!document) return Response.json({ message: "Dokumen tidak ditemukan." }, { status: 404 });
   try {
     const file = await readFile(document.filePath);

@@ -17,7 +17,7 @@ export async function DELETE(
     const deleted = await deleteEmployeeDocument(nip, id);
     if (!deleted) return Response.json({ message: "Dokumen tidak ditemukan." }, { status: 404 });
 
-    createNotification(
+    await createNotification(
       user.id,
       "warning",
       "Dokumen pegawai dihapus",

@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       tanggalSurat: input.tanggalSurat,
       document,
     });
-    createNotification(
+    await createNotification(
       user.id,
       "success",
       "Surat tugas WFH dibuat",
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("WFH document generation failed", error);
-    createNotification(user.id, "error", "Surat tugas WFH gagal dibuat", "Dokumen gagal diproses.");
+    await createNotification(user.id, "error", "Surat tugas WFH gagal dibuat", "Dokumen gagal diproses.");
     return Response.json({ message: "Surat tugas WFH gagal dibuat. Silakan coba kembali." }, { status: 500 });
   }
 }

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { hukdisSanctions } from "@/lib/hukdis-types";
 import { createNotification } from "@/lib/notifications";
 import { requireUser } from "@/lib/session";
@@ -57,7 +57,7 @@ export async function saveHukdisAction(
     return { status: "error", errors: parsed.error.flatten().fieldErrors, submittedAt: Date.now() };
   }
 
-  const employee = db.prepare(
+  const employee = await db.prepare(
     "SELECT name FROM employees WHERE nip = ? AND status = 'Aktif'",
   ).get(parsed.data.employeeNip) as { name: string } | undefined;
   if (!employee) {
@@ -65,13 +65,13 @@ export async function saveHukdisAction(
   }
 
   if (parsed.data.sanctionCode === "none") {
-    db.prepare(
+    await db.prepare(
       "DELETE FROM hukdis_records WHERE employee_nip = ? AND report_period = ?",
     ).run(parsed.data.employeeNip, parsed.data.reportPeriod);
-    createNotification(user.id, "info", "Data Hukdis dikosongkan", `Data Hukdis ${employee.name} untuk periode ${parsed.data.reportPeriod} dikosongkan.`);
+    await createNotification(user.id, "info", "Data Hukdis dikosongkan", `Data Hukdis ${employee.name} untuk periode ${parsed.data.reportPeriod} dikosongkan.`);
   } else {
     const now = new Date().toISOString();
-    db.prepare(
+    await db.prepare(
       `INSERT INTO hukdis_records (
         employee_nip, report_period, sanction_code, decision_number,
         decision_date, created_at, updated_at
@@ -90,7 +90,7 @@ export async function saveHukdisAction(
       now,
       now,
     );
-    createNotification(user.id, "success", "Data Hukdis disimpan", `Data Hukdis ${employee.name} untuk periode ${parsed.data.reportPeriod} berhasil disimpan.`);
+    await createNotification(user.id, "success", "Data Hukdis disimpan", `Data Hukdis ${employee.name} untuk periode ${parsed.data.reportPeriod} berhasil disimpan.`);
   }
 
   revalidatePath("/dashboard/hukdis");

@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { generateDpcpDocument } from "@/lib/dpcp-document";
 import { saveDpcpDocument } from "@/lib/dpcp-documents";
 import { dpcpSchema } from "@/lib/dpcp-validation";
@@ -38,16 +38,16 @@ export async function POST(request: Request) {
     return Response.json({ message: "Periksa kembali isian yang ditandai.", errors: result.error.flatten().fieldErrors }, { status: 422 });
   }
 
-  const employee = db.prepare(
+  const employee = await db.prepare(
     `SELECT nip, name, position, rank FROM employees
      WHERE nip = ? AND asn_type = 'PNS' AND status = 'Aktif'`,
   ).get(result.data.nip) as EmployeeRow | undefined;
   if (!employee) return Response.json({ message: "Pegawai PNS aktif tidak ditemukan." }, { status: 422 });
 
-  const head = db.prepare(
+  const head = await db.prepare(
     `SELECT nip, name, position, rank FROM employees
      WHERE status = 'Aktif' AND position LIKE 'KEPALA DINAS%'
-     ORDER BY rowid LIMIT 1`,
+     ORDER BY name COLLATE NOCASE LIMIT 1`,
   ).get() as EmployeeRow | undefined;
   if (!head) return Response.json({ message: "Data Kepala Dinas aktif tidak ditemukan." }, { status: 422 });
 
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       tglDpcp: input.tglDpcp,
       document,
     });
-    createNotification(user.id, "success", "DPCP dibuat", `Dokumen DPCP ${employee.name} berhasil dibuat dan disimpan ke daftar dokumen.`);
+    await createNotification(user.id, "success", "DPCP dibuat", `Dokumen DPCP ${employee.name} berhasil dibuat dan disimpan ke daftar dokumen.`);
     return new Response(new Uint8Array(document), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("DPCP document generation failed", error);
-    createNotification(user.id, "error", "DPCP gagal dibuat", `Dokumen DPCP ${employee.name} gagal diproses.`);
+    await createNotification(user.id, "error", "DPCP gagal dibuat", `Dokumen DPCP ${employee.name} gagal diproses.`);
     return Response.json({ message: "Dokumen DPCP gagal dibuat. Silakan coba kembali." }, { status: 500 });
   }
 }

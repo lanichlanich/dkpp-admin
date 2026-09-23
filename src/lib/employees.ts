@@ -1,7 +1,8 @@
 import "server-only";
 
 import { cache } from "react";
-import { db, type Employee } from "@/lib/db";
+import type { Employee } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { getBirthDateIsoFromNip, getRetirementAge, getRetirementTmt } from "@/lib/retirement-age";
 import { requireUser } from "@/lib/session";
 
@@ -44,17 +45,17 @@ function mapEmployee(row: EmployeeRow): Employee {
 
 export const getEmployees = cache(async () => {
   await requireUser();
-  const rows = db.prepare("SELECT * FROM employees ORDER BY name COLLATE NOCASE").all() as EmployeeRow[];
+  const rows = await db.prepare("SELECT * FROM employees ORDER BY name COLLATE NOCASE").all() as EmployeeRow[];
   return rows.map(mapEmployee);
 });
 
 export const getHukdisEmployees = cache(async (): Promise<Employee[]> => {
   await requireUser();
-  const rows = db.prepare(
+  const rows = await db.prepare(
     `SELECT *
      FROM employees
      WHERE status = 'Aktif'
-     ORDER BY rowid`,
+     ORDER BY name COLLATE NOCASE`,
   ).all() as EmployeeRow[];
   return rows.map(mapEmployee);
 });
@@ -63,7 +64,7 @@ export type KgbEmployeeOption = Pick<Employee, "nip" | "name" | "rank">;
 
 export const getKgbEmployeeOptions = cache(async (): Promise<KgbEmployeeOption[]> => {
   await requireUser();
-  return db.prepare(
+  return await db.prepare(
     `SELECT nip, name, rank
      FROM employees
      WHERE asn_type = 'PNS' AND status = 'Aktif'
@@ -77,12 +78,12 @@ export type PakEmployeeOption = Pick<Employee, "nip" | "name" | "rank" | "positi
 export const getPakEmployeeOptions = cache(async (): Promise<PakEmployeeOption[]> => {
   await requireUser();
   // Current position is not an eligibility filter: retired/transferred PNS may need a historical PAK.
-  return db.prepare(`SELECT nip, name, rank, position, status, unit, parent_unit AS parentUnit, position_type AS positionType FROM employees WHERE asn_type = 'PNS' AND status IN ('Aktif', 'Mutasi', 'Pensiun') ORDER BY name COLLATE NOCASE`).all() as PakEmployeeOption[];
+  return await db.prepare(`SELECT nip, name, rank, position, status, unit, parent_unit AS parentUnit, position_type AS positionType FROM employees WHERE asn_type = 'PNS' AND status IN ('Aktif', 'Mutasi', 'Pensiun') ORDER BY name COLLATE NOCASE`).all() as PakEmployeeOption[];
 });
 
 export const getDpcpEmployeeOptions = cache(async (): Promise<DpcpEmployeeOption[]> => {
   await requireUser();
-  return db.prepare(
+  return await db.prepare(
     `SELECT nip, name, rank, position
      FROM employees
      WHERE asn_type = 'PNS' AND status = 'Aktif'
@@ -130,7 +131,7 @@ export type EmployeeStatistics = {
 export const getEmployeeStatistics = cache(async (): Promise<EmployeeStatistics> => {
   await requireUser();
 
-  const summary = db.prepare(
+  const summary = await db.prepare(
     `SELECT
       COUNT(*) AS total,
       SUM(CASE WHEN status = 'Aktif' THEN 1 ELSE 0 END) AS active,
@@ -140,7 +141,7 @@ export const getEmployeeStatistics = cache(async (): Promise<EmployeeStatistics>
      FROM employees`,
   ).get() as { total: number; active: number; retired: number; mutated: number; units: number };
 
-  const byAsnType = db.prepare(
+  const byAsnType = await db.prepare(
     `SELECT asn_type AS asnType, COUNT(*) AS total
      FROM employees
      GROUP BY asn_type
@@ -207,7 +208,7 @@ export const getUpcomingRetirements = cache(async (): Promise<UpcomingRetirement
 
   const today = toJakartaIsoDate(new Date());
   const fiveYearsFromToday = addYearsToIsoDate(today, 5);
-  const rows = db.prepare(
+  const rows = await db.prepare(
     `SELECT nip, name, unit, position, position_type, echelon, asn_type
      FROM employees
      WHERE status = 'Aktif'`,
@@ -259,7 +260,7 @@ export const getUpcomingBirthdays = cache(async (): Promise<UpcomingBirthday[]> 
   const today = toJakartaIsoDate(new Date());
   const sixMonthsFromToday = addMonthsToIsoDate(today, 6);
   const currentYear = Number(today.slice(0, 4));
-  const rows = db.prepare(
+  const rows = await db.prepare(
     `SELECT nip, name, unit, position, asn_type
      FROM employees
      WHERE status = 'Aktif'`,

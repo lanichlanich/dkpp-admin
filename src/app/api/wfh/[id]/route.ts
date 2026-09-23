@@ -16,7 +16,7 @@ export async function DELETE(
     const deleted = await deleteWfhDocument(id);
     if (!deleted) return Response.json({ message: "Surat tugas WFH tidak ditemukan." }, { status: 404 });
 
-    createNotification(
+    await createNotification(
       user.id,
       "warning",
       "Surat tugas WFH dihapus",

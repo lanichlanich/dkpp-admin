@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createNotification } from "@/lib/notifications";
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import {
   EMPLOYEE_DOCUMENT_TYPE_LABELS,
   EMPLOYEE_DOCUMENT_TYPES,
@@ -46,8 +46,8 @@ const skpUploadSchema = z.object({
 
 type EmployeeRow = { nip: string; name: string; asn_type: string };
 
-function getEmployee(nip: string) {
-  return db.prepare("SELECT nip, name, asn_type FROM employees WHERE nip = ?").get(nip) as EmployeeRow | undefined;
+async function getEmployee(nip: string) {
+  return await db.prepare("SELECT nip, name, asn_type FROM employees WHERE nip = ?").get(nip) as EmployeeRow | undefined;
 }
 
 export async function GET(_request: Request, context: RouteContext<"/api/employees/[nip]/documents">) {
@@ -55,9 +55,9 @@ export async function GET(_request: Request, context: RouteContext<"/api/employe
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 
   const { nip } = await context.params;
-  const employee = getEmployee(nip);
+  const employee = await getEmployee(nip);
   if (!employee) return Response.json({ message: "Pegawai tidak ditemukan." }, { status: 404 });
-  return Response.json({ documents: getEmployeeDocuments(employee.nip) });
+  return Response.json({ documents: await getEmployeeDocuments(employee.nip) });
 }
 
 export async function POST(request: Request, context: RouteContext<"/api/employees/[nip]/documents">) {
@@ -70,7 +70,7 @@ export async function POST(request: Request, context: RouteContext<"/api/employe
   }
 
   const { nip } = await context.params;
-  const employee = getEmployee(nip);
+  const employee = await getEmployee(nip);
   if (!employee) return Response.json({ message: "Pegawai tidak ditemukan." }, { status: 404 });
 
   let formData: FormData;
@@ -163,11 +163,11 @@ export async function POST(request: Request, context: RouteContext<"/api/employe
       file,
       bytes,
     });
-    createNotification(user.id, "success", "Dokumen pegawai diunggah", `${EMPLOYEE_DOCUMENT_TYPE_LABELS[documentType]} ${employee.name} berhasil disimpan.`);
+    await createNotification(user.id, "success", "Dokumen pegawai diunggah", `${EMPLOYEE_DOCUMENT_TYPE_LABELS[documentType]} ${employee.name} berhasil disimpan.`);
     return Response.json({ document }, { status: 201 });
   } catch (error) {
     console.error("Employee document upload failed", error);
-    createNotification(user.id, "error", "Unggah dokumen gagal", `Dokumen ${employee.name} gagal disimpan.`);
+    await createNotification(user.id, "error", "Unggah dokumen gagal", `Dokumen ${employee.name} gagal disimpan.`);
     return Response.json({ message: "Dokumen gagal disimpan. Silakan coba kembali." }, { status: 500 });
   }
 }

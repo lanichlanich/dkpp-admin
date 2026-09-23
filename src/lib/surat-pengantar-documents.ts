@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
 
 const storageDirectory = path.join(process.cwd(), "data", "surat-pengantar-documents");
@@ -48,7 +48,7 @@ export async function saveSuratPengantarDocument({
   await mkdir(storageDirectory, { recursive: true });
   await writeFile(filePath, document, { flag: "wx" });
   try {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO surat_pengantar_documents (
         id, user_id, nomor_surat, tanggal_surat, nomor_urut,
         file_yang_dikirim, jumlah, file_name, storage_name, file_size, created_at
@@ -76,7 +76,7 @@ export async function saveSuratPengantarDocument({
 
 export async function getSuratPengantarHistory(): Promise<SuratPengantarDocumentHistory[]> {
   await requireUser();
-  const rows = db.prepare(
+  const rows = await db.prepare(
     `SELECT
       documents.id,
       documents.nomor_surat,
@@ -118,8 +118,8 @@ export async function getSuratPengantarHistory(): Promise<SuratPengantarDocument
   }));
 }
 
-export function getSuratPengantarDocumentForDownload(id: string) {
-  const row = db.prepare(
+export async function getSuratPengantarDocumentForDownload(id: string) {
+  const row = await db.prepare(
     `SELECT file_name, storage_name, file_size
      FROM surat_pengantar_documents WHERE id = ?`,
   ).get(id) as { file_name: string; storage_name: string; file_size: number } | undefined;
@@ -132,7 +132,7 @@ export function getSuratPengantarDocumentForDownload(id: string) {
 }
 
 export async function deleteSuratPengantarDocument(id: string) {
-  const row = db.prepare(
+  const row = await db.prepare(
     `SELECT nomor_surat, file_name, storage_name
      FROM surat_pengantar_documents WHERE id = ?`,
   ).get(id) as { nomor_surat: string; file_name: string; storage_name: string } | undefined;
@@ -149,7 +149,7 @@ export async function deleteSuratPengantarDocument(id: string) {
   }
 
   try {
-    const result = db.prepare("DELETE FROM surat_pengantar_documents WHERE id = ?").run(id);
+    const result = await db.prepare("DELETE FROM surat_pengantar_documents WHERE id = ?").run(id);
     if (result.changes === 0) {
       if (fileMoved) await rename(pendingDeletionPath, filePath);
       return null;

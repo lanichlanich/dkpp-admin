@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import type {
   EmployeeDocumentType,
   SkpAssessment,
@@ -52,8 +52,8 @@ type EmployeeDocumentRow = {
   employee_nip: string;
   document_type: EmployeeDocumentType;
   nomor_surat: string;
-  tgl_surat: string;
-  tmt_surat: string;
+  tgl_surat: string | null;
+  tmt_surat: string | null;
   masa_kerja: string | null;
   tahun: number | null;
   penilaian_kinerja: SkpAssessment | null;
@@ -72,8 +72,8 @@ function mapEmployeeDocument(row: EmployeeDocumentRow): EmployeeDocument {
     employeeNip: row.employee_nip,
     documentType: row.document_type,
     nomorSurat: row.nomor_surat,
-    tglSurat: row.tgl_surat,
-    tmtSurat: row.tmt_surat,
+    tglSurat: row.tgl_surat ?? "",
+    tmtSurat: row.tmt_surat ?? "",
     masaKerja: row.masa_kerja,
     tahun: row.tahun,
     penilaianKinerja: row.penilaian_kinerja,
@@ -122,8 +122,8 @@ export function validateEmployeeDocumentFile(file: File, bytes: Buffer) {
   return null;
 }
 
-export function getEmployeeDocuments(employeeNip: string): EmployeeDocument[] {
-  const rows = db.prepare(
+export async function getEmployeeDocuments(employeeNip: string): Promise<EmployeeDocument[]> {
+  const rows = await db.prepare(
     `SELECT
       documents.id,
       documents.employee_nip,
@@ -194,7 +194,7 @@ export async function saveEmployeeDocument({
   await mkdir(storageDirectory, { recursive: true });
   await writeFile(filePath, bytes, { flag: "wx" });
   try {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO employee_documents (
         id, employee_nip, user_id, document_type, nomor_surat, tgl_surat,
         tmt_surat, masa_kerja, tahun, penilaian_kinerja, penilaian_perilaku,
@@ -212,11 +212,11 @@ export async function saveEmployeeDocument({
     throw error;
   }
 
-  return getEmployeeDocuments(employeeNip).find((document) => document.id === id) ?? null;
+  return (await getEmployeeDocuments(employeeNip)).find((document) => document.id === id) ?? null;
 }
 
 export async function getEmployeeDocumentForDownload(employeeNip: string, id: string) {
-  const row = db.prepare(
+  const row = await db.prepare(
     `SELECT original_file_name, storage_name, mime_type, file_size
      FROM employee_documents
      WHERE id = ? AND employee_nip = ?`,
@@ -237,7 +237,7 @@ export async function getEmployeeDocumentForDownload(employeeNip: string, id: st
 }
 
 export async function getEmployeeDocumentsForArchive(employeeNip: string) {
-  const rows = db.prepare(
+  const rows = await db.prepare(
     `SELECT original_file_name, storage_name
      FROM employee_documents
      WHERE employee_nip = ?
@@ -259,7 +259,7 @@ export async function getEmployeeDocumentsForArchive(employeeNip: string) {
 }
 
 export async function deleteEmployeeDocument(employeeNip: string, id: string) {
-  const row = db.prepare(
+  const row = await db.prepare(
     `SELECT document_type, original_file_name, storage_name
      FROM employee_documents
      WHERE id = ? AND employee_nip = ?`,
@@ -283,7 +283,7 @@ export async function deleteEmployeeDocument(employeeNip: string, id: string) {
   }
 
   try {
-    const result = db.prepare(
+    const result = await db.prepare(
       "DELETE FROM employee_documents WHERE id = ? AND employee_nip = ?",
     ).run(id, employeeNip);
     if (result.changes === 0) {

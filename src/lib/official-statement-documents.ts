@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { db } from "@/lib/db";
+import { database as db } from "@/lib/database";
 import type { OfficialStatementType } from "@/lib/official-statement-validation";
 import { requireUser } from "@/lib/session";
 
@@ -49,7 +49,7 @@ export async function saveOfficialStatementDocument({
   await mkdir(storageDirectory, { recursive: true });
   await writeFile(filePath, document, { flag: "wx" });
   try {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO official_statement_documents (
         id, user_id, document_type, employee_nip, employee_name,
         nomor_surat, tanggal_surat, file_name, storage_name, file_size, created_at
@@ -67,7 +67,7 @@ export async function saveOfficialStatementDocument({
 
 export async function getOfficialStatementHistory(): Promise<OfficialStatementDocumentHistory[]> {
   await requireUser();
-  const rows = db.prepare(
+  const rows = await db.prepare(
     `SELECT documents.*, users.name AS created_by
      FROM official_statement_documents AS documents
      INNER JOIN users ON users.id = documents.user_id
@@ -98,8 +98,8 @@ export async function getOfficialStatementHistory(): Promise<OfficialStatementDo
   }));
 }
 
-export function getOfficialStatementDocumentForDownload(id: string) {
-  const row = db.prepare(
+export async function getOfficialStatementDocumentForDownload(id: string) {
+  const row = await db.prepare(
     `SELECT file_name, storage_name, file_size
      FROM official_statement_documents WHERE id = ?`,
   ).get(id) as { file_name: string; storage_name: string; file_size: number } | undefined;
@@ -108,7 +108,7 @@ export function getOfficialStatementDocumentForDownload(id: string) {
 }
 
 export async function deleteOfficialStatementDocument(id: string) {
-  const row = db.prepare(
+  const row = await db.prepare(
     `SELECT document_type, nomor_surat, file_name, storage_name
      FROM official_statement_documents WHERE id = ?`,
   ).get(id) as { document_type: OfficialStatementType; nomor_surat: string; file_name: string; storage_name: string } | undefined;
@@ -125,7 +125,7 @@ export async function deleteOfficialStatementDocument(id: string) {
   }
 
   try {
-    const result = db.prepare("DELETE FROM official_statement_documents WHERE id = ?").run(id);
+    const result = await db.prepare("DELETE FROM official_statement_documents WHERE id = ?").run(id);
     if (result.changes === 0) {
       if (fileMoved) await rename(pendingDeletionPath, filePath);
       return null;

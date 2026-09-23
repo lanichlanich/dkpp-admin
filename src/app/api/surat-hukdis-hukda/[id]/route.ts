@@ -15,7 +15,7 @@ export async function DELETE(
   try {
     const deleted = await deleteOfficialStatementDocument(id);
     if (!deleted) return Response.json({ message: "Dokumen tidak ditemukan." }, { status: 404 });
-    createNotification(
+    await createNotification(
       user.id,
       "warning",
       `${officialStatementTypeLabels[deleted.documentType]} dihapus`,

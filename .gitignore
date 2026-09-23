@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +40,24 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local SQLite data
+/data/*.db
+/data/*.db-*
+/data/kgb-documents/
+/data/dpcp-documents/
+/data/pak-documents/
+/data/wfh-documents/
+/data/wfh-reports/
+/data/surat-pengantar-documents/
+/data/employee-documents/
+/data/official-statement-documents/
+
+# local migration backups and restore drills
+/.migration-backups/
+/.restore-tests/
+/.tmp/
+
+# production employee data and legacy local OCR asset
+/src/data/pegawai.json
+/ind.traineddata

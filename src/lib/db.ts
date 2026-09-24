@@ -53,6 +53,7 @@ db.exec(`
     echelon TEXT NOT NULL,
     rank TEXT NOT NULL,
     asn_type TEXT NOT NULL,
+    gender TEXT NOT NULL DEFAULT 'Tidak diketahui',
     status TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -392,12 +393,18 @@ type EmployeeSeedRow = {
   Eselon: string;
   "Gol/Pkt": string;
   ASN: string;
+  "Jenis Kelamin"?: string;
   Status: string;
 };
 
 // Production employee records are restored from the database backup and are
 // intentionally excluded from the public source repository.
 const employeeSeed: EmployeeSeedRow[] = [];
+
+const employeeColumns = db.prepare("PRAGMA table_info(employees)").all() as Array<{ name: string }>;
+if (!employeeColumns.some((column) => column.name === "gender")) {
+  db.exec("ALTER TABLE employees ADD COLUMN gender TEXT NOT NULL DEFAULT 'Tidak diketahui'");
+}
 
 const employeeCount = (
   db.prepare("SELECT COUNT(*) AS count FROM employees").get() as { count: number }
@@ -408,8 +415,8 @@ if (employeeCount === 0) {
   const insertEmployee = db.prepare(
     `INSERT INTO employees (
       nip, name, parent_unit, unit, position, position_type,
-      echelon, rank, asn_type, status, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      echelon, rank, asn_type, gender, status, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
   const importEmployees = db.transaction((rows: EmployeeSeedRow[]) => {
@@ -424,6 +431,7 @@ if (employeeCount === 0) {
         row.Eselon,
         row["Gol/Pkt"],
         row.ASN,
+        row["Jenis Kelamin"]?.trim() || "Tidak diketahui",
         row.Status,
         now,
         now,

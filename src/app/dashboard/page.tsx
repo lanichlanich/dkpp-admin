@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeftRight, ArrowUpRight, Building2, ChartColumn, ChartPie, UserCheck, UserRoundCheck, UsersRound } from "lucide-react";
-import { EmployeeAsnChart, EmployeeStatusChart } from "@/components/dashboard/employee-statistics-charts";
+import { ArrowUpRight, Building2, ChartColumn, ChartPie, UserCheck, UsersRound } from "lucide-react";
+import { EmployeeCategoryChart, EmployeeStatusChart } from "@/components/dashboard/employee-statistics-charts";
 import { BirthdayTimelinePanel, RetirementTimelinePanel } from "@/components/dashboard/employee-timeline-panels";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getEmployeeStatistics, getUpcomingBirthdays, getUpcomingRetirements } from "@/lib/employees";
@@ -15,11 +15,8 @@ export default async function DashboardPage() {
     getUpcomingBirthdays(),
   ]);
   const cards = [
-    { label: "Total Pegawai", value: statistics.total, description: "Seluruh data pegawai", icon: UsersRound, color: "bg-indigo-50 text-indigo-600" },
-    { label: "Pegawai Aktif", value: statistics.active, description: `${statistics.activePercentage}% dari total pegawai`, icon: UserCheck, color: "bg-emerald-50 text-emerald-600" },
-    { label: "Mutasi", value: statistics.mutated, description: "Status mutasi", icon: ArrowLeftRight, color: "bg-sky-50 text-sky-600" },
-    { label: "Pensiun", value: statistics.retired, description: "Status pensiun", icon: UserRoundCheck, color: "bg-amber-50 text-amber-700" },
-    { label: "Unit Kerja", value: statistics.units, description: "Unit kerja tercatat", icon: Building2, color: "bg-violet-50 text-violet-600" },
+    { label: "Pegawai Aktif", value: statistics.active, description: "Status aktif saja", icon: UserCheck, color: "bg-emerald-50 text-emerald-600" },
+    { label: "Unit Kerja Aktif", value: statistics.units, description: "Unit dengan pegawai aktif", icon: Building2, color: "bg-violet-50 text-violet-600" },
   ];
 
   return (
@@ -52,11 +49,11 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card className="min-w-0 shadow-sm">
           <CardHeader>
             <CardTitle><h2 className="flex items-center gap-2"><ChartPie aria-hidden="true" className="size-4 shrink-0 text-indigo-600" />Komposisi Status</h2></CardTitle>
-            <CardDescription>Distribusi pegawai aktif, mutasi, dan pensiun.</CardDescription>
+            <CardDescription>Distribusi pegawai aktif.</CardDescription>
           </CardHeader>
           <CardContent>
             <EmployeeStatusChart data={statistics.byStatus} />
@@ -64,11 +61,20 @@ export default async function DashboardPage() {
         </Card>
         <Card className="min-w-0 shadow-sm">
           <CardHeader>
-            <CardTitle><h2 className="flex items-center gap-2"><ChartColumn aria-hidden="true" className="size-4 shrink-0 text-indigo-600" />Komposisi ASN</h2></CardTitle>
-            <CardDescription>Jumlah pegawai berdasarkan jenis ASN.</CardDescription>
+            <CardTitle><h2 className="flex items-center gap-2"><ChartColumn aria-hidden="true" className="size-4 shrink-0 text-indigo-600" />Jenis Jabatan</h2></CardTitle>
+            <CardDescription>Distribusi pegawai aktif: JS, JF, dan Pelaksana.</CardDescription>
           </CardHeader>
           <CardContent>
-            <EmployeeAsnChart data={statistics.byAsnType} />
+            <EmployeeCategoryChart data={statistics.byPositionType.map((item) => ({ category: item.positionType, total: item.total }))} label="jenis jabatan" />
+          </CardContent>
+        </Card>
+        <Card className="min-w-0 shadow-sm">
+          <CardHeader>
+            <CardTitle><h2 className="flex items-center gap-2"><ChartColumn aria-hidden="true" className="size-4 shrink-0 text-indigo-600" />Jenis Kelamin</h2></CardTitle>
+            <CardDescription>Distribusi pegawai aktif berdasarkan jenis kelamin.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <EmployeeCategoryChart data={statistics.byGender.map((item) => ({ category: item.gender, total: item.total }))} label="jenis kelamin" />
           </CardContent>
         </Card>
       </div>

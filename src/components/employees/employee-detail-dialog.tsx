@@ -85,6 +85,9 @@ export function EmployeeDetailDialog({ employee }: { employee: Employee }) {
             <DetailItem label="Jenis ASN" value={employee.asnType} />
             </div>
             <div className="bg-white p-4">
+            <DetailItem label="Jenis kelamin" value={employee.gender} />
+            </div>
+            <div className="bg-white p-4">
             <DetailItem label="Status" value={employee.status} />
             </div>
           </dl>

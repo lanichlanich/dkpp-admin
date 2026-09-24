@@ -16,6 +16,7 @@ export type Employee = {
   echelon: string;
   rank: string;
   asnType: string;
+  gender: string;
   status: string;
   retirementAge: number | null;
   createdAt: string;

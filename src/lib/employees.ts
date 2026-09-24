@@ -16,6 +16,7 @@ type EmployeeRow = {
   echelon: string;
   rank: string;
   asn_type: string;
+  gender: string;
   status: string;
   created_at: string;
   updated_at: string;
@@ -32,6 +33,7 @@ function mapEmployee(row: EmployeeRow): Employee {
     echelon: row.echelon,
     rank: row.rank,
     asnType: row.asn_type,
+    gender: row.gender || "Tidak diketahui",
     status: row.status,
     retirementAge: getRetirementAge({
       position: row.position,
@@ -99,6 +101,7 @@ export type EmployeeOptions = {
   echelons: string[];
   ranks: string[];
   asnTypes: string[];
+  genders: string[];
   statuses: string[];
 };
 
@@ -113,6 +116,7 @@ export const getEmployeeOptions = cache(async (): Promise<EmployeeOptions> => {
     echelons: unique(employees.map((employee) => employee.echelon)),
     ranks: unique(employees.map((employee) => employee.rank)),
     asnTypes: unique(employees.map((employee) => employee.asnType)),
+    genders: unique(employees.map((employee) => employee.gender)),
     statuses: unique(employees.map((employee) => employee.status)),
   };
 });
@@ -120,12 +124,10 @@ export const getEmployeeOptions = cache(async (): Promise<EmployeeOptions> => {
 export type EmployeeStatistics = {
   total: number;
   active: number;
-  retired: number;
-  mutated: number;
   units: number;
-  activePercentage: number;
   byStatus: Array<{ status: string; total: number; fill: string }>;
-  byAsnType: Array<{ asnType: string; total: number }>;
+  byPositionType: Array<{ positionType: string; total: number }>;
+  byGender: Array<{ gender: string; total: number }>;
 };
 
 export const getEmployeeStatistics = cache(async (): Promise<EmployeeStatistics> => {
@@ -134,29 +136,41 @@ export const getEmployeeStatistics = cache(async (): Promise<EmployeeStatistics>
   const summary = await db.prepare(
     `SELECT
       COUNT(*) AS total,
-      SUM(CASE WHEN status = 'Aktif' THEN 1 ELSE 0 END) AS active,
-      SUM(CASE WHEN status = 'Pensiun' THEN 1 ELSE 0 END) AS retired,
-      SUM(CASE WHEN status = 'Mutasi' THEN 1 ELSE 0 END) AS mutated,
       COUNT(DISTINCT unit) AS units
-     FROM employees`,
-  ).get() as { total: number; active: number; retired: number; mutated: number; units: number };
-
-  const byAsnType = await db.prepare(
-    `SELECT asn_type AS asnType, COUNT(*) AS total
      FROM employees
-     GROUP BY asn_type
-     ORDER BY total DESC, asn_type COLLATE NOCASE`,
-  ).all() as Array<{ asnType: string; total: number }>;
+     WHERE status = 'Aktif'`,
+  ).get() as { total: number; units: number };
+
+  const byPositionType = await db.prepare(
+    `SELECT
+       CASE
+         WHEN UPPER(TRIM(position_type)) = 'JS' THEN 'JS'
+         WHEN UPPER(TRIM(position_type)) = 'JF' THEN 'JF'
+         WHEN UPPER(TRIM(position_type)) = 'PELAKSANA' THEN 'Pelaksana'
+         ELSE 'Lainnya'
+       END AS "positionType",
+       COUNT(*) AS total
+     FROM employees
+     WHERE status = 'Aktif'
+     GROUP BY 1
+     ORDER BY total DESC, "positionType"`,
+  ).all() as Array<{ positionType: string; total: number }>;
+
+  const byGender = await db.prepare(
+    `SELECT COALESCE(NULLIF(TRIM(gender), ''), 'Tidak diketahui') AS gender, COUNT(*) AS total
+     FROM employees
+     WHERE status = 'Aktif'
+     GROUP BY 1
+     ORDER BY total DESC, gender`,
+  ).all() as Array<{ gender: string; total: number }>;
 
   return {
-    ...summary,
-    activePercentage: summary.total === 0 ? 0 : Math.round((summary.active / summary.total) * 100),
-    byStatus: [
-      { status: "Aktif", total: summary.active, fill: "var(--color-active)" },
-      { status: "Mutasi", total: summary.mutated, fill: "var(--color-mutated)" },
-      { status: "Pensiun", total: summary.retired, fill: "var(--color-retired)" },
-    ],
-    byAsnType,
+    total: summary.total,
+    active: summary.total,
+    units: summary.units,
+    byStatus: [{ status: "Aktif", total: summary.total, fill: "var(--color-active)" }],
+    byPositionType,
+    byGender,
   };
 });
 

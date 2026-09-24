@@ -16,7 +16,7 @@ const statusConfig = {
   mutated: { label: "Mutasi", color: "#0ea5e9" },
 } satisfies ChartConfig;
 
-const asnConfig = {
+const categoryConfig = {
   total: { label: "Pegawai", color: "#6366f1" },
 } satisfies ChartConfig;
 
@@ -53,13 +53,13 @@ export function EmployeeStatusChart({ data }: { data: EmployeeStatistics["byStat
   );
 }
 
-export function EmployeeAsnChart({ data }: { data: EmployeeStatistics["byAsnType"] }) {
+export function EmployeeCategoryChart({ data, label }: { data: Array<{ category: string; total: number }>; label: string }) {
   if (data.every((item) => item.total === 0)) return <EmptyChart />;
   return (
-    <ChartContainer config={asnConfig} className="h-64 w-full min-w-0" role="img" aria-label={data.map((item) => `${item.asnType}: ${item.total} pegawai`).join(", ")}>
+    <ChartContainer config={categoryConfig} className="h-64 w-full min-w-0" role="img" aria-label={`Distribusi ${label}: ${data.map((item) => `${item.category}: ${item.total} pegawai`).join(", ")}`}>
       <BarChart accessibilityLayer data={data} margin={{ left: 8, right: 8, top: 28 }}>
         <CartesianGrid vertical={false} />
-        <XAxis dataKey="asnType" tickLine={false} tickMargin={10} axisLine={false} />
+        <XAxis dataKey="category" tickLine={false} tickMargin={10} axisLine={false} />
         <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
         <Bar dataKey="total" fill="var(--color-total)" radius={[6, 6, 0, 0]} maxBarSize={80}>
           <LabelList dataKey="total" position="top" offset={10} className="fill-zinc-700 text-xs font-semibold" />

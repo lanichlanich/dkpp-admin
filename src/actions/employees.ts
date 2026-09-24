@@ -19,6 +19,7 @@ const employeeSchema = z.object({
   echelon: requiredText("Eselon", 30),
   rank: requiredText("Golongan/pangkat", 100),
   asnType: requiredText("Jenis ASN", 30),
+  gender: z.enum(["Laki-laki", "Perempuan", "Tidak diketahui"], { error: "Pilih jenis kelamin pegawai." }),
   status: z.enum(["Aktif", "Pensiun", "Mutasi"], { error: "Pilih status pegawai." }),
 });
 
@@ -44,6 +45,7 @@ export async function saveEmployeeAction(
     echelon: formData.get("echelon"),
     rank: formData.get("rank"),
     asnType: formData.get("asnType"),
+    gender: formData.get("gender"),
     status: formData.get("status"),
   });
 
@@ -65,12 +67,12 @@ export async function saveEmployeeAction(
     await db.prepare(
       `INSERT INTO employees (
         nip, name, parent_unit, unit, position, position_type, echelon,
-        rank, asn_type, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        rank, asn_type, gender, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       employee.nip, employee.name, employee.parentUnit, employee.unit,
       employee.position, employee.positionType, employee.echelon, employee.rank,
-      employee.asnType, employee.status, now, now,
+      employee.asnType, employee.gender, employee.status, now, now,
     );
     await createNotification(user.id, "success", "Pegawai ditambahkan", `${employee.name} (${employee.nip}) berhasil ditambahkan.`);
   } else {
@@ -80,12 +82,12 @@ export async function saveEmployeeAction(
     const result = await db.prepare(
       `UPDATE employees SET
         name = ?, parent_unit = ?, unit = ?, position = ?, position_type = ?,
-        echelon = ?, rank = ?, asn_type = ?, status = ?, updated_at = ?
+        echelon = ?, rank = ?, asn_type = ?, gender = ?, status = ?, updated_at = ?
        WHERE nip = ?`,
     ).run(
       employee.name, employee.parentUnit, employee.unit, employee.position,
       employee.positionType, employee.echelon, employee.rank, employee.asnType,
-      employee.status, now, employee.nip,
+      employee.gender, employee.status, now, employee.nip,
     );
     if (result.changes === 0) {
       return { status: "error", message: "Data pegawai tidak ditemukan.", submittedAt: Date.now() };

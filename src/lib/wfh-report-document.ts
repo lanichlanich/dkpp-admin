@@ -9,6 +9,13 @@ const texts = /<w:t(?:\s[^>]*)?>[\s\S]*?<\/w:t>/g;
 function decode(v: string) { return v.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&"); }
 function encode(v: string) { return v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 function visible(xml: string) { return [...xml.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(m => decode(m[1])).join(""); }
+function formatRank(value: string) {
+  const parts = value.split(/\s+\/\s+/).map((part) => part.trim()).filter((part) => part && part.toLowerCase() !== "null");
+  if (parts.length < 2) return parts[0] ?? "";
+  const grade = /^(?:I|II|III|IV|V|VI|VII|VIII|IX|X)(?:\/[a-d])?$/i;
+  if (grade.test(parts[0])) return `${parts.slice(1).join(" / ")} / ${parts[0]}`;
+  return parts.join(" / ");
+}
 // Replace only text nodes inside the existing runs; retain every formatting element.
 function fillParagraph(xml: string, value: string) {
   let first = true;
@@ -24,7 +31,7 @@ export async function generateWfhReport(employee: ReportEmployee, input: WfhRepo
   const date = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }).format(new Date(`${input.date}T00:00:00Z`)).replaceAll("/", "-");
   const replacements: Record<string, string> = {
     "<nama_pegawai>": employee.name, "<nip>": employee.nip,
-    "<pangkat> / <golongan>": input.rank, "<jabatan>": employee.position,
+    "<pangkat> / <golongan>": formatRank(input.rank), "<jabatan>": employee.position,
     "DINAS KETAHANAN PANGAN DAN PERTANIAN": employee.unit,
   };
   for (let i = 0; i < 4; i++) { replacements[`<aktivitas${i + 1}>`] = input.tasks[i].activity; replacements[`<output${i + 1}>`] = input.tasks[i].output; }

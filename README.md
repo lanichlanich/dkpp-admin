@@ -1,4 +1,4 @@
-# AdminFlow
+# DKPP-Admin
 
 Dashboard administrasi kepegawaian dengan pembuatan dokumen KGB/DPCP/WFH dan pembacaan dokumen menggunakan Google Gemini.
 

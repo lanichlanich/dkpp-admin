@@ -15,8 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "AdminFlow", template: "%s | AdminFlow" },
-  description: "Dashboard admin modern untuk mengelola akun dan aktivitas.",
+  title: { default: "DKPP-Admin", template: "%s | DKPP-Admin" },
+  description: "Administrasi kepegawaian DKPP Kabupaten Indramayu.",
+  icons: { icon: "/dkpp-admin-logo.png", apple: "/dkpp-admin-logo.png" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

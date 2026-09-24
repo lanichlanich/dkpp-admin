@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Award, BarChart3, BriefcaseBusiness, ChevronDown, ClipboardList, FileCheck2, FileSignature, House, LayoutDashboard, Scale, ScrollText, Send, UserRound, UsersRound, X } from "lucide-react";
+import { Award, BriefcaseBusiness, ChevronDown, ClipboardList, FileCheck2, FileSignature, House, LayoutDashboard, Scale, ScrollText, Send, UserRound, UsersRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +31,8 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col bg-zinc-950 text-zinc-300">
       <div className="flex h-16 shrink-0 items-center gap-2 border-b border-white/10 px-4">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"><BarChart3 aria-hidden="true" className="size-4.5" /></span>
-        <div className="min-w-0 flex-1"><p className="font-semibold leading-5 text-white">AdminFlow</p><p className="truncate text-[11px] text-zinc-400">Administrasi Kepegawaian</p></div>
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/95 p-1 shadow-lg shadow-emerald-950/20"><Image src="/dkpp-admin-logo.png" alt="" width={32} height={32} className="size-7 object-contain" priority /></span>
+        <div className="min-w-0 flex-1"><p className="font-semibold leading-5 text-white">DKPP-Admin</p><p className="truncate text-[11px] text-zinc-400">Administrasi Kepegawaian</p></div>
         {onNavigate && <Button variant="ghost" size="icon" onClick={onNavigate} aria-label="Tutup menu" className="size-11 shrink-0 text-zinc-300 hover:bg-white/10 hover:text-white"><X className="size-4" /></Button>}
       </div>
       <nav aria-label="Menu utama" className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-6">
@@ -61,7 +62,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
       <div className="shrink-0 border-t border-white/10 p-4">
-        <div className="rounded-lg bg-white/[0.04] p-3 text-xs leading-5 text-zinc-400"><p className="font-medium text-zinc-200">AdminFlow</p><p>Ruang kerja administrasi pegawai</p></div>
+        <div className="rounded-lg bg-white/[0.04] p-3 text-xs leading-5 text-zinc-400"><p className="font-medium text-zinc-200">DKPP-Admin</p><p>Ruang kerja administrasi pegawai</p></div>
       </div>
     </div>
   );

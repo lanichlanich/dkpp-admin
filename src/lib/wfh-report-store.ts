@@ -4,7 +4,7 @@ import { mkdir, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { database as db } from "@/lib/database";
 import type { ReportEmployee, WfhReportInput } from "@/lib/wfh-report-validation";
-import { uploadStorageObject } from "@/lib/storage";
+import { isStorageConfigured, uploadStorageObject } from "@/lib/storage";
 
 export async function getReportEmployee(nip: string) {
   return await db.prepare("SELECT nip, name, rank, position, unit FROM employees WHERE nip = ? AND status = 'Aktif'").get(nip) as ReportEmployee | undefined;
@@ -25,12 +25,15 @@ export function reportFilePath(id: string) {
 export async function saveReport(userId: string, employee: ReportEmployee, input: WfhReportInput, document: Buffer) {
   const id = randomUUID();
   const fileName = `Laporan-WFH-${input.date}-${employee.nip}.docx`;
-  await mkdir(path.dirname(reportFilePath(id)), { recursive: true });
-  await writeFile(reportFilePath(id), document, { flag: "wx" });
+  const localStorageEnabled = !isStorageConfigured();
+  if (localStorageEnabled) {
+    await mkdir(path.dirname(reportFilePath(id)), { recursive: true });
+    await writeFile(reportFilePath(id), document, { flag: "wx" });
+  }
   try {
     await uploadStorageObject(`${id}.docx`, document, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     await db.prepare("INSERT INTO wfh_reports VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(id, userId, employee.nip, employee.name, input.date, JSON.stringify({ ...input, employee }), fileName, new Date().toISOString());
-  } catch (error) { await rm(reportFilePath(id), { force: true }); throw error; }
+  } catch (error) { if (localStorageEnabled) await rm(reportFilePath(id), { force: true }); throw error; }
   return { id, fileName };
 }
 export async function findReport(id: string, userId: string) {

@@ -6,7 +6,7 @@ import path from "node:path";
 import { database as db } from "@/lib/database";
 import type { OfficialStatementType } from "@/lib/official-statement-validation";
 import { requireUser } from "@/lib/session";
-import { uploadStorageObject } from "@/lib/storage";
+import { isStorageConfigured, uploadStorageObject } from "@/lib/storage";
 
 const storageDirectory = path.join(process.cwd(), "data", "official-statement-documents");
 const storageNamePattern = /^[0-9a-f-]{36}\.docx$/i;
@@ -47,8 +47,11 @@ export async function saveOfficialStatementDocument({
   const filePath = path.join(storageDirectory, storageName);
   const createdAt = new Date().toISOString();
 
-  await mkdir(storageDirectory, { recursive: true });
-  await writeFile(filePath, document, { flag: "wx" });
+  const localStorageEnabled = !isStorageConfigured();
+  if (localStorageEnabled) {
+    await mkdir(storageDirectory, { recursive: true });
+    await writeFile(filePath, document, { flag: "wx" });
+  }
   try {
     await uploadStorageObject(storageName, document, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     await db.prepare(
@@ -61,7 +64,7 @@ export async function saveOfficialStatementDocument({
       nomorSurat, tanggalSurat, fileName, storageName, document.length, createdAt,
     );
   } catch (error) {
-    await rm(filePath, { force: true });
+    if (localStorageEnabled) await rm(filePath, { force: true });
     throw error;
   }
   return { id, fileName };

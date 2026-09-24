@@ -5,7 +5,7 @@ import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
-import { uploadStorageObject } from "@/lib/storage";
+import { isStorageConfigured, uploadStorageObject } from "@/lib/storage";
 
 const storageDirectory = path.join(process.cwd(), "data", "wfh-documents");
 
@@ -39,8 +39,11 @@ export async function saveWfhDocument({
   const filePath = path.join(storageDirectory, storageName);
   const createdAt = new Date().toISOString();
 
-  await mkdir(storageDirectory, { recursive: true });
-  await writeFile(filePath, document, { flag: "wx" });
+  const localStorageEnabled = !isStorageConfigured();
+  if (localStorageEnabled) {
+    await mkdir(storageDirectory, { recursive: true });
+    await writeFile(filePath, document, { flag: "wx" });
+  }
   try {
     await uploadStorageObject(storageName, document, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     await db.prepare(
@@ -60,7 +63,7 @@ export async function saveWfhDocument({
       createdAt,
     );
   } catch (error) {
-    await rm(filePath, { force: true });
+    if (localStorageEnabled) await rm(filePath, { force: true });
     throw error;
   }
 

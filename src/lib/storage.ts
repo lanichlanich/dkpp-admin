@@ -6,6 +6,10 @@ const bucket = process.env.SUPABASE_STORAGE_BUCKET || "dkpp-admin";
 const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/$/, "");
 const secretKey = process.env.SUPABASE_SECRET_KEY;
 
+export function isStorageConfigured() {
+  return Boolean(supabaseUrl && secretKey);
+}
+
 function storageUrl(storageName: string) {
   if (!supabaseUrl || !secretKey) return null;
   return `${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${encodeURIComponent(storageName)}`;

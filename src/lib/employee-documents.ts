@@ -10,7 +10,7 @@ import type {
   SkpPredicate,
 } from "@/lib/employee-document-types";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
-import { downloadStorageObject, uploadStorageObject } from "@/lib/storage";
+import { downloadStorageObject, isStorageConfigured, uploadStorageObject } from "@/lib/storage";
 
 const storageDirectory = path.join(process.cwd(), "data", "employee-documents");
 const storageNamePattern = /^[0-9a-f-]{36}\.(pdf|doc|docx)$/i;
@@ -192,8 +192,11 @@ export async function saveEmployeeDocument({
       : `${fileNamePrefixes[documentType]}-${employeeNip}${extension}`;
   const mimeType = mimeTypes[extension];
 
-  await mkdir(storageDirectory, { recursive: true });
-  await writeFile(filePath, bytes, { flag: "wx" });
+  const localStorageEnabled = !isStorageConfigured();
+  if (localStorageEnabled) {
+    await mkdir(storageDirectory, { recursive: true });
+    await writeFile(filePath, bytes, { flag: "wx" });
+  }
   try {
     await uploadStorageObject(storageName, bytes, mimeType);
     await db.prepare(
@@ -210,7 +213,7 @@ export async function saveEmployeeDocument({
       createdAt,
     );
   } catch (error) {
-    await rm(filePath, { force: true });
+    if (localStorageEnabled) await rm(filePath, { force: true });
     throw error;
   }
 

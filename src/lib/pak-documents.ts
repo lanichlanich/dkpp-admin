@@ -4,7 +4,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
-import { uploadStorageObject } from "@/lib/storage";
+import { isStorageConfigured, uploadStorageObject } from "@/lib/storage";
 import { calculatePak, periodLabel } from "@/lib/pak";
 import type { PakInput } from "@/lib/pak-validation";
 
@@ -14,13 +14,16 @@ export async function savePakDocument(userId: string, employee: { name: string; 
   const id = randomUUID();
   const storageName = `${id}.docx`;
   const fileName = `PAK-${input.nip}-${input.period.year}-${id.slice(0, 8)}.docx`;
-  await mkdir(directory, { recursive: true });
   const filePath = path.join(directory, storageName);
-  await writeFile(filePath, document, { flag: "wx" });
+  const localStorageEnabled = !isStorageConfigured();
+  if (localStorageEnabled) {
+    await mkdir(directory, { recursive: true });
+    await writeFile(filePath, document, { flag: "wx" });
+  }
   try {
     await uploadStorageObject(storageName, document, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     await db.prepare(`INSERT INTO pak_documents (id, user_id, employee_nip, employee_name, employee_status, nomor, tanggal, period, total, input_json, file_name, storage_name, file_size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, userId, input.nip, employee.name, employee.status, input.nomor, input.tanggal, `${periodLabel(input.period)} ${input.period.year}`, calculatePak(input).total, JSON.stringify({ ...input, employeeName: employee.name, employeeStatus: employee.status }), fileName, storageName, document.length, new Date().toISOString());
-  } catch (error) { await rm(filePath, { force: true }); throw error; }
+  } catch (error) { if (localStorageEnabled) await rm(filePath, { force: true }); throw error; }
   return { id, fileName };
 }
 export async function getPakHistory(): Promise<PakDocumentHistory[]> {

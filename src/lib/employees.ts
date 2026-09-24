@@ -146,9 +146,9 @@ export const getEmployeeStatistics = cache(async (): Promise<EmployeeStatistics>
   const byPositionType = await db.prepare(
     `SELECT
        CASE
-         WHEN UPPER(TRIM(position_type)) = 'JS' THEN 'JS'
-         WHEN UPPER(TRIM(position_type)) = 'JF' THEN 'JF'
-         WHEN UPPER(TRIM(position_type)) = 'PELAKSANA' THEN 'Pelaksana'
+         WHEN UPPER(TRIM(position_type)) = 'JS' THEN 'Struktural'
+         WHEN UPPER(TRIM(position_type)) = 'JF' THEN 'Fungsional'
+         WHEN UPPER(TRIM(position_type)) IN ('JFU', 'PELAKSANA') THEN 'Pelaksana'
          ELSE 'Lainnya'
        END AS "positionType",
        COUNT(*) AS total

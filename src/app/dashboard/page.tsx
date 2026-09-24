@@ -56,7 +56,7 @@ export default async function DashboardPage() {
         <Card className="min-w-0 shadow-sm">
           <CardHeader>
             <CardTitle><h2 className="flex items-center gap-2"><ChartColumn aria-hidden="true" className="size-4 shrink-0 text-indigo-600" />Jenis Jabatan</h2></CardTitle>
-            <CardDescription>Distribusi pegawai aktif: JS, JF, dan Pelaksana.</CardDescription>
+            <CardDescription>Distribusi pegawai aktif: Struktural, Fungsional, dan Pelaksana.</CardDescription>
           </CardHeader>
           <CardContent>
             <EmployeeCategoryChart data={statistics.byPositionType.map((item) => ({ category: item.positionType, total: item.total }))} label="jenis jabatan" />

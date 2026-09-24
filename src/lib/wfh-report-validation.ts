@@ -8,12 +8,15 @@ export const reportContextSchema = z.object({
     return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === v && v >= "2000-01-01" && v <= "2100-12-31";
   }, "Tanggal tidak valid."),
 });
+export const reportOutputTypeSchema = z.enum(["laporan", "kegiatan", "dokumen"]);
 export const reportTaskSchema = z.object({
   start: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
   end: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
   activity: text(300),
   output: text(240),
-  status: z.number().int().min(0).max(100),
+  outputQuantity: z.number().int().min(1).max(999).default(1),
+  outputType: reportOutputTypeSchema.default("laporan"),
+  status: z.number().int().min(0).max(100).default(100),
 });
 export const wfhReportSchema = reportContextSchema.extend({
   rank: text(100),
@@ -29,4 +32,5 @@ export const wfhReportSchema = reportContextSchema.extend({
 export const aiTasksSchema = z.object({ tasks: z.array(z.object({ activity: text(300), targetOutput: text(240) })).length(4) });
 export type WfhReportInput = z.infer<typeof wfhReportSchema>;
 export type WfhReportTask = z.infer<typeof reportTaskSchema>;
+export type ReportOutputType = z.infer<typeof reportOutputTypeSchema>;
 export type ReportEmployee = { nip: string; name: string; rank: string; position: string; unit: string };

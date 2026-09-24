@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight, Building2, ChartColumn, ChartPie, UserCheck, UsersRound } from "lucide-react";
-import { EmployeeCategoryChart, EmployeeStatusChart } from "@/components/dashboard/employee-statistics-charts";
+import { ArrowUpRight, Building2, ChartColumn, UserCheck, UsersRound } from "lucide-react";
+import { EmployeeCategoryChart } from "@/components/dashboard/employee-statistics-charts";
 import { BirthdayTimelinePanel, RetirementTimelinePanel } from "@/components/dashboard/employee-timeline-panels";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getEmployeeStatistics, getUpcomingBirthdays, getUpcomingRetirements } from "@/lib/employees";
@@ -16,6 +16,9 @@ export default async function DashboardPage() {
   ]);
   const cards = [
     { label: "Pegawai Aktif", value: statistics.active, description: "Status aktif saja", icon: UserCheck, color: "bg-emerald-50 text-emerald-600" },
+    { label: "PNS Aktif", value: statistics.byAsnType.find((item) => item.asnType.toUpperCase() === "PNS")?.total ?? 0, description: "ASN PNS berstatus aktif", icon: UsersRound, color: "bg-indigo-50 text-indigo-600" },
+    { label: "PPPK Aktif", value: statistics.byAsnType.find((item) => item.asnType.toUpperCase() === "PPPK")?.total ?? 0, description: "ASN PPPK berstatus aktif", icon: UsersRound, color: "bg-sky-50 text-sky-600" },
+    { label: "PPPK PW Aktif", value: statistics.byAsnType.find((item) => item.asnType.toUpperCase() === "PPPK PW")?.total ?? 0, description: "ASN PPPK PW berstatus aktif", icon: UsersRound, color: "bg-amber-50 text-amber-700" },
     { label: "Unit Kerja Aktif", value: statistics.units, description: "Unit dengan pegawai aktif", icon: Building2, color: "bg-violet-50 text-violet-600" },
   ];
 
@@ -49,16 +52,7 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="min-w-0 shadow-sm">
-          <CardHeader>
-            <CardTitle><h2 className="flex items-center gap-2"><ChartPie aria-hidden="true" className="size-4 shrink-0 text-indigo-600" />Komposisi Status</h2></CardTitle>
-            <CardDescription>Distribusi pegawai aktif.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <EmployeeStatusChart data={statistics.byStatus} />
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card className="min-w-0 shadow-sm">
           <CardHeader>
             <CardTitle><h2 className="flex items-center gap-2"><ChartColumn aria-hidden="true" className="size-4 shrink-0 text-indigo-600" />Jenis Jabatan</h2></CardTitle>

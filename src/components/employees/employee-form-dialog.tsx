@@ -76,9 +76,6 @@ export function EmployeeFormDialog({ employee, options }: { employee?: Employee;
             </div>
             <div className="grid gap-5 md:grid-cols-2">
               <div className="space-y-2"><RequiredLabel htmlFor="asnType">Jenis ASN</RequiredLabel><SearchableSelect name="asnType" options={options.asnTypes} defaultValue={employee?.asnType} placeholder="Pilih jenis ASN" invalid={Boolean(state.errors?.asnType)} /><FieldError messages={state.errors?.asnType} /></div>
-              <div className="space-y-2"><RequiredLabel htmlFor="gender">Jenis kelamin</RequiredLabel><SearchableSelect name="gender" options={["Laki-laki", "Perempuan", "Tidak diketahui"]} defaultValue={employee?.gender ?? "Tidak diketahui"} placeholder="Pilih jenis kelamin" invalid={Boolean(state.errors?.gender)} /><FieldError messages={state.errors?.gender} /></div>
-            </div>
-            <div className="grid gap-5 md:grid-cols-2">
               <div className="space-y-2"><RequiredLabel htmlFor="status">Status</RequiredLabel><SearchableSelect name="status" options={options.statuses} defaultValue={employee?.status ?? "Aktif"} placeholder="Pilih status" invalid={Boolean(state.errors?.status)} /><FieldError messages={state.errors?.status} /></div>
             </div>
             <DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>Batal</Button><EmployeeSubmitButton editing={editing} /></DialogFooter>

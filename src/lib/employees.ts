@@ -23,6 +23,8 @@ type EmployeeRow = {
 };
 
 function mapEmployee(row: EmployeeRow): Employee {
+  const genderDigit = row.nip.slice(-3, -2);
+  const gender = genderDigit === "1" ? "Laki-laki" : genderDigit === "2" ? "Perempuan" : "Tidak diketahui";
   return {
     nip: row.nip,
     name: row.name,
@@ -33,7 +35,7 @@ function mapEmployee(row: EmployeeRow): Employee {
     echelon: row.echelon,
     rank: row.rank,
     asnType: row.asn_type,
-    gender: row.gender || "Tidak diketahui",
+    gender,
     status: row.status,
     retirementAge: getRetirementAge({
       position: row.position,
@@ -125,9 +127,9 @@ export type EmployeeStatistics = {
   total: number;
   active: number;
   units: number;
-  byStatus: Array<{ status: string; total: number; fill: string }>;
   byPositionType: Array<{ positionType: string; total: number }>;
   byGender: Array<{ gender: string; total: number }>;
+  byAsnType: Array<{ asnType: string; total: number }>;
 };
 
 export const getEmployeeStatistics = cache(async (): Promise<EmployeeStatistics> => {
@@ -157,20 +159,32 @@ export const getEmployeeStatistics = cache(async (): Promise<EmployeeStatistics>
   ).all() as Array<{ positionType: string; total: number }>;
 
   const byGender = await db.prepare(
-    `SELECT COALESCE(NULLIF(TRIM(gender), ''), 'Tidak diketahui') AS gender, COUNT(*) AS total
+    `SELECT CASE
+       WHEN substr(nip, -3, 1) = '1' THEN 'Laki-laki'
+       WHEN substr(nip, -3, 1) = '2' THEN 'Perempuan'
+       ELSE 'Tidak diketahui'
+     END AS gender, COUNT(*) AS total
      FROM employees
      WHERE status = 'Aktif'
      GROUP BY 1
      ORDER BY total DESC, gender`,
   ).all() as Array<{ gender: string; total: number }>;
 
+  const byAsnType = await db.prepare(
+    `SELECT asn_type AS "asnType", COUNT(*) AS total
+     FROM employees
+     WHERE status = 'Aktif'
+     GROUP BY asn_type
+     ORDER BY total DESC, "asnType"`,
+  ).all() as Array<{ asnType: string; total: number }>;
+
   return {
     total: summary.total,
     active: summary.total,
     units: summary.units,
-    byStatus: [{ status: "Aktif", total: summary.total, fill: "var(--color-active)" }],
     byPositionType,
     byGender,
+    byAsnType,
   };
 });
 

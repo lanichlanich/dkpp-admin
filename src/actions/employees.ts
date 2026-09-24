@@ -19,7 +19,6 @@ const employeeSchema = z.object({
   echelon: requiredText("Eselon", 30),
   rank: requiredText("Golongan/pangkat", 100),
   asnType: requiredText("Jenis ASN", 30),
-  gender: z.enum(["Laki-laki", "Perempuan", "Tidak diketahui"], { error: "Pilih jenis kelamin pegawai." }),
   status: z.enum(["Aktif", "Pensiun", "Mutasi"], { error: "Pilih status pegawai." }),
 });
 
@@ -45,7 +44,6 @@ export async function saveEmployeeAction(
     echelon: formData.get("echelon"),
     rank: formData.get("rank"),
     asnType: formData.get("asnType"),
-    gender: formData.get("gender"),
     status: formData.get("status"),
   });
 
@@ -72,7 +70,7 @@ export async function saveEmployeeAction(
     ).run(
       employee.nip, employee.name, employee.parentUnit, employee.unit,
       employee.position, employee.positionType, employee.echelon, employee.rank,
-      employee.asnType, employee.gender, employee.status, now, now,
+      employee.asnType, employee.nip.slice(-3, -2) === "1" ? "Laki-laki" : employee.nip.slice(-3, -2) === "2" ? "Perempuan" : "Tidak diketahui", employee.status, now, now,
     );
     await createNotification(user.id, "success", "Pegawai ditambahkan", `${employee.name} (${employee.nip}) berhasil ditambahkan.`);
   } else {
@@ -87,7 +85,7 @@ export async function saveEmployeeAction(
     ).run(
       employee.name, employee.parentUnit, employee.unit, employee.position,
       employee.positionType, employee.echelon, employee.rank, employee.asnType,
-      employee.gender, employee.status, now, employee.nip,
+      employee.nip.slice(-3, -2) === "1" ? "Laki-laki" : employee.nip.slice(-3, -2) === "2" ? "Perempuan" : "Tidak diketahui", employee.status, now, employee.nip,
     );
     if (result.changes === 0) {
       return { status: "error", message: "Data pegawai tidak ditemukan.", submittedAt: Date.now() };

@@ -23,7 +23,7 @@ type EmployeeRow = {
 };
 
 function mapEmployee(row: EmployeeRow): Employee {
-  const genderDigit = row.nip.slice(-3, -2);
+  const genderDigit = row.nip.slice(-4, -3);
   const gender = genderDigit === "1" ? "Laki-laki" : genderDigit === "2" ? "Perempuan" : "Tidak diketahui";
   return {
     nip: row.nip,
@@ -160,8 +160,8 @@ export const getEmployeeStatistics = cache(async (): Promise<EmployeeStatistics>
 
   const byGender = await db.prepare(
     `SELECT CASE
-       WHEN substr(nip, -3, 1) = '1' THEN 'Laki-laki'
-       WHEN substr(nip, -3, 1) = '2' THEN 'Perempuan'
+       WHEN substr(nip, length(nip) - 3, 1) = '1' THEN 'Laki-laki'
+       WHEN substr(nip, length(nip) - 3, 1) = '2' THEN 'Perempuan'
        ELSE 'Tidak diketahui'
      END AS gender, COUNT(*) AS total
      FROM employees

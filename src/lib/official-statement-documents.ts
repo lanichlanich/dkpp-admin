@@ -6,6 +6,7 @@ import path from "node:path";
 import { database as db } from "@/lib/database";
 import type { OfficialStatementType } from "@/lib/official-statement-validation";
 import { requireUser } from "@/lib/session";
+import { uploadStorageObject } from "@/lib/storage";
 
 const storageDirectory = path.join(process.cwd(), "data", "official-statement-documents");
 const storageNamePattern = /^[0-9a-f-]{36}\.docx$/i;
@@ -49,6 +50,7 @@ export async function saveOfficialStatementDocument({
   await mkdir(storageDirectory, { recursive: true });
   await writeFile(filePath, document, { flag: "wx" });
   try {
+    await uploadStorageObject(storageName, document, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     await db.prepare(
       `INSERT INTO official_statement_documents (
         id, user_id, document_type, employee_nip, employee_name,

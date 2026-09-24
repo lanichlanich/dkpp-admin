@@ -4,6 +4,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
+import { uploadStorageObject } from "@/lib/storage";
 import { calculatePak, periodLabel } from "@/lib/pak";
 import type { PakInput } from "@/lib/pak-validation";
 
@@ -17,6 +18,7 @@ export async function savePakDocument(userId: string, employee: { name: string; 
   const filePath = path.join(directory, storageName);
   await writeFile(filePath, document, { flag: "wx" });
   try {
+    await uploadStorageObject(storageName, document, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     await db.prepare(`INSERT INTO pak_documents (id, user_id, employee_nip, employee_name, employee_status, nomor, tanggal, period, total, input_json, file_name, storage_name, file_size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, userId, input.nip, employee.name, employee.status, input.nomor, input.tanggal, `${periodLabel(input.period)} ${input.period.year}`, calculatePak(input).total, JSON.stringify({ ...input, employeeName: employee.name, employeeStatus: employee.status }), fileName, storageName, document.length, new Date().toISOString());
   } catch (error) { await rm(filePath, { force: true }); throw error; }
   return { id, fileName };

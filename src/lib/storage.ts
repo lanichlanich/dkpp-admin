@@ -40,3 +40,20 @@ export async function downloadStorageObject(storageName: string, fallbackPath?: 
   }
   return Buffer.from(await authenticatedResponse.arrayBuffer());
 }
+
+export async function uploadStorageObject(storageName: string, file: Buffer, contentType = "application/octet-stream") {
+  if (!supabaseUrl || !secretKey) return;
+  const url = `${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${encodeURIComponent(storageName)}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      apikey: secretKey,
+      authorization: `Bearer ${secretKey}`,
+      "content-type": contentType,
+      "x-upsert": "true",
+    },
+    body: new Uint8Array(file),
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) throw new Error(`Storage upload failed: ${response.status}`);
+}

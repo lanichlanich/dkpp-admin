@@ -5,6 +5,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
+import { uploadStorageObject } from "@/lib/storage";
 
 const storageDirectory = path.join(process.cwd(), "data", "dpcp-documents");
 
@@ -42,6 +43,7 @@ export async function saveDpcpDocument({
   await writeFile(filePath, document, { flag: "wx" });
 
   try {
+    await uploadStorageObject(storageName, document, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     await db.prepare(
       `INSERT INTO dpcp_documents (
         id, user_id, employee_nip, employee_name, tgl_dpcp,

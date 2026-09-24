@@ -5,6 +5,7 @@ import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
+import { uploadStorageObject } from "@/lib/storage";
 
 const storageDirectory = path.join(process.cwd(), "data", "wfh-documents");
 
@@ -41,6 +42,7 @@ export async function saveWfhDocument({
   await mkdir(storageDirectory, { recursive: true });
   await writeFile(filePath, document, { flag: "wx" });
   try {
+    await uploadStorageObject(storageName, document, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     await db.prepare(
       `INSERT INTO wfh_documents (
         id, user_id, nomor_surat, bulan_wfh, tanggal_surat,

@@ -10,7 +10,7 @@ import type {
   SkpPredicate,
 } from "@/lib/employee-document-types";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
-import { downloadStorageObject } from "@/lib/storage";
+import { downloadStorageObject, uploadStorageObject } from "@/lib/storage";
 
 const storageDirectory = path.join(process.cwd(), "data", "employee-documents");
 const storageNamePattern = /^[0-9a-f-]{36}\.(pdf|doc|docx)$/i;
@@ -195,6 +195,7 @@ export async function saveEmployeeDocument({
   await mkdir(storageDirectory, { recursive: true });
   await writeFile(filePath, bytes, { flag: "wx" });
   try {
+    await uploadStorageObject(storageName, bytes, mimeType);
     await db.prepare(
       `INSERT INTO employee_documents (
         id, employee_nip, user_id, document_type, nomor_surat, tgl_surat,

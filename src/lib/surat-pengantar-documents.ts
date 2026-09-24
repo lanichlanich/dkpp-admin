@@ -5,6 +5,7 @@ import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
+import { uploadStorageObject } from "@/lib/storage";
 
 const storageDirectory = path.join(process.cwd(), "data", "surat-pengantar-documents");
 const storageNamePattern = /^[0-9a-f-]{36}\.docx$/i;
@@ -48,6 +49,7 @@ export async function saveSuratPengantarDocument({
   await mkdir(storageDirectory, { recursive: true });
   await writeFile(filePath, document, { flag: "wx" });
   try {
+    await uploadStorageObject(storageName, document, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     await db.prepare(
       `INSERT INTO surat_pengantar_documents (
         id, user_id, nomor_surat, tanggal_surat, nomor_urut,

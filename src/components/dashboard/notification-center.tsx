@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { Bell, CheckCheck, CircleCheck, CircleX, Info, TriangleAlert } from "lucide-react";
+import { Bell, CheckCheck, CircleCheck, CircleX, Info, LoaderCircle, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { markNotificationsReadAction } from "@/actions/notifications";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ export function NotificationCenter({ notifications, unreadCount }: { notificatio
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(24rem,calc(100vw-2rem))] gap-0 p-0">
         <PopoverHeader className="border-b p-4">
-          <div className="flex items-center justify-between gap-3"><PopoverTitle>Notifikasi</PopoverTitle>{unreadCount > 0 && <Button variant="ghost" size="sm" disabled={pending} onClick={markAllRead}><CheckCheck className="size-3.5" />Tandai dibaca</Button>}</div>
+          <div className="flex items-center justify-between gap-3"><PopoverTitle>Notifikasi</PopoverTitle>{unreadCount > 0 && <Button variant="ghost" size="sm" disabled={pending} onClick={markAllRead}>{pending ? <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" /> : <CheckCheck className="size-3.5" />}{pending ? "Memproses..." : "Tandai dibaca"}</Button>}</div>
           <PopoverDescription>{unreadCount > 0 ? `${unreadCount} aktivitas belum dibaca` : "Semua aktivitas sudah dibaca"}</PopoverDescription>
         </PopoverHeader>
         <div className="max-h-[26rem] overflow-y-auto p-2">

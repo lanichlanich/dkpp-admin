@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Award, BriefcaseBusiness, ChevronDown, ClipboardList, FileCheck2, FileSignature, House, LayoutDashboard, Scale, ScrollText, Send, UserRound, UsersRound, X } from "lucide-react";
+import { Award, BriefcaseBusiness, ChevronDown, ClipboardList, FileCheck2, FileSignature, House, LayoutDashboard, LoaderCircle, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,14 @@ const navigation = [
   { label: "Profil Saya", href: "/dashboard/profile", icon: UserRound },
 ];
 
+function NavigationIcon({ icon: Icon, className }: { icon: LucideIcon; className: string }) {
+  const { pending } = useLinkStatus();
+
+  return pending
+    ? <LoaderCircle aria-hidden="true" className={`${className} animate-spin`} />
+    : <Icon aria-hidden="true" className={className} strokeWidth={1.75} />;
+}
+
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const personnelActive = personnelNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -39,7 +47,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-200">Menu utama</p>
         {(() => {
           const active = pathname === "/dashboard";
-          return <Link href="/dashboard" onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("mb-1 flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}><LayoutDashboard aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 leading-5">Dashboard</span></Link>;
+          return <Link href="/dashboard" onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("mb-1 flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={LayoutDashboard} className="size-5 shrink-0" /><span className="min-w-0 leading-5">Dashboard</span></Link>;
         })()}
         <button type="button" aria-expanded={personnelOpen} onClick={() => setPersonnelOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", personnelActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
           <BriefcaseBusiness aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Kepegawaian</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", personnelOpen && "rotate-180")} />
@@ -48,7 +56,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           {personnelNavigation.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
-            return <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.75} /><span className="min-w-0 leading-5">{item.label}</span></Link>;
+            return <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={Icon} className="size-4 shrink-0" /><span className="min-w-0 leading-5">{item.label}</span></Link>;
           })}
         </div>}
         {navigation.map((item) => {
@@ -56,7 +64,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           const Icon = item.icon;
           return (
             <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
-              <Icon aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 leading-5">{item.label}</span>
+              <NavigationIcon icon={Icon} className="size-5 shrink-0" /><span className="min-w-0 leading-5">{item.label}</span>
             </Link>
           );
         })}

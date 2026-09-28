@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { FilePenLine } from "lucide-react";
+import { FilePenLine, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { saveHukdisAction, type HukdisFormState } from "@/actions/hukdis";
@@ -107,7 +107,7 @@ export function HukdisFormDialog({
           {state.message && state.status === "error" && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{state.message}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-            <Button type="submit" disabled={pending}>{pending ? "Menyimpan..." : selected === "none" ? "Kosongkan isian" : "Simpan Hukdis"}</Button>
+            <Button type="submit" disabled={pending}>{pending && <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />}{pending ? "Menyimpan..." : selected === "none" ? "Kosongkan isian" : "Simpan Hukdis"}</Button>
           </DialogFooter>
         </form>
         </DialogContent>

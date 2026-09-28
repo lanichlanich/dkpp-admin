@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeftRight, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Columns3, Search, Trash2, UserCheck, UserMinus } from "lucide-react";
+import { ArrowDown, ArrowLeftRight, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Columns3, LoaderCircle, Search, Trash2, UserCheck, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { type ColumnFiltersState, type ColumnVisibilityState, type PaginationState, type RowSelectionState, type SortingState, flexRender } from "@tanstack/react-table";
 import { type LegacyColumnDef, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useLegacyTable } from "@tanstack/react-table/legacy";
@@ -139,7 +139,7 @@ export function EmployeeDataTable({ data, options }: { data: Employee[]; options
       </div>
 
       {selectedNips.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-indigo-100 bg-indigo-50/70 px-3 py-2.5"><p className="mr-2 text-sm font-medium text-indigo-900">{selectedNips.length} dipilih</p><Button variant="outline" size="sm" disabled={pending} onClick={() => runBulk("activate")}><UserCheck className="size-3.5" />Aktifkan</Button><Button variant="outline" size="sm" disabled={pending} onClick={() => runBulk("mutate")}><ArrowLeftRight className="size-3.5" />Mutasikan</Button><Button variant="outline" size="sm" disabled={pending} onClick={() => runBulk("retire")}><UserMinus className="size-3.5" />Pensiunkan</Button><Button variant="destructive" size="sm" disabled={pending} onClick={() => setDeleteOpen(true)}><Trash2 className="size-3.5" />Hapus</Button></div>
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-indigo-100 bg-indigo-50/70 px-3 py-2.5"><p className="mr-2 text-sm font-medium text-indigo-900">{selectedNips.length} dipilih</p>{pending && <span role="status" className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-700"><LoaderCircle aria-hidden="true" className="size-4 animate-spin" />Memproses...</span>}<Button variant="outline" size="sm" disabled={pending} onClick={() => runBulk("activate")}><UserCheck className="size-3.5" />Aktifkan</Button><Button variant="outline" size="sm" disabled={pending} onClick={() => runBulk("mutate")}><ArrowLeftRight className="size-3.5" />Mutasikan</Button><Button variant="outline" size="sm" disabled={pending} onClick={() => runBulk("retire")}><UserMinus className="size-3.5" />Pensiunkan</Button><Button variant="destructive" size="sm" disabled={pending} onClick={() => setDeleteOpen(true)}><Trash2 className="size-3.5" />Hapus</Button></div>
       )}
 
       <div className="overflow-hidden rounded-xl border bg-white">
@@ -159,7 +159,7 @@ export function EmployeeDataTable({ data, options }: { data: Employee[]; options
       </div>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Hapus {selectedNips.length} pegawai?</AlertDialogTitle><AlertDialogDescription>Tindakan ini akan menghapus data terpilih secara permanen dari database dan tidak dapat dibatalkan.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Batal</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={pending} onClick={() => runBulk("delete")}><Trash2 className="size-4" />Hapus permanen</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Hapus {selectedNips.length} pegawai?</AlertDialogTitle><AlertDialogDescription>Tindakan ini akan menghapus data terpilih secara permanen dari database dan tidak dapat dibatalkan.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={pending}>Batal</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={pending} onClick={() => runBulk("delete")}>{pending ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : <Trash2 className="size-4" />}{pending ? "Menghapus..." : "Hapus permanen"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
     </div>
   );

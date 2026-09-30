@@ -32,6 +32,7 @@ type PreparedQuery = {
 
 type DatabaseAdapter = {
   prepare(sql: string): PreparedQuery;
+  transaction(statements: Array<{ sql: string; values: QueryValue[] }>): Promise<void>;
 };
 
 const connectionString = process.env.POSTGRES_URL?.trim();
@@ -105,6 +106,21 @@ function createPostgresAdapter(url: string): DatabaseAdapter {
   }
 
   return {
+    async transaction(statements) {
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        for (const statement of statements) {
+          await client.query(postgresPlaceholders(qualifyTables(statement.sql)), statement.values);
+        }
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
     prepare(sql) {
       const statement = postgresPlaceholders(qualifyTables(sql));
       const aliases = resultAliases(sql);
@@ -132,6 +148,12 @@ function createSqliteAdapter(): DatabaseAdapter {
   const sqliteDatabase = import("@/lib/db").then((module) => module.db);
 
   return {
+    async transaction(statements) {
+      const database = await sqliteDatabase;
+      database.transaction(() => {
+        for (const statement of statements) database.prepare(statement.sql).run(...statement.values);
+      })();
+    },
     prepare(sql) {
       return {
         async get<T>(...values: QueryValue[]) {

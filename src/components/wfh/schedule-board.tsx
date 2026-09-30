@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { addScheduleEmployee, createScheduleMonth, setScheduleStatus } from "@/actions/wfh-schedule";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DailyDownloads } from "@/components/wfh/daily-downloads";
 import type { ScheduleEmployee, ScheduleEntry, WorkLocation } from "@/lib/wfh-schedule";
 
 type Row = {
@@ -124,6 +125,7 @@ export function ScheduleBoard({
         </table></div>
         {filtered.length === 0 && <p className="p-6 text-center text-sm text-zinc-500">Pegawai tidak ditemukan.</p>}
       </div>
+      <DailyDownloads period={period} totals={dates.map((date, index) => ({ date, wfh: counts[index], wfo: rows.length - counts[index] }))} />
       <p className="text-xs text-zinc-500">Klik status pada tanggal Jumat untuk mengganti WFH ↔ WFO. Perubahan langsung disimpan untuk bulan yang dipilih.</p>
     </>}
   </div>;

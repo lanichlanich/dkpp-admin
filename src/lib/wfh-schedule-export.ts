@@ -2,11 +2,109 @@ import "server-only";
 
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
-import { fridayDates, groupScheduleEntries, monthLabel, type ScheduleEntry } from "@/lib/wfh-schedule";
+import { fridayDates, groupScheduleEntries, monthLabel, type ScheduleEntry, type WorkLocation } from "@/lib/wfh-schedule";
 
 function dateHeading(date: string) {
   return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })
     .format(new Date(`${date}T00:00:00Z`));
+}
+
+function dailyRows(entries: ScheduleEntry[], date: string, status: WorkLocation) {
+  return entries.filter((entry) => entry.fridayDate === date && entry.status === status);
+}
+
+export async function createDailyScheduleExcel(date: string, status: WorkLocation, entries: ScheduleEntry[]) {
+  const rows = dailyRows(entries, date, status);
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "DKPP-Admin";
+  workbook.created = new Date();
+  const sheet = workbook.addWorksheet(`Daftar ${status} ${date}`, {
+    views: [{ state: "frozen", ySplit: 3 }],
+    pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+  });
+  [7, 34, 24, 45, 58].forEach((width, index) => { sheet.getColumn(index + 1).width = width; });
+  sheet.mergeCells("A1:E1");
+  sheet.getCell("A1").value = `DAFTAR PEGAWAI ${status}`;
+  sheet.mergeCells("A2:E2");
+  sheet.getCell("A2").value = `DKPP Kabupaten Indramayu | Jumat, ${dateHeading(date)} | Jumlah: ${rows.length} pegawai`;
+  sheet.getRow(1).height = 28;
+  sheet.getRow(2).height = 23;
+  sheet.getRow(3).values = ["No", "Nama", "NIP", "Jabatan", "Unit Organisasi"];
+  sheet.getRow(3).height = 24;
+  rows.forEach((entry, index) => {
+    const row = sheet.getRow(index + 4);
+    row.values = [index + 1, entry.employeeName, entry.employeeNip, entry.position, entry.unit];
+    row.getCell(3).numFmt = "@";
+    row.height = 27;
+    row.alignment = { vertical: "middle", wrapText: true };
+  });
+  for (let row = 1; row <= Math.max(rows.length + 3, 4); row++) {
+    for (let column = 1; column <= 5; column++) {
+      const cell = sheet.getCell(row, column);
+      cell.border = { bottom: { style: "thin", color: { argb: "FFD1D5DB" } } };
+      if (row === 1 || row === 3) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: status === "WFH" ? "FFDCFCE7" : "FFDBEAFE" } };
+        cell.font = { name: "Calibri", size: row === 1 ? 15 : 11, bold: true, color: { argb: status === "WFH" ? "FF064E3B" : "FF1E3A8A" } };
+      } else if (row > 3 && row % 2 === 0) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+      }
+    }
+  }
+  sheet.pageSetup.printTitlesRow = "1:3";
+  sheet.autoFilter = { from: "A3", to: "E3" };
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+export async function createDailySchedulePdf(date: string, status: WorkLocation, entries: ScheduleEntry[]) {
+  const rows = dailyRows(entries, date, status);
+  const pdf = new PDFDocument({ size: "A4", layout: "landscape", margin: 30, bufferPages: true });
+  const chunks: Buffer[] = [];
+  pdf.on("data", (chunk: Buffer) => chunks.push(chunk));
+  const complete = new Promise<Buffer>((resolve, reject) => {
+    pdf.on("end", () => resolve(Buffer.concat(chunks)));
+    pdf.on("error", reject);
+  });
+  const widths = [34, 175, 128, 213, 232];
+  const rowHeight = 27;
+  const startX = 30;
+  const tableWidth = widths.reduce((sum, width) => sum + width, 0);
+  const color = status === "WFH" ? "#064E3B" : "#1E3A8A";
+  const background = status === "WFH" ? "#DCFCE7" : "#DBEAFE";
+
+  function drawRow(y: number, values: string[], header = false) {
+    let x = startX;
+    values.forEach((value, index) => {
+      const width = widths[index];
+      pdf.rect(x, y, width, rowHeight).fillAndStroke(header ? background : "#FFFFFF", "#CBD5E1");
+      pdf.fillColor(header ? color : "#111827").font(header ? "Helvetica-Bold" : "Helvetica")
+        .fontSize(8).text(value, x + 4, y + 5, { width: width - 8, height: rowHeight - 9, ellipsis: true });
+      x += width;
+    });
+  }
+
+  function pageHeader() {
+    pdf.fillColor(color).font("Helvetica-Bold").fontSize(15).text(`DAFTAR PEGAWAI ${status}`, startX, 29);
+    pdf.fillColor("#374151").font("Helvetica").fontSize(10)
+      .text(`DKPP Kabupaten Indramayu | Jumat, ${dateHeading(date)} | Jumlah: ${rows.length} pegawai`, startX, 53);
+    drawRow(80, ["No", "Nama", "NIP", "Jabatan", "Unit Organisasi"], true);
+  }
+
+  pageHeader();
+  let y = 80 + rowHeight;
+  rows.forEach((entry, index) => {
+    if (y + rowHeight > pdf.page.height - 55) { pdf.addPage(); pageHeader(); y = 80 + rowHeight; }
+    drawRow(y, [String(index + 1), entry.employeeName, entry.employeeNip, entry.position, entry.unit]);
+    y += rowHeight;
+  });
+  const pageCount = pdf.bufferedPageRange().count;
+  for (let index = 0; index < pageCount; index++) {
+    pdf.switchToPage(index);
+    pdf.font("Helvetica").fontSize(8).fillColor("#6B7280")
+      .text(`Halaman ${index + 1} dari ${pageCount}`, startX, pdf.page.height - 34,
+        { width: tableWidth, height: 10, align: "right", lineBreak: false });
+  }
+  pdf.end();
+  return await complete;
 }
 
 export async function createScheduleExcel(period: string, entries: ScheduleEntry[]) {

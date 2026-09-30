@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FileDown, FileSpreadsheet } from "lucide-react";
+import { DailyDownloads } from "@/components/wfh/daily-downloads";
 import { getScheduleEntries, getScheduleMonths, groupScheduleEntries, monthLabel, validPeriod } from "@/lib/wfh-schedule";
 
 export const metadata: Metadata = { title: "Laporan Pegawai WFH/WFO" };
@@ -24,7 +25,7 @@ export default async function ScheduleReportPage({ searchParams }: { searchParam
     {!exists ? <div className="rounded-xl border bg-white p-8 text-center"><p className="font-medium">Belum ada jadwal yang dapat dilaporkan.</p><Link href="/dashboard/daftar-wfh" className="mt-3 inline-block text-sm text-emerald-700 hover:underline">Buka daftar WFH/WFO</Link></div> : <>
       <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl border bg-white p-5"><p className="text-xs text-zinc-500">Pegawai terjadwal</p><p className="mt-1 text-3xl font-semibold">{people.length}</p></div><div className="rounded-xl border bg-white p-5"><p className="text-xs text-zinc-500">Total penugasan WFH</p><p className="mt-1 text-3xl font-semibold text-emerald-700">{totals.reduce((sum, day) => sum + day.wfh, 0)}</p></div><div className="rounded-xl border bg-white p-5"><p className="text-xs text-zinc-500">Total penugasan WFO</p><p className="mt-1 text-3xl font-semibold text-sky-700">{totals.reduce((sum, day) => sum + day.wfo, 0)}</p></div></div>
       <div className="flex flex-wrap gap-3"><a href={`/api/wfh-schedule/${period}/pdf`} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"><FileDown className="size-4" />Unduh PDF {monthLabel(period)}</a><a href={`/api/wfh-schedule/${period}/xlsx`} className="inline-flex items-center gap-2 rounded-lg border border-emerald-700 bg-white px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50"><FileSpreadsheet className="size-4" />Unduh Excel seperti contoh</a><Link href={`/dashboard/daftar-wfh?bulan=${period}`} className="inline-flex items-center rounded-lg border px-4 py-2 text-sm font-medium hover:bg-zinc-50">Ubah daftar</Link></div>
-      <div className="overflow-hidden rounded-xl border bg-white"><div className="border-b p-4"><h2 className="font-semibold">Rekap per Jumat</h2><p className="text-xs text-zinc-500">Jumlah orang pada setiap tanggal, bukan jumlah pegawai unik selama sebulan.</p></div><div className="overflow-x-auto"><table className="w-full min-w-[500px] text-left text-sm"><thead className="bg-emerald-50"><tr><th className="p-3">Tanggal</th><th className="p-3 text-right">WFH</th><th className="p-3 text-right">WFO</th><th className="p-3 text-right">Jumlah</th></tr></thead><tbody>{totals.map((day) => <tr key={day.date} className="border-t"><td className="p-3">{new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${day.date}T00:00:00Z`))}</td><td className="p-3 text-right font-semibold text-emerald-700">{day.wfh}</td><td className="p-3 text-right font-semibold text-sky-700">{day.wfo}</td><td className="p-3 text-right">{day.wfh + day.wfo}</td></tr>)}</tbody></table></div></div>
+      <DailyDownloads period={period} totals={totals} />
     </>}
   </div>;
 }

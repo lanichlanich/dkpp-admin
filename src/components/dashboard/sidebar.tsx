@@ -23,6 +23,7 @@ const personnelNavigation = [
 
 const navigation = [
   { label: "Surat Pengantar", href: "/dashboard/surat-pengantar", icon: Send },
+  { label: "Pembukaan Kerjaku", href: "/dashboard/pembukaan-kerjaku", icon: FileSignature },
   { label: "Profil Saya", href: "/dashboard/profile", icon: UserRound },
 ];
 

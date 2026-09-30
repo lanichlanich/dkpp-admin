@@ -12,6 +12,7 @@
     "smoke:employee-documents": "node scripts/smoke-employee-documents.mjs",
     "smoke:wfh": "node scripts/smoke-wfh.mjs",
     "smoke:surat-pengantar": "node scripts/smoke-surat-pengantar.mjs",
+    "smoke:pembukaan-kerjaku": "node scripts/smoke-pembukaan-kerjaku.mjs",
     "smoke:surat-hukdis-hukda": "node scripts/smoke-surat-hukdis-hukda.mjs",
     "smoke:local-ai": "node scripts/smoke-local-ai.mjs",
     "smoke:gemini": "node scripts/smoke-local-ai.mjs",

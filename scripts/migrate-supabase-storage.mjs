@@ -20,6 +20,7 @@ for (const directory of [
   "official-statement-documents",
   "pak-documents",
   "surat-pengantar-documents",
+  "kerjaku-request-documents",
   "wfh-documents",
   "wfh-reports",
 ]) {

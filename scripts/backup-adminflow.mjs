@@ -33,6 +33,7 @@ const documentStores = [
   { table: "pak_documents", directory: "pak-documents", storedName: (row) => row.storage_name },
   { table: "wfh_documents", directory: "wfh-documents", storedName: (row) => row.storage_name },
   { table: "surat_pengantar_documents", directory: "surat-pengantar-documents", storedName: (row) => row.storage_name },
+  { table: "kerjaku_request_documents", directory: "kerjaku-request-documents", storedName: (row) => row.storage_name },
   { table: "official_statement_documents", directory: "official-statement-documents", storedName: (row) => row.storage_name },
   { table: "wfh_reports", directory: "wfh-reports", storedName: (row) => `${row.id}.docx` },
 ];

@@ -16,6 +16,8 @@ const TABLES = new Set([
   "employee_documents",
   "hukdis_records",
   "wfh_reports",
+  "wfh_schedule_months",
+  "wfh_schedule_entries",
 ]);
 
 type QueryValue = string | number | boolean | null | Buffer;

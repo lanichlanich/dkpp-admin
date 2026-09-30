@@ -4,12 +4,14 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Award, BriefcaseBusiness, ChevronDown, ClipboardList, FileCheck2, FileSignature, House, LayoutDashboard, LoaderCircle, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
+import { Award, BriefcaseBusiness, CalendarDays, ChevronDown, ClipboardList, FileBarChart2, FileCheck2, FileSignature, House, LayoutDashboard, LoaderCircle, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const personnelNavigation = [
   { label: "Daftar Pegawai", href: "/dashboard/pegawai", icon: UsersRound },
+  { label: "Daftar WFH/WFO", href: "/dashboard/daftar-wfh", icon: CalendarDays },
+  { label: "Laporan Pegawai WFH/WFO", href: "/dashboard/laporan-pegawai-wfh-wfo", icon: FileBarChart2 },
   { label: "Daftar Hukdis", href: "/dashboard/hukdis", icon: Scale },
   { label: "Surat HUKDIS & HUKDA", href: "/dashboard/surat-hukdis-hukda", icon: FileCheck2 },
   { label: "Surat Tugas WFH", href: "/dashboard/wfh", icon: House },

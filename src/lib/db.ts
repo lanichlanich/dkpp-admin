@@ -63,6 +63,33 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS employees_unit_idx ON employees(unit COLLATE NOCASE);
   CREATE INDEX IF NOT EXISTS employees_status_idx ON employees(status);
 
+  CREATE TABLE IF NOT EXISTS wfh_schedule_months (
+    period TEXT PRIMARY KEY,
+    source_period TEXT,
+    created_by TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS wfh_schedule_entries (
+    period TEXT NOT NULL,
+    employee_nip TEXT NOT NULL,
+    employee_name TEXT NOT NULL,
+    position TEXT NOT NULL,
+    unit TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 9999,
+    friday_date TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('WFH', 'WFO')),
+    updated_by TEXT,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (period, employee_nip, friday_date),
+    FOREIGN KEY (period) REFERENCES wfh_schedule_months(period) ON DELETE CASCADE,
+    FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS wfh_schedule_entries_period_date_idx
+    ON wfh_schedule_entries(period, friday_date, status);
+
   CREATE TABLE IF NOT EXISTS notifications (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

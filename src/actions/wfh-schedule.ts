@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
 import { fridayDates, getScheduleEntries, groupScheduleEntries, monthLabel, nextPeriod, validPeriod, type WorkLocation } from "@/lib/wfh-schedule";
+import { continueFridayStatuses } from "@/lib/wfh-schedule-pattern";
 
 type ActionResult = { success: boolean; message: string };
 
@@ -19,10 +20,12 @@ export async function createScheduleMonth(period: string): Promise<ActionResult>
   if (existing) return { success: false, message: "Jadwal bulan ini sudah tersedia." };
 
   const source = await db.prepare(
-    "SELECT period FROM wfh_schedule_months WHERE period < ? ORDER BY period DESC LIMIT 1",
-  ).get(period) as { period: string } | undefined;
+    "SELECT period FROM wfh_schedule_months WHERE period = ?",
+  ).get(nextPeriod(period, -1)) as { period: string } | undefined;
+  if (!source) return { success: false, message: `Jadwal ${monthLabel(nextPeriod(period, -1))} belum tersedia.` };
   const sourceEntries = source ? await getScheduleEntries(source.period) : [];
   const sourcePeople = groupScheduleEntries(sourceEntries);
+  if (!sourcePeople.length) return { success: false, message: "Daftar bulan sebelumnya kosong." };
   const activeRows = await db.prepare(
     "SELECT nip, name, position, unit FROM employees WHERE status = 'Aktif'",
   ).all() as Array<{ nip: string; name: string; position: string; unit: string }>;
@@ -34,81 +37,81 @@ export async function createScheduleMonth(period: string): Promise<ActionResult>
     const employee = activeByNip.get(row.employee.nip);
     if (!employee) continue;
     const previous = [...row.statuses.values()];
+    const statuses = continueFridayStatuses(previous, dates.length);
     const sortOrder = sourceEntries.find((entry) => entry.employeeNip === employee.nip)?.sortOrder ?? 9999;
     for (const [index, date] of dates.entries()) {
       values.push(period, employee.nip, employee.name, employee.position, employee.unit,
-        sortOrder, date, previous[index] ?? previous.at(-1) ?? "WFO", user.id, now);
+        sortOrder, date, statuses[index], user.id, now);
     }
   }
+  if (!values.length) return { success: false, message: "Tidak ada pegawai aktif dari bulan sebelumnya." };
 
   try {
-    await db.prepare(
-      "INSERT INTO wfh_schedule_months (period, source_period, created_by, created_at) VALUES (?, ?, ?, ?)",
-    ).run(period, source?.period ?? null, user.id, now);
-    if (values.length) {
-      const placeholders = Array.from({ length: values.length / 10 }, () => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
-      await db.prepare(
-        `INSERT INTO wfh_schedule_entries
-         (period, employee_nip, employee_name, position, unit, sort_order, friday_date, status, updated_by, updated_at)
-         VALUES ${placeholders}`,
-      ).run(...values);
-    }
-  } catch (error) {
-    console.error("WFH schedule month creation failed", error);
-    return { success: false, message: "Jadwal bulan gagal dibuat. Silakan coba lagi." };
-  }
-  refreshSchedule();
-  return { success: true, message: source ? `Jadwal ${monthLabel(period)} dibuat dari ${monthLabel(source.period)}.` : `Jadwal ${monthLabel(period)} dibuat.` };
-}
-
-export async function regenerateScheduleMonth(period: string): Promise<ActionResult> {
-  const user = await requireUser();
-  if (!validPeriod(period)) return { success: false, message: "Bulan tidak valid." };
-  const previousPeriod = nextPeriod(period, -1);
-  const [month, previousMonth] = await Promise.all([
-    db.prepare("SELECT period FROM wfh_schedule_months WHERE period = ?").get(period),
-    db.prepare("SELECT period FROM wfh_schedule_months WHERE period = ?").get(previousPeriod),
-  ]);
-  if (!month) return { success: false, message: "Buat jadwal bulan ini terlebih dahulu." };
-  if (!previousMonth) return { success: false, message: `Jadwal ${monthLabel(previousPeriod)} belum tersedia.` };
-
-  const sourceEntries = await getScheduleEntries(previousPeriod);
-  const sourcePeople = groupScheduleEntries(sourceEntries);
-  if (!sourcePeople.length) return { success: false, message: "Daftar bulan sebelumnya kosong. Jadwal saat ini tidak diubah." };
-  const activeRows = await db.prepare(
-    "SELECT nip, name, position, unit FROM employees WHERE status = 'Aktif'",
-  ).all() as Array<{ nip: string; name: string; position: string; unit: string }>;
-  const activeByNip = new Map(activeRows.map((row) => [row.nip, row]));
-  const dates = fridayDates(period);
-  const now = new Date().toISOString();
-  const values: Array<string | number> = [];
-  for (const row of sourcePeople) {
-    const employee = activeByNip.get(row.employee.nip);
-    if (!employee) continue;
-    const previous = [...row.statuses.values()];
-    const sortOrder = sourceEntries.find((entry) => entry.employeeNip === employee.nip)?.sortOrder ?? 9999;
-    for (const [index, date] of dates.entries()) {
-      values.push(period, employee.nip, employee.name, employee.position, employee.unit,
-        sortOrder, date, previous[index] ?? previous.at(-1) ?? "WFO", user.id, now);
-    }
-  }
-  if (!values.length) return { success: false, message: "Tidak ada pegawai aktif dari bulan sebelumnya. Jadwal saat ini tidak diubah." };
-
-  const placeholders = Array.from({ length: values.length / 10 }, () => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
-  try {
+    const placeholders = Array.from({ length: values.length / 10 }, () => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
     await db.transaction([
-      { sql: "UPDATE wfh_schedule_months SET source_period = ? WHERE period = ?", values: [previousPeriod, period] },
-      { sql: "DELETE FROM wfh_schedule_entries WHERE period = ?", values: [period] },
+      { sql: "INSERT INTO wfh_schedule_months (period, source_period, created_by, created_at) VALUES (?, ?, ?, ?)", values: [period, source.period, user.id, now] },
       { sql: `INSERT INTO wfh_schedule_entries
         (period, employee_nip, employee_name, position, unit, sort_order, friday_date, status, updated_by, updated_at)
         VALUES ${placeholders}`, values },
     ]);
   } catch (error) {
-    console.error("WFH schedule regeneration failed", error);
-    return { success: false, message: "Generate ulang gagal. Jadwal sebelumnya tetap tersimpan." };
+    console.error("WFH schedule month creation failed", error);
+    return { success: false, message: "Jadwal bulan gagal dibuat. Silakan coba lagi." };
   }
   refreshSchedule();
-  return { success: true, message: `Daftar ${monthLabel(period)} diperbarui dari ${monthLabel(previousPeriod)}.` };
+  return { success: true, message: `Jadwal ${monthLabel(period)} dilanjutkan dari ${monthLabel(source.period)}.` };
+}
+
+export async function continueScheduleMonth(period: string): Promise<ActionResult> {
+  const user = await requireUser();
+  if (!validPeriod(period)) return { success: false, message: "Bulan tidak valid." };
+  const targetPeriod = nextPeriod(period, 1);
+  const [sourceMonth, targetMonth] = await Promise.all([
+    db.prepare("SELECT period FROM wfh_schedule_months WHERE period = ?").get(period),
+    db.prepare("SELECT period FROM wfh_schedule_months WHERE period = ?").get(targetPeriod),
+  ]);
+  if (!sourceMonth) return { success: false, message: `Jadwal ${monthLabel(period)} belum tersedia.` };
+
+  const sourceEntries = await getScheduleEntries(period);
+  const sourcePeople = groupScheduleEntries(sourceEntries);
+  if (!sourcePeople.length) return { success: false, message: "Daftar bulan ini kosong. Bulan berikutnya tidak diubah." };
+  const activeRows = await db.prepare(
+    "SELECT nip, name, position, unit FROM employees WHERE status = 'Aktif'",
+  ).all() as Array<{ nip: string; name: string; position: string; unit: string }>;
+  const activeByNip = new Map(activeRows.map((row) => [row.nip, row]));
+  const dates = fridayDates(targetPeriod);
+  const now = new Date().toISOString();
+  const values: Array<string | number> = [];
+  for (const row of sourcePeople) {
+    const employee = activeByNip.get(row.employee.nip);
+    if (!employee) continue;
+    const previous = [...row.statuses.values()];
+    const statuses = continueFridayStatuses(previous, dates.length);
+    const sortOrder = sourceEntries.find((entry) => entry.employeeNip === employee.nip)?.sortOrder ?? 9999;
+    for (const [index, date] of dates.entries()) {
+      values.push(targetPeriod, employee.nip, employee.name, employee.position, employee.unit,
+        sortOrder, date, statuses[index], user.id, now);
+    }
+  }
+  if (!values.length) return { success: false, message: "Tidak ada pegawai aktif dari bulan ini. Bulan berikutnya tidak diubah." };
+
+  const placeholders = Array.from({ length: values.length / 10 }, () => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
+  try {
+    await db.transaction([
+      targetMonth
+        ? { sql: "UPDATE wfh_schedule_months SET source_period = ? WHERE period = ?", values: [period, targetPeriod] }
+        : { sql: "INSERT INTO wfh_schedule_months (period, source_period, created_by, created_at) VALUES (?, ?, ?, ?)", values: [targetPeriod, period, user.id, now] },
+      ...(targetMonth ? [{ sql: "DELETE FROM wfh_schedule_entries WHERE period = ?", values: [targetPeriod] }] : []),
+      { sql: `INSERT INTO wfh_schedule_entries
+        (period, employee_nip, employee_name, position, unit, sort_order, friday_date, status, updated_by, updated_at)
+        VALUES ${placeholders}`, values },
+    ]);
+  } catch (error) {
+    console.error("WFH schedule continuation failed", error);
+    return { success: false, message: "Melanjutkan jadwal gagal. Bulan berikutnya tidak diubah." };
+  }
+  refreshSchedule();
+  return { success: true, message: `Daftar ${monthLabel(targetPeriod)} ${targetMonth ? "diperbarui" : "dibuat"} sebagai kelanjutan ${monthLabel(period)}.` };
 }
 
 export async function addScheduleEmployee(period: string, nip: string): Promise<ActionResult> {

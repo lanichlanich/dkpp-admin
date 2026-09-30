@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { ChevronLeft, ChevronRight, FileDown, LoaderCircle, Plus, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
-import { addScheduleEmployee, createScheduleMonth, regenerateScheduleMonth, setScheduleStatus } from "@/actions/wfh-schedule";
+import { addScheduleEmployee, continueScheduleMonth, createScheduleMonth, setScheduleStatus } from "@/actions/wfh-schedule";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,15 +22,15 @@ function shortDate(date: string) {
 }
 
 export function ScheduleBoard({
-  period, label, dates, previous, previousExists, previousLabel, next, exists, sourcePeriod, entries, activeEmployees,
+  period, label, dates, previous, next, nextExists, nextLabel, exists, sourcePeriod, entries, activeEmployees,
 }: {
   period: string;
   label: string;
   dates: string[];
   previous: string;
-  previousExists: boolean;
-  previousLabel: string;
   next: string;
+  nextExists: boolean;
+  nextLabel: string;
   exists: boolean;
   sourcePeriod: string | null;
   entries: ScheduleEntry[];
@@ -42,7 +42,7 @@ export function ScheduleBoard({
   const [search, setSearch] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [statusOverrides, setStatusOverrides] = useState<Record<string, WorkLocation>>({});
-  const [regenerateOpen, setRegenerateOpen] = useState(false);
+  const [continueOpen, setContinueOpen] = useState(false);
   const rows = useMemo(() => {
     const byNip = new Map<string, Row>();
     for (const entry of entries) {
@@ -71,14 +71,14 @@ export function ScheduleBoard({
     });
   }
 
-  function regenerateMonth() {
-    setRegenerateOpen(false);
+  function continueMonth() {
+    setContinueOpen(false);
     startTransition(async () => {
       try {
-        const result = await regenerateScheduleMonth(period);
-        if (result.success) { setStatusOverrides({}); toast.success(result.message); router.refresh(); }
+        const result = await continueScheduleMonth(period);
+        if (result.success) { toast.success(result.message); router.push(`/dashboard/daftar-wfh?bulan=${next}`); router.refresh(); }
         else toast.error(result.message);
-      } catch { toast.error("Generate ulang gagal. Silakan coba lagi."); }
+      } catch { toast.error("Melanjutkan jadwal gagal. Silakan coba lagi."); }
     });
   }
 
@@ -111,15 +111,14 @@ export function ScheduleBoard({
         <Input id="schedule-month" type="month" value={period} onChange={(event) => { if (event.target.value) router.push(`/dashboard/daftar-wfh?bulan=${event.target.value}`); }} className="w-44" />
         <Link href={`/dashboard/daftar-wfh?bulan=${next}`} aria-label="Bulan berikutnya" className="rounded-lg border p-2 hover:bg-zinc-50"><ChevronRight className="size-4" /></Link>
       </div>
-      {exists && <div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" disabled={pending || !previousExists} onClick={() => setRegenerateOpen(true)} title={previousExists ? `Salin ulang dari ${previousLabel}` : `Jadwal ${previousLabel} belum tersedia`}><RefreshCw className="size-4" />Generate ulang dari {previousLabel}</Button><Link href={`/dashboard/laporan-pegawai-wfh-wfo?bulan=${period}`} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"><FileDown className="size-4" />Laporan dan unduhan</Link></div>}
+      {exists && <div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" disabled={pending} onClick={() => setContinueOpen(true)}><RefreshCw className="size-4" />{nextExists ? `Generate ulang ${nextLabel}` : `Lanjutkan ke ${nextLabel}`}</Button><Link href={`/dashboard/laporan-pegawai-wfh-wfo?bulan=${period}`} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"><FileDown className="size-4" />Laporan dan unduhan</Link></div>}
     </div>
 
-    {exists && !previousExists && <p className="text-xs text-zinc-500">Generate ulang tersedia setelah jadwal {previousLabel} dibuat.</p>}
-    <AlertDialog open={regenerateOpen} onOpenChange={setRegenerateOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Generate ulang daftar {label}?</AlertDialogTitle><AlertDialogDescription>Daftar akan disalin dari {previousLabel} untuk pegawai yang masih aktif. Status WFH/WFO dan perubahan manual pada {label} akan diganti. Unduhan setelahnya mengikuti daftar baru.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Batal</AlertDialogCancel><AlertDialogAction onClick={regenerateMonth} disabled={pending}>Generate ulang</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+    <AlertDialog open={continueOpen} onOpenChange={setContinueOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{nextExists ? `Generate ulang daftar ${nextLabel}?` : `Lanjutkan jadwal ke ${nextLabel}?`}</AlertDialogTitle><AlertDialogDescription>Daftar {nextLabel} akan melanjutkan rotasi empat Jumat terakhir dari {label} untuk pegawai yang masih aktif.{nextExists ? ` Status dan perubahan manual pada ${nextLabel} akan diganti.` : ""} Setelah selesai, halaman akan membuka {nextLabel}.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Batal</AlertDialogCancel><AlertDialogAction onClick={continueMonth} disabled={pending}>{nextExists ? "Generate ulang" : "Lanjutkan jadwal"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 
     {!exists ? <div className="rounded-xl border border-dashed bg-white p-8 text-center">
       <h2 className="text-lg font-semibold">Jadwal {label} belum dibuat</h2>
-      <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-500">Salin pegawai yang masih aktif dan pola Jumat dari bulan sebelumnya. Jika jumlah Jumat bertambah, Jumat tambahan memakai status Jumat terakhir. Semua status dapat diubah setelah jadwal dibuat.</p>
+      <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-500">Lanjutkan rotasi dari empat Jumat terakhir bulan sebelumnya untuk pegawai yang masih aktif. Semua status dapat diubah setelah jadwal dibuat.</p>
       <Button onClick={createMonth} disabled={pending} className="mt-5">{pending ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}Buat jadwal {label}</Button>
     </div> : <>
       <div className="grid gap-3 sm:grid-cols-3">

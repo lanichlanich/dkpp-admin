@@ -2,6 +2,7 @@ import { database as db } from "@/lib/database";
 import { generateDpcpDocument } from "@/lib/dpcp-document";
 import { saveDpcpDocument } from "@/lib/dpcp-documents";
 import { dpcpSchema } from "@/lib/dpcp-validation";
+import { dpcpParents, dpcpPensionService, dpcpRetirementDate, dpcpSalary } from "@/lib/dpcp-calculations";
 import { birthDateFromNip, formatIndonesianDate, formatRupiah } from "@/lib/kgb";
 import { createNotification } from "@/lib/notifications";
 import { getCurrentUser } from "@/lib/session";
@@ -52,6 +53,14 @@ export async function POST(request: Request) {
   if (!head) return Response.json({ message: "Data Kepala Dinas aktif tidak ditemukan." }, { status: 422 });
 
   const input = result.data;
+  const salary = dpcpSalary(employee.rank, input.mkg);
+  const pensionService = dpcpPensionService(input.tmtpns, dpcpRetirementDate(employee.nip, input.bup));
+  if (salary === null || !pensionService) {
+    return Response.json({ message: "Periksa data perhitungan otomatis.", errors: {
+      ...(salary === null ? { mkg: ["Golongan atau masa kerja tidak tersedia pada tabel gaji."] } : {}),
+      ...(!pensionService ? { tmtpns: ["TMT PNS harus valid dan tidak melewati TMT pensiun."] } : {}),
+    } }, { status: 422 });
+  }
   const rank = splitRank(employee.rank);
   try {
     const document = await generateDpcpDocument({
@@ -62,24 +71,24 @@ export async function POST(request: Request) {
       jabatan: employee.position,
       pangkat: rank.pangkat,
       golongan: rank.golongan,
-      gaji: formatRupiah(input.gaji),
+      gaji: formatRupiah(salary),
       mkg: input.mkg,
-      mkp: input.mkp,
+      mkp: pensionService,
       mksp: input.mksp || "-",
       pendidikan1: input.pendidikan1,
       tmtpns: formatIndonesianDate(input.tmtpns),
       "nama_s/i": input.namaPasangan,
       "tgl_s/i": optionalDate(input.tglPasangan),
       tgl_nikah: optionalDate(input.tglNikah),
-      "s/i_ke": input.pasanganKe,
+      "s/i_ke": input.namaPasangan ? (input.pasanganKe || "1 (satu)") : "",
       nama_anak1: input.namaAnak1,
       tgl_anak1: optionalDate(input.tglAnak1),
-      status_anak1: input.statusAnak1,
-      "anak1_ayah/ibu": input.orangTuaAnak1,
+      status_anak1: input.namaAnak1 ? (input.statusAnak1 || "AK (Anak Kandung)") : "",
+      "anak1_ayah/ibu": input.namaAnak1 ? (input.orangTuaAnak1 || dpcpParents(employee.name, input.namaPasangan)) : "",
       nama_anak2: input.namaAnak2,
       tgl_anak2: optionalDate(input.tglAnak2),
-      status_anak2: input.statusAnak2,
-      "anak2_ayah/ibu": input.orangTuaAnak2,
+      status_anak2: input.namaAnak2 ? (input.statusAnak2 || "AK (Anak Kandung)") : "",
+      "anak2_ayah/ibu": input.namaAnak2 ? (input.orangTuaAnak2 || dpcpParents(employee.name, input.namaPasangan)) : "",
       alamat_pensiun: input.alamatPensiun,
       tgl_dpcp: formatIndonesianDate(input.tglDpcp),
       nama_kadis: head.name,

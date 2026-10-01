@@ -9,6 +9,7 @@
     "lint": "eslint",
     "smoke:auth": "node scripts/smoke-auth.mjs",
     "smoke:pak": "node scripts/smoke-pak.mjs",
+    "smoke:dpcp": "node scripts/smoke-dpcp.mjs",
     "smoke:employee-documents": "node scripts/smoke-employee-documents.mjs",
     "smoke:wfh": "node scripts/smoke-wfh.mjs",
     "smoke:surat-pengantar": "node scripts/smoke-surat-pengantar.mjs",

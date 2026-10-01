@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import type { DpcpEmployeeOption } from "@/lib/employees";
+import { dpcpParents, dpcpPensionService, dpcpRetirementDate, dpcpSalary } from "@/lib/dpcp-calculations";
 import { birthDateFromNip, formatIndonesianDate, formatRupiah } from "@/lib/kgb";
 import type { LocalDocumentExtractionResult } from "@/lib/local-document-ai-types";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
@@ -45,10 +46,10 @@ type FormValues = {
 
 function initialValues(today: string): FormValues {
   return {
-    nip: "", bup: "", tempatLahir: "", gaji: "", mkg: "", mkp: "", mksp: "",
+    nip: "", bup: "58 Tahun", tempatLahir: "", gaji: "", mkg: "", mkp: "", mksp: "",
     pendidikan1: "", tmtpns: "", namaPasangan: "", tglPasangan: "", tglNikah: "",
-    pasanganKe: "", namaAnak1: "", tglAnak1: "", statusAnak1: "", orangTuaAnak1: "",
-    namaAnak2: "", tglAnak2: "", statusAnak2: "", orangTuaAnak2: "",
+    pasanganKe: "1 (satu)", namaAnak1: "", tglAnak1: "", statusAnak1: "AK (Anak Kandung)", orangTuaAnak1: "",
+    namaAnak2: "", tglAnak2: "", statusAnak2: "AK (Anak Kandung)", orangTuaAnak2: "",
     alamatPensiun: "", tglDpcp: today,
   };
 }
@@ -103,15 +104,30 @@ export function DpcpForm({ employees, today }: { employees: DpcpEmployeeOption[]
   const [extracting, setExtracting] = useState(false);
   const [extractionResult, setExtractionResult] = useState<LocalDocumentExtractionResult | null>(null);
   const employee = useMemo(() => employees.find((item) => item.nip === values.nip), [employees, values.nip]);
+  const tmtPensiun = dpcpRetirementDate(values.nip, values.bup);
   const busy = submitting || extracting;
 
   function setValue(key: keyof FormValues, value: string) {
-    setValues((current) => ({ ...current, [key]: value }));
+    setValues((current) => updateCalculatedValues({ ...current, [key]: value }, current));
     setErrors((current) => ({ ...current, [key]: [] }));
   }
 
+  function updateCalculatedValues(next: FormValues, previous?: FormValues): FormValues {
+    const selected = employees.find((item) => item.nip === next.nip);
+    const salary = selected ? dpcpSalary(selected.rank, next.mkg) : null;
+    const previousParents = dpcpParents(selected?.name ?? "", previous?.namaPasangan ?? "");
+    const parents = dpcpParents(selected?.name ?? "", next.namaPasangan);
+    return {
+      ...next,
+      gaji: salary === null ? "" : String(salary),
+      mkp: dpcpPensionService(next.tmtpns, dpcpRetirementDate(next.nip, next.bup)),
+      orangTuaAnak1: !next.orangTuaAnak1 || next.orangTuaAnak1 === previousParents ? parents : next.orangTuaAnak1,
+      orangTuaAnak2: !next.orangTuaAnak2 || next.orangTuaAnak2 === previousParents ? parents : next.orangTuaAnak2,
+    };
+  }
+
   function changeEmployee(nip: string) {
-    setValues({ ...initialValues(today), nip });
+    setValues(updateCalculatedValues({ ...initialValues(today), nip }));
     setErrors({});
     setExtractionResult(null);
     if (sourceFilesRef.current) sourceFilesRef.current.value = "";
@@ -158,7 +174,7 @@ export function DpcpForm({ employees, today }: { employees: DpcpEmployeeOption[]
       setValues((current) => {
         const next = { ...current };
         for (const key of fillable) next[key] = extractedValues[key];
-        return next;
+        return updateCalculatedValues(next, current);
       });
       setExtractionResult(payload);
       toast.success(`${fillable.length} kolom kosong berhasil diisi. Periksa hasilnya sebelum membuat DPCP.`);
@@ -246,20 +262,21 @@ export function DpcpForm({ employees, today }: { employees: DpcpEmployeeOption[]
           <ReadOnlyField id="tanggalLahirOtomatis" label="Tanggal lahir" value={employee ? birthDateFromNip(employee.nip) : ""} />
           <div className="md:col-span-2"><ReadOnlyField id="jabatanOtomatis" label="Jabatan" value={employee?.position ?? ""} /></div>
           <div className="md:col-span-2"><ReadOnlyField id="pangkatOtomatis" label="Golongan / pangkat" value={employee?.rank ?? ""} /></div>
-          <Field id="tempatLahir" label="Tempat lahir" error={errors.tempatLahir?.[0]} description="Tanggal lahir otomatis dibaca dari NIP."><Input id="tempatLahir" value={values.tempatLahir} onChange={(event) => setValue("tempatLahir", event.target.value)} {...inputProps("tempatLahir")} /></Field>
-          <Field id="bup" label="Batas Usia Pensiun (BUP)" error={errors.bup?.[0]} description="Contoh: 58 Tahun atau 60 Tahun."><Input id="bup" value={values.bup} onChange={(event) => setValue("bup", event.target.value)} {...inputProps("bup")} /></Field>
+          <Field id="tempatLahir" label="Tempat lahir" error={errors.tempatLahir?.[0]} description="Tanggal lahir otomatis dibaca dari NIP."><Input id="tempatLahir" placeholder="INDRAMAYU" value={values.tempatLahir} onChange={(event) => setValue("tempatLahir", event.target.value)} {...inputProps("tempatLahir")} /></Field>
+          <Field id="bup" label="Batas Usia Pensiun (BUP)" error={errors.bup?.[0]}><select id="bup" value={values.bup} onChange={(event) => setValue("bup", event.target.value)} disabled={busy} aria-invalid={Boolean(errors.bup?.length)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm">{[58, 60, 65].map((age) => <option key={age} value={`${age} Tahun`}>{age} Tahun</option>)}</select></Field>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="border-b"><CardTitle>Data kepegawaian tambahan</CardTitle><CardDescription>Isi data yang belum tersedia pada daftar pegawai.</CardDescription></CardHeader>
         <CardContent className="grid gap-5 md:grid-cols-2">
-          <Field id="gaji" label="Gaji pokok terakhir" error={errors.gaji?.[0]} description={Number(values.gaji) > 0 ? formatRupiah(Number(values.gaji)) : "Masukkan nominal tanpa tanda titik atau koma."}><Input id="gaji" type="number" min="1" step="1" value={values.gaji} onChange={(event) => setValue("gaji", event.target.value)} {...inputProps("gaji")} /></Field>
+          <Field id="gaji" label="Gaji pokok terakhir" error={errors.gaji?.[0]} description="Otomatis dari golongan pegawai dan MKG, sesuai tabel PP Nomor 5 Tahun 2024."><Input id="gaji" value={values.gaji ? formatRupiah(Number(values.gaji)) : ""} placeholder="Isi masa kerja golongan terlebih dahulu" readOnly {...inputProps("gaji")} /></Field>
           <Field id="pendidikan1" label="Pendidikan pertama" error={errors.pendidikan1?.[0]}><Input id="pendidikan1" value={values.pendidikan1} onChange={(event) => setValue("pendidikan1", event.target.value)} {...inputProps("pendidikan1")} /></Field>
           <Field id="mkg" label="Masa kerja golongan" error={errors.mkg?.[0]} description="Contoh: 28 Tahun 4 Bulan."><Input id="mkg" value={values.mkg} onChange={(event) => setValue("mkg", event.target.value)} {...inputProps("mkg")} /></Field>
-          <Field id="mkp" label="Masa kerja pensiun" error={errors.mkp?.[0]} description="Contoh: 30 Tahun 2 Bulan."><Input id="mkp" value={values.mkp} onChange={(event) => setValue("mkp", event.target.value)} {...inputProps("mkp")} /></Field>
+          <Field id="mkp" label="Masa kerja pensiun" error={errors.mkp?.[0]} description="Otomatis dihitung dari TMT PNS sampai TMT pensiun, dalam tahun dan bulan penuh."><Input id="mkp" value={values.mkp} placeholder="Isi TMT PNS terlebih dahulu" readOnly {...inputProps("mkp")} /></Field>
           <Field id="mksp" label="Masa kerja sebelum PNS" required={false} error={errors.mksp?.[0]} description="Kosongkan bila tidak ada; dokumen akan menampilkan tanda hubung."><Input id="mksp" value={values.mksp} onChange={(event) => setValue("mksp", event.target.value)} {...inputProps("mksp")} /></Field>
-          <Field id="tmtpns" label="Mulai masuk PNS" error={errors.tmtpns?.[0]}><Input id="tmtpns" type="date" value={values.tmtpns} onChange={(event) => setValue("tmtpns", event.target.value)} {...inputProps("tmtpns")} /></Field>
+          <Field id="tmtpns" label="TMT PNS" error={errors.tmtpns?.[0]}><Input id="tmtpns" type="date" value={values.tmtpns} onChange={(event) => setValue("tmtpns", event.target.value)} {...inputProps("tmtpns")} /></Field>
+          <ReadOnlyField id="tmtPensiun" label="TMT pensiun" value={tmtPensiun ? formatIndonesianDate(tmtPensiun) : ""} />
         </CardContent>
       </Card>
 

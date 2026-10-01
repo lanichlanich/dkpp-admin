@@ -4,6 +4,9 @@ import { randomUUID } from "node:crypto";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { database as db } from "@/lib/database";
+import { EMPLOYEE_DOCUMENT_TYPE_LABELS, employeeDocumentIsSkp, employeeDocumentNeedsServicePeriod } from "@/lib/employee-document-types";
+import type { z } from "zod";
+import type { employeeDocumentEditSchema } from "@/lib/employee-document-validation";
 import type {
   EmployeeDocumentType,
   SkpAssessment,
@@ -27,12 +30,17 @@ const fileNamePrefixes: Record<EmployeeDocumentType, string> = {
   sasaran_kinerja_pegawai: "SKP",
 };
 
+function databaseDate(value: string) {
+  return value || (process.env.POSTGRES_URL?.trim() ? null : "");
+}
+
 export const MAX_EMPLOYEE_DOCUMENT_SIZE = MAX_UPLOAD_SIZE_BYTES;
 
 export type EmployeeDocument = {
   id: string;
   employeeNip: string;
   documentType: EmployeeDocumentType;
+  namaDokumen: string;
   nomorSurat: string;
   tglSurat: string;
   tmtSurat: string;
@@ -52,6 +60,7 @@ type EmployeeDocumentRow = {
   id: string;
   employee_nip: string;
   document_type: EmployeeDocumentType;
+  nama_dokumen: string;
   nomor_surat: string;
   tgl_surat: string | null;
   tmt_surat: string | null;
@@ -72,6 +81,7 @@ function mapEmployeeDocument(row: EmployeeDocumentRow): EmployeeDocument {
     id: row.id,
     employeeNip: row.employee_nip,
     documentType: row.document_type,
+    namaDokumen: row.nama_dokumen || (row.document_type === "dokumen_lainnya" ? row.nomor_surat : row.document_type === "sasaran_kinerja_pegawai" ? `SKP Tahun ${row.tahun}` : EMPLOYEE_DOCUMENT_TYPE_LABELS[row.document_type]),
     nomorSurat: row.nomor_surat,
     tglSurat: row.tgl_surat ?? "",
     tmtSurat: row.tmt_surat ?? "",
@@ -129,9 +139,10 @@ export async function getEmployeeDocuments(employeeNip: string): Promise<Employe
       documents.id,
       documents.employee_nip,
       documents.document_type,
+      documents.nama_dokumen,
       documents.nomor_surat,
-      documents.tgl_surat,
-      documents.tmt_surat,
+      CAST(documents.tgl_surat AS TEXT) AS tgl_surat,
+      CAST(documents.tmt_surat AS TEXT) AS tmt_surat,
       documents.masa_kerja,
       documents.tahun,
       documents.penilaian_kinerja,
@@ -154,6 +165,7 @@ export async function saveEmployeeDocument({
   userId,
   employeeNip,
   documentType,
+  namaDokumen,
   nomorSurat,
   tglSurat,
   tmtSurat,
@@ -168,6 +180,7 @@ export async function saveEmployeeDocument({
   userId: string;
   employeeNip: string;
   documentType: EmployeeDocumentType;
+  namaDokumen?: string;
   nomorSurat: string;
   tglSurat: string;
   tmtSurat: string;
@@ -185,7 +198,9 @@ export async function saveEmployeeDocument({
   const storageName = `${id}${extension}`;
   const filePath = path.join(storageDirectory, storageName);
   const createdAt = new Date().toISOString();
-  const automaticFileName = documentType === "dokumen_lainnya"
+  const automaticFileName = namaDokumen
+    ? employeeDocumentFileName(namaDokumen, nomorSurat, employeeNip, extension)
+    : documentType === "dokumen_lainnya"
     ? `${safeAutomaticFileNamePart(nomorSurat, "Dokumen Lainnya")}_${safeAutomaticFileNamePart(employeeNip, "NIP")}${extension}`
     : documentType === "sasaran_kinerja_pegawai"
       ? `SKP-${tahun}_${safeAutomaticFileNamePart(employeeNip, "NIP")}${extension}`
@@ -201,14 +216,14 @@ export async function saveEmployeeDocument({
     await uploadStorageObject(storageName, bytes, mimeType);
     await db.prepare(
       `INSERT INTO employee_documents (
-        id, employee_nip, user_id, document_type, nomor_surat, tgl_surat,
+        id, employee_nip, user_id, document_type, nama_dokumen, nomor_surat, tgl_surat,
         tmt_surat, masa_kerja, tahun, penilaian_kinerja, penilaian_perilaku,
         predikat_skp, original_file_name, storage_name, mime_type, file_size,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
-      id, employeeNip, userId, documentType, nomorSurat, tglSurat,
-      tmtSurat, masaKerja, tahun, penilaianKinerja, penilaianPerilaku,
+      id, employeeNip, userId, documentType, namaDokumen ?? "", nomorSurat, databaseDate(tglSurat),
+      databaseDate(tmtSurat), masaKerja, tahun, penilaianKinerja, penilaianPerilaku,
       predikatSkp, automaticFileName, storageName, mimeType, bytes.length,
       createdAt,
     );
@@ -218,6 +233,30 @@ export async function saveEmployeeDocument({
   }
 
   return (await getEmployeeDocuments(employeeNip)).find((document) => document.id === id) ?? null;
+}
+
+function employeeDocumentFileName(name: string, number: string, nip: string, extension: string) {
+  return [safeAutomaticFileNamePart(name, "Dokumen").slice(0, 90), number ? safeAutomaticFileNamePart(number, "Nomor").slice(0, 90) : "", safeAutomaticFileNamePart(nip, "NIP")]
+    .filter(Boolean).join("_") + extension;
+}
+
+export async function updateEmployeeDocument(employeeNip: string, id: string, input: z.infer<typeof employeeDocumentEditSchema>) {
+  const row = await db.prepare("SELECT storage_name FROM employee_documents WHERE id = ? AND employee_nip = ?")
+    .get(id, employeeNip) as { storage_name: string } | undefined;
+  if (!row || !storageNamePattern.test(row.storage_name)) return null;
+  const isSkp = employeeDocumentIsSkp(input.documentType);
+  const fileName = employeeDocumentFileName(input.namaDokumen, input.nomorSurat, employeeNip, path.extname(row.storage_name));
+  const result = await db.prepare(`UPDATE employee_documents SET
+    document_type = ?, nama_dokumen = ?, nomor_surat = ?, tgl_surat = ?, tmt_surat = ?,
+    masa_kerja = ?, tahun = ?, penilaian_kinerja = ?, penilaian_perilaku = ?, predikat_skp = ?, original_file_name = ?
+    WHERE id = ? AND employee_nip = ?`).run(
+      input.documentType, input.namaDokumen, input.nomorSurat, databaseDate(isSkp ? "" : input.tglSurat), databaseDate(isSkp ? "" : input.tmtSurat),
+      !isSkp && employeeDocumentNeedsServicePeriod(input.documentType) ? input.masaKerja : null,
+      isSkp ? Number(input.tahun) : null, isSkp ? input.penilaianKinerja : null,
+      isSkp ? input.penilaianPerilaku : null, isSkp ? input.predikatSkp : null, fileName, id, employeeNip,
+    );
+  if (!result.changes) return null;
+  return (await getEmployeeDocuments(employeeNip)).find(document => document.id === id) ?? null;
 }
 
 export async function getEmployeeDocumentForDownload(employeeNip: string, id: string) {

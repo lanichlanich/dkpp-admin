@@ -59,6 +59,8 @@ next-env.d.ts
 /.migration-backups/
 /.restore-tests/
 /.tmp/
+/supabase/.temp/
+/supabase/.temp/
 
 # production employee data and legacy local OCR asset
 /src/data/pegawai.json

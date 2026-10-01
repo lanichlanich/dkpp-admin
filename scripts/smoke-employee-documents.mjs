@@ -6,6 +6,7 @@ import PizZip from "pizzip";
 
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
 const database = new Database(path.join(process.cwd(), "data", "admin.db"));
+database.pragma("foreign_keys = ON");
 const storageDirectory = path.resolve(process.cwd(), "data", "employee-documents");
 const userId = `document-smoke-${randomUUID()}`;
 const token = randomBytes(32).toString("base64url");
@@ -153,6 +154,45 @@ try {
   assert(downloadResponse.status === 200, "Unduh dokumen pegawai gagal.");
   assert(downloaded.equals(samplePdf), "Isi file unduhan berbeda dari file unggahan.");
 
+  const namedForm = uploadForm("dokumen_lainnya", { includeServicePeriod: false });
+  namedForm.set("namaDokumen", "Ijazah S1");
+  namedForm.set("nomorSurat", "IJ/123");
+  const namedResponse = await fetch(`${baseUrl}/api/employees/${pns.nip}/documents`, {
+    method: "POST", headers: { Cookie: `admin_session=${token}` }, body: namedForm,
+  });
+  const namedPayload = await namedResponse.json();
+  assert(namedResponse.status === 201, "Unggah dengan nama dan nomor terpisah gagal.");
+  assert(namedPayload.document.namaDokumen === "Ijazah S1" && namedPayload.document.nomorSurat === "IJ/123", "Nama dan nomor tidak disimpan terpisah.");
+  assert(namedPayload.document.fileName === `Ijazah S1_IJ_123_${pns.nip}.pdf`, "Nama file unggahan baru salah.");
+  const editedId = namedPayload.document.id;
+  const beforeEdit = database.prepare("SELECT storage_name,file_size FROM employee_documents WHERE id = ?").get(editedId);
+  const editPayload = { documentType: "dokumen_lainnya", namaDokumen: "Ijazah S1 Revisi", nomorSurat: "IJ/456", tglSurat: "2026-03-02", tmtSurat: "2026-04-01" };
+  const edit = (payload, nip = pns.nip, auth = true) => fetch(`${baseUrl}/api/employees/${nip}/documents/${editedId}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json", ...(auth ? { Cookie: `admin_session=${token}` } : {}) }, body: JSON.stringify(payload),
+  });
+  assert((await edit(editPayload, pns.nip, false)).status === 401, "Edit tanpa sesi tidak ditolak.");
+  assert((await edit({ ...editPayload, namaDokumen: "" })).status === 422, "Edit nama kosong tidak ditolak.");
+  assert((await edit({ ...editPayload, tglSurat: "2026-02-30" })).status === 422, "Edit tanggal tidak valid tidak ditolak.");
+  assert((await edit(editPayload, pppk.nip)).status === 404, "Dokumen pegawai lain dapat diedit melalui NIP yang salah.");
+  const editedResponse = await edit(editPayload);
+  const edited = await editedResponse.json();
+  assert(editedResponse.status === 200 && edited.document.namaDokumen === editPayload.namaDokumen && edited.document.nomorSurat === editPayload.nomorSurat, "Edit metadata gagal.");
+  const editedFileName = `Ijazah S1 Revisi_IJ_456_${pns.nip}.pdf`;
+  assert(edited.document.fileName === editedFileName, "Nama file tidak mengikuti hasil edit.");
+  const afterEdit = database.prepare("SELECT storage_name,file_size FROM employee_documents WHERE id = ?").get(editedId);
+  assert(beforeEdit.storage_name === afterEdit.storage_name && beforeEdit.file_size === afterEdit.file_size, "Edit metadata mengganti file asli.");
+  const editedDownload = await fetch(`${baseUrl}/api/employees/${pns.nip}/documents/${editedId}/download`, { headers: { Cookie: `admin_session=${token}` } });
+  assert(editedDownload.headers.get("content-disposition")?.includes(encodeURIComponent(editedFileName)), "Nama unduhan tidak diperbarui.");
+  assert(Buffer.from(await editedDownload.arrayBuffer()).equals(samplePdf), "Isi file berubah setelah edit.");
+  const editedArchive = await fetch(`${baseUrl}/api/employees/${pns.nip}/documents/archive`, { headers: { Cookie: `admin_session=${token}` } });
+  assert(new PizZip(Buffer.from(await editedArchive.arrayBuffer())).file(editedFileName)?.asNodeBuffer().equals(samplePdf), "Nama dokumen dalam ZIP tidak diperbarui.");
+  const skpEdit = await fetch(`${baseUrl}/api/employees/${pns.nip}/documents/${pnsSkpPayload.document.id}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json", Cookie: `admin_session=${token}` },
+    body: JSON.stringify({ documentType: "sasaran_kinerja_pegawai", namaDokumen: "SKP Revisi 2025", nomorSurat: "SKP/2025", tahun: "2025", penilaianKinerja: "SESUAI EKSPEKTASI", penilaianPerilaku: "SESUAI EKSPEKTASI", predikatSkp: "BAIK" }),
+  });
+  const skpEdited = await skpEdit.json();
+  assert(skpEdit.status === 200 && skpEdited.document.tahun === 2025 && skpEdited.document.tglSurat === "", "Edit SKP gagal.");
+
   const pnsStorage = database.prepare(
     "SELECT storage_name FROM employee_documents WHERE id = ?",
   ).get(pnsPayload.document.id);
@@ -174,7 +214,7 @@ try {
   );
   assert(deletedDownloadResponse.status === 404, "Dokumen yang dihapus masih dapat diunduh.");
 
-  console.log("Smoke test berhasil: SKP dan Dokumen Lainnya untuk semua ASN serta validasi, arsip ZIP, unduh, dan hapus tervalidasi.");
+  console.log("Smoke test berhasil: unggah, edit nama/nomor/metadata, nama unduhan dan ZIP, file tetap utuh, validasi, SKP, akses sesi, dan hapus.");
 } finally {
   const files = database.prepare("SELECT storage_name FROM employee_documents WHERE user_id = ?").all(userId);
   database.prepare("DELETE FROM employee_documents WHERE user_id = ?").run(userId);

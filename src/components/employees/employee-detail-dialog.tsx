@@ -131,7 +131,7 @@ export function EmployeeDetailDialog({ employee }: { employee: Employee }) {
             </Tabs.List>
 
             <Tabs.Panel value="dokumen" className="mt-4 rounded-2xl border bg-zinc-50/50 p-4 shadow-sm outline-none sm:p-5">
-              <EmployeeDocumentsSection employee={employee} active={open && activeSection === "dokumen"} />
+              <EmployeeDocumentsSection key={employee.nip} employee={employee} active={open && activeSection === "dokumen"} />
             </Tabs.Panel>
 
             <Tabs.Panel value="jabatan" className="mt-4 rounded-2xl border bg-white p-5 shadow-sm outline-none sm:p-6">

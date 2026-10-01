@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileText, Files, HardDrive, LoaderCircle, Plus, ScanText, Search, ShieldCheck, Trash2, Upload, X } from "lucide-react";
+import { Download, FileText, Files, HardDrive, LoaderCircle, Pencil, Plus, ScanText, Search, ShieldCheck, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -51,6 +51,7 @@ function formatFileSize(bytes: number) {
 }
 
 type DocumentMetadata = {
+  namaDokumen: string;
   nomorSurat: string;
   tglSurat: string;
   tmtSurat: string;
@@ -62,6 +63,7 @@ type DocumentMetadata = {
 };
 
 const emptyMetadata: DocumentMetadata = {
+  namaDokumen: "",
   nomorSurat: "",
   tglSurat: "",
   tmtSurat: "",
@@ -84,6 +86,7 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
   const [documentToDelete, setDocumentToDelete] = useState<EmployeeDocument | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showUploadForm, setShowUploadForm] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<EmployeeDocument | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<EmployeeDocumentType | "all">("all");
   const [reloadKey, setReloadKey] = useState(0);
@@ -105,6 +108,7 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
       const searchText = [
         EMPLOYEE_DOCUMENT_TYPE_LABELS[document.documentType],
         document.nomorSurat,
+        document.namaDokumen,
         document.fileName,
         document.tahun?.toString(),
         document.penilaianKinerja,
@@ -184,6 +188,35 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
     setErrors({});
   }
 
+  function closeForm() {
+    setShowUploadForm(false);
+    setEditingDocument(null);
+    setMetadata(emptyMetadata);
+    setExtractionResult(null);
+    setErrors({});
+    setDocumentType(allowedTypes[0] ?? "");
+  }
+
+  function editDocument(document: EmployeeDocument) {
+    setEditingDocument(document);
+    setDocumentType(document.documentType);
+    setMetadata({
+      namaDokumen: document.namaDokumen,
+      nomorSurat: document.nomorSurat,
+      tglSurat: document.tglSurat,
+      tmtSurat: document.tmtSurat,
+      masaKerja: document.masaKerja ?? "",
+      tahun: document.tahun?.toString() ?? "",
+      penilaianKinerja: document.penilaianKinerja ?? "",
+      penilaianPerilaku: document.penilaianPerilaku ?? "",
+      predikatSkp: document.predikatSkp ?? "",
+    });
+    setExtractionResult(null);
+    setErrors({});
+    setShowUploadForm(true);
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -197,22 +230,27 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
     setSubmitting(true);
     setErrors({});
     try {
-      const response = await fetch(`/api/employees/${encodeURIComponent(employee.nip)}/documents`, {
-        method: "POST",
-        body: new FormData(form),
+      const endpoint = `/api/employees/${encodeURIComponent(employee.nip)}/documents`;
+      const response = await fetch(editingDocument ? `${endpoint}/${encodeURIComponent(editingDocument.id)}` : endpoint, {
+        method: editingDocument ? "PATCH" : "POST",
+        ...(editingDocument ? { headers: { "Content-Type": "application/json" } } : {}),
+        body: editingDocument ? JSON.stringify({ ...metadata, documentType }) : new FormData(form),
       });
       const payload = await response.json();
       if (!response.ok) {
         setErrors(payload.errors ?? {});
-        throw new Error(payload.message ?? "Dokumen gagal diunggah.");
+        throw new Error(payload.message ?? "Dokumen gagal disimpan.");
       }
-      if (payload.document) setDocuments((current) => [payload.document, ...(current ?? [])]);
+      if (payload.document) setDocuments((current) => editingDocument
+        ? (current ?? []).map(document => document.id === editingDocument.id ? payload.document : document)
+        : [payload.document, ...(current ?? [])]);
       form.reset();
       setDocumentType(allowedTypes[0] ?? "");
       setMetadata(emptyMetadata);
       setExtractionResult(null);
       setShowUploadForm(false);
-      toast.success("Dokumen pegawai berhasil diunggah.");
+      setEditingDocument(null);
+      toast.success(editingDocument ? "Dokumen dan nama file berhasil diperbarui." : "Dokumen pegawai berhasil diunggah.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Dokumen gagal diunggah.");
     } finally {
@@ -231,6 +269,7 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message ?? "Dokumen gagal dihapus.");
       setDocuments((current) => current?.filter((document) => document.id !== documentToDelete.id) ?? []);
+      if (editingDocument?.id === documentToDelete.id) closeForm();
       setDocumentToDelete(null);
       toast.success("Dokumen berhasil dihapus.");
     } catch (error) {
@@ -257,7 +296,7 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
                 <Download />Download semua
               </a>
             )}
-            <Button type="button" onClick={() => setShowUploadForm((current) => !current)} aria-expanded={showUploadForm} aria-controls={`form-dokumen-${employee.nip}`}>
+            <Button type="button" disabled={busy} onClick={() => { if (showUploadForm) closeForm(); else setShowUploadForm(true); }} aria-expanded={showUploadForm} aria-controls={`form-dokumen-${employee.nip}`}>
               {showUploadForm ? <><X />Tutup form</> : <><Plus />Tambah dokumen</>}
             </Button>
           </div>
@@ -274,8 +313,8 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
       ) : (
         <form id={`form-dokumen-${employee.nip}`} ref={formRef} onSubmit={submit} className="space-y-5 rounded-2xl border bg-white p-4 shadow-sm shadow-zinc-100 sm:p-5">
           <div>
-            <p className="font-semibold text-zinc-950">Tambah dokumen baru</p>
-            <p className="mt-1 text-xs leading-5 text-zinc-500">{isSkp ? "Isi hasil penilaian SKP dan pilih file dokumennya." : "Pilih jenis dokumen, lengkapi metadata, lalu unggah file."} PDF, DOC, atau DOCX · maksimal {MAX_UPLOAD_SIZE_MB} MB.</p>
+            <p className="font-semibold text-zinc-950">{editingDocument ? "Edit dokumen" : "Tambah dokumen baru"}</p>
+            <p className="mt-1 text-xs leading-5 text-zinc-500">{editingDocument ? "Perbarui data dokumen. Nama file unduhan akan mengikuti nama dan nomor dokumen yang disimpan." : `Pilih jenis dokumen, lengkapi metadata, lalu unggah file. PDF, DOC, atau DOCX · maksimal ${MAX_UPLOAD_SIZE_MB} MB.`}</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -283,6 +322,16 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
               <select id={`documentType-${employee.nip}`} name="documentType" value={documentType} onChange={(event) => changeDocumentType(event.target.value as EmployeeDocumentType)} disabled={busy} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40">
                 {allowedTypes.map((type) => <option key={type} value={type}>{EMPLOYEE_DOCUMENT_TYPE_LABELS[type]}</option>)}
               </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`namaDokumen-${employee.nip}`}>Nama dokumen</Label>
+              <Input id={`namaDokumen-${employee.nip}`} name="namaDokumen" value={metadata.namaDokumen} onChange={event => setMetadata(current => ({ ...current, namaDokumen: event.target.value }))} placeholder="Contoh: Ijazah S1 atau SK CPNS" maxLength={200} disabled={busy} required aria-invalid={Boolean(errors.namaDokumen?.length)} />
+              {errors.namaDokumen?.[0] && <p className="text-xs font-medium text-destructive">{errors.namaDokumen[0]}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`nomorSurat-${employee.nip}`}>Nomor dokumen{isSkp ? " (opsional)" : ""}</Label>
+              <Input id={`nomorSurat-${employee.nip}`} name="nomorSurat" value={metadata.nomorSurat} onChange={event => setMetadata(current => ({ ...current, nomorSurat: event.target.value }))} maxLength={200} disabled={busy} required={!isSkp} aria-invalid={Boolean(errors.nomorSurat?.length)} className={cn(extractionResult?.confidence.nomorSurat === "low" && metadata.nomorSurat && "border-amber-400 bg-amber-50")} />
+              {errors.nomorSurat?.[0] && <p className="text-xs font-medium text-destructive">{errors.nomorSurat[0]}</p>}
             </div>
             {isSkp ? (
               <>
@@ -319,11 +368,6 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
             ) : (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor={`nomorSurat-${employee.nip}`}>{documentType === "dokumen_lainnya" ? "Nama atau nomor dokumen" : "Nomor surat"}</Label>
-                  <Input id={`nomorSurat-${employee.nip}`} name="nomorSurat" value={metadata.nomorSurat} onChange={(event) => setMetadata((current) => ({ ...current, nomorSurat: event.target.value }))} disabled={busy} required aria-invalid={Boolean(errors.nomorSurat?.length)} className={cn(extractionResult?.confidence.nomorSurat === "low" && metadata.nomorSurat && "border-amber-400 bg-amber-50")} />
-                  {errors.nomorSurat?.[0] && <p className="text-xs font-medium text-destructive">{errors.nomorSurat[0]}</p>}
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor={`tglSurat-${employee.nip}`}>{documentType === "dokumen_lainnya" ? "Tanggal dokumen" : "Tanggal surat"}</Label>
                   <Input id={`tglSurat-${employee.nip}`} name="tglSurat" type="date" value={metadata.tglSurat} onChange={(event) => setMetadata((current) => ({ ...current, tglSurat: event.target.value }))} disabled={busy} required aria-invalid={Boolean(errors.tglSurat?.length)} className={cn(extractionResult?.confidence.tglSurat === "low" && metadata.tglSurat && "border-amber-400 bg-amber-50")} />
                   {errors.tglSurat?.[0] && <p className="text-xs font-medium text-destructive">{errors.tglSurat[0]}</p>}
@@ -342,12 +386,12 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
                 {errors.masaKerja?.[0] && <p className="text-xs font-medium text-destructive">{errors.masaKerja[0]}</p>}
               </div>
             )}
-            <div className={cn("space-y-2", isSkp || !documentType || !employeeDocumentNeedsServicePeriod(documentType) ? "sm:col-span-2" : undefined)}>
+            {!editingDocument && <div className={cn("space-y-2", isSkp || !documentType || !employeeDocumentNeedsServicePeriod(documentType) ? "sm:col-span-2" : undefined)}>
               <Label htmlFor={`file-${employee.nip}`}>File dokumen</Label>
               <p className="text-xs text-muted-foreground">Tombol Baca &amp; isi otomatis mengirim dokumen ke Google Gemini. Periksa hasil sebelum mengunggah.</p>
               <Input id={`file-${employee.nip}`} name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" disabled={busy} required aria-invalid={Boolean(errors.file?.length)} className="cursor-pointer file:mr-3 file:font-medium" />
               {errors.file?.[0] && <p className="text-xs font-medium text-destructive">{errors.file[0]}</p>}
-            </div>
+            </div>}
           </div>
           {extractionResult && (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900">
@@ -357,12 +401,13 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
             </div>
           )}
           <div className="flex flex-wrap justify-end gap-2">
-            {!isSkp && (
+            {!isSkp && !editingDocument && (
               <Button type="button" variant="outline" onClick={readAndFill} disabled={busy}>
                 {extracting ? <><LoaderCircle className="animate-spin" />Membaca dokumen...</> : <><ScanText />Baca & isi otomatis</>}
               </Button>
             )}
-            <Button type="submit" disabled={busy}>{submitting ? <><LoaderCircle className="animate-spin" />Mengunggah...</> : <><Upload />Unggah dokumen</>}</Button>
+            {editingDocument && <Button type="button" variant="outline" disabled={busy} onClick={closeForm}>Batal</Button>}
+            <Button type="submit" disabled={busy}>{submitting ? <><LoaderCircle className="animate-spin" />Menyimpan...</> : editingDocument ? <><Pencil />Simpan perubahan</> : <><Upload />Unggah dokumen</>}</Button>
           </div>
         </form>
       ))}
@@ -398,7 +443,8 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600"><FileText className="size-5" /></span>
                 <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{EMPLOYEE_DOCUMENT_TYPE_LABELS[document.documentType]}</Badge>{document.documentType === "sasaran_kinerja_pegawai" && <Badge variant="secondary">{document.predikatSkp}</Badge>}</div>
-                <p className="mt-2 font-semibold text-zinc-950">{document.documentType === "sasaran_kinerja_pegawai" ? `SKP Tahun ${document.tahun}` : document.nomorSurat}</p>
+                <p className="mt-2 break-words font-semibold text-zinc-950">{document.namaDokumen}</p>
+                {document.nomorSurat && <p className="mt-1 text-xs text-zinc-500">Nomor: {document.nomorSurat}</p>}
                 {document.documentType === "sasaran_kinerja_pegawai" ? (
                   <dl className="mt-2 grid gap-x-5 gap-y-1 text-xs text-zinc-500 sm:grid-cols-2"><div><dt className="inline">Kinerja: </dt><dd className="inline font-medium text-zinc-700">{document.penilaianKinerja}</dd></div><div><dt className="inline">Perilaku: </dt><dd className="inline font-medium text-zinc-700">{document.penilaianPerilaku}</dd></div></dl>
                 ) : (
@@ -408,11 +454,12 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
                 <p className="mt-1 text-xs text-zinc-400">Diunggah {dateTimeFormatter.format(new Date(document.createdAt))} oleh {document.createdBy}</p>
                 </div>
               </div>
-              <div className="flex shrink-0 gap-2 border-t pt-3 sm:border-0 sm:pt-0">
+              <div className="flex shrink-0 flex-wrap gap-2 border-t pt-3 sm:border-0 sm:pt-0">
+                <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => editDocument(document)} aria-label={`Edit ${document.namaDokumen}`}><Pencil />Edit</Button>
                 <a href={`/api/employees/${encodeURIComponent(employee.nip)}/documents/${encodeURIComponent(document.id)}/download`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1 sm:flex-none")}>
                   <Download />Unduh
                 </a>
-                <Button type="button" variant="destructive" size="sm" className="flex-1 sm:flex-none" onClick={() => setDocumentToDelete(document)} aria-label={`Hapus ${document.fileName}`}>
+                <Button type="button" variant="destructive" size="sm" disabled={busy || deleting} className="flex-1 sm:flex-none" onClick={() => setDocumentToDelete(document)} aria-label={`Hapus ${document.fileName}`}>
                   <Trash2 />Hapus
                 </Button>
               </div>

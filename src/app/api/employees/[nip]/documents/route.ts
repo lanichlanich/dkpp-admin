@@ -18,6 +18,7 @@ import {
   validateEmployeeDocumentFile,
 } from "@/lib/employee-documents";
 import { getCurrentUser } from "@/lib/session";
+import { employeeDocumentIdentitySchema } from "@/lib/employee-document-validation";
 import { MAX_MULTIPART_REQUEST_SIZE_BYTES, MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 
 export const runtime = "nodejs";
@@ -92,6 +93,12 @@ export async function POST(request: Request, context: RouteContext<"/api/employe
   }
 
   let nomorSurat = "";
+  const identity = employeeDocumentIdentitySchema.safeParse({
+    namaDokumen: formData.get("namaDokumen") ?? undefined,
+    nomorSurat: formData.get("nomorSurat") ?? "",
+  });
+  if (!identity.success) return Response.json({ message: "Periksa nama dan nomor dokumen.", errors: identity.error.flatten().fieldErrors }, { status: 422 });
+  nomorSurat = identity.data.nomorSurat;
   let tglSurat = "";
   let tmtSurat = "";
   let masaKerja: string | null = null;
@@ -152,6 +159,7 @@ export async function POST(request: Request, context: RouteContext<"/api/employe
       userId: user.id,
       employeeNip: employee.nip,
       documentType,
+      namaDokumen: identity.data.namaDokumen,
       nomorSurat,
       tglSurat,
       tmtSurat,

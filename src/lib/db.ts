@@ -426,6 +426,11 @@ if (employeeDocumentsTable && !employeeDocumentsTable.sql.includes("'sasaran_kin
   })();
 }
 
+const employeeDocumentColumns = db.prepare("PRAGMA table_info(employee_documents)").all() as Array<{ name: string }>;
+if (!employeeDocumentColumns.some(column => column.name === "nama_dokumen")) {
+  db.exec("ALTER TABLE employee_documents ADD COLUMN nama_dokumen TEXT NOT NULL DEFAULT ''");
+}
+
 type EmployeeSeedRow = {
   NIP: string;
   Nama: string;

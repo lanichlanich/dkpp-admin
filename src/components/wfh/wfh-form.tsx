@@ -1,5 +1,8 @@
 "use client";
 
+import { SignatoryField } from "@/components/letters/signatory-field";
+import { DEFAULT_SIGNATORY, type Signatory, type SignatoryOption } from "@/lib/signatory";
+
 import { useState } from "react";
 import { Download, FilePenLine, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -36,8 +39,9 @@ function Field({ id, label, description, error, children }: {
   );
 }
 
-export function WfhForm({ today }: { today: string }) {
+export function WfhForm({ today, signatories }: { today: string; signatories: SignatoryOption[] }) {
   const router = useRouter();
+  const [signatory, setSignatory] = useState<Signatory>(signatories[0] ?? DEFAULT_SIGNATORY);
   const defaultMonth = monthFromIsoDate(today) ?? "Agustus";
   const [values, setValues] = useState<FormValues>({
     nomorSurat: "",
@@ -61,7 +65,7 @@ export function WfhForm({ today }: { today: string }) {
       const response = await fetch("/api/wfh/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, signatory }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({ message: "Dokumen gagal dibuat." }));
@@ -89,6 +93,7 @@ export function WfhForm({ today }: { today: string }) {
 
   return (
     <form onSubmit={submit} className="space-y-6" noValidate>
+      <SignatoryField value={signatory} onChange={(value) => { setSignatory(value); setErrors({}); }} options={signatories} disabled={submitting} error={errors.signatory?.[0]} />
       <Card>
         <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2"><FilePenLine className="size-5 text-indigo-600" />Data surat tugas WFH</CardTitle>

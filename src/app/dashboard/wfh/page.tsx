@@ -1,3 +1,4 @@
+import { getSignatoryOptions } from "@/lib/signatory-options";
 import type { Metadata } from "next";
 import { WfhForm } from "@/components/wfh/wfh-form";
 import { WfhHistory } from "@/components/wfh/wfh-history";
@@ -7,6 +8,7 @@ import { WFH_TEMPLATE_YEAR } from "@/lib/wfh";
 export const metadata: Metadata = { title: "Pembuatan Surat Tugas WFH" };
 
 export default async function WfhPage() {
+  const signatories = await getSignatoryOptions();
   const documents = await getWfhHistory();
   const currentDate = new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
@@ -23,7 +25,7 @@ export default async function WfhPage() {
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-950 md:text-3xl">Pembuatan Surat Tugas WFH</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">Isi tiga tag pada template resmi, buat dokumen Word dengan format asli, lalu unduh kembali dokumen yang tersimpan kapan saja.</p>
       </div>
-      <WfhForm today={today} />
+      <WfhForm signatories={signatories} today={today} />
       <WfhHistory documents={documents} />
     </div>
   );

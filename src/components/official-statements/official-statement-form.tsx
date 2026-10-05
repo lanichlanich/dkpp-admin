@@ -1,5 +1,8 @@
 "use client";
 
+import { SignatoryField } from "@/components/letters/signatory-field";
+import { DEFAULT_SIGNATORY, type Signatory, type SignatoryOption } from "@/lib/signatory";
+
 import { useMemo, useState } from "react";
 import { Check, ChevronsUpDown, Download, FileCheck2, Gavel, LoaderCircle, Scale, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -97,8 +100,9 @@ const statementOptions: Array<{
   },
 ];
 
-export function OfficialStatementForm({ employees, today }: { employees: DpcpEmployeeOption[]; today: string }) {
+export function OfficialStatementForm({ employees, today, signatories }: { employees: DpcpEmployeeOption[]; today: string; signatories: SignatoryOption[] }) {
   const router = useRouter();
+  const [signatory, setSignatory] = useState<Signatory>(signatories[0] ?? DEFAULT_SIGNATORY);
   const [values, setValues] = useState<FormValues>({ documentType: "hukdis", nip: "", nomorSurat: "", tanggalSurat: today });
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -119,7 +123,7 @@ export function OfficialStatementForm({ employees, today }: { employees: DpcpEmp
       const response = await fetch("/api/surat-hukdis-hukda/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, signatory }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({ message: "Dokumen gagal dibuat." }));
@@ -146,6 +150,7 @@ export function OfficialStatementForm({ employees, today }: { employees: DpcpEmp
 
   return (
     <form onSubmit={submit} className="space-y-6" noValidate>
+      <SignatoryField value={signatory} onChange={(value) => { setSignatory(value); setErrors({}); }} options={signatories} disabled={submitting} error={errors.signatory?.[0]} />
       <Card>
         <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2"><FileCheck2 className="size-5 text-indigo-600" />Pilih jenis surat</CardTitle>
@@ -207,7 +212,7 @@ export function OfficialStatementForm({ employees, today }: { employees: DpcpEmp
         <CardContent className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="flex items-center gap-2 text-sm font-medium text-emerald-950"><ShieldCheck className="size-4" />Format resmi dan penanda TTE dipertahankan</p>
-            <p className="mt-1 text-xs leading-5 text-emerald-800">Kop, isi pernyataan, identitas pejabat penandatangan, tabel, dan tata letak mengikuti template terlampir.</p>
+            <p className="mt-1 text-xs leading-5 text-emerald-800">Identitas pejabat pada isi pernyataan dan bagian tanda tangan mengikuti pilihan di atas.</p>
           </div>
           <Button type="submit" size="lg" disabled={submitting || employees.length === 0} className="min-w-56">
             {submitting ? <><LoaderCircle className="animate-spin" />Membuat dokumen...</> : <><Download />Buat dan unduh DOCX</>}

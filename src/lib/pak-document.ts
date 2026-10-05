@@ -1,3 +1,4 @@
+import { applySignatoryToTemplate } from "@/lib/signatory-document";
 import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -8,6 +9,7 @@ import { calculatePak, convertCredit, formatCredit, pakComponentLabels, pakLevel
 import type { PakInput } from "@/lib/pak-validation";
 
 export async function generatePakDocument(input: PakInput, employeeName: string) {
+  const signatory = input.signatory ?? { name: input.penilaiNama, nip: input.penilaiNip, title: "Pejabat Penilai Kinerja", rank: "", status: "definitif" as const };
   const calculation = calculatePak(input);
   const period = input.period;
   const months = period.endMonth - period.startMonth + 1;
@@ -21,7 +23,7 @@ export async function generatePakDocument(input: PakInput, employeeName: string)
     jabatan_tmt: `${input.jabatan} / ${formatIndonesianDate(input.tmtJabatan)}`,
     unit_kerja: input.unitKerja, instansi: input.instansi,
     nomor: input.nomor, tanggal: formatIndonesianDate(input.tanggal), tempat: input.tempatPenetapan,
-    penilai_nama: input.penilaiNama, penilai_nip: input.penilaiNip,
+    penilai_nama: signatory.name, penilai_nip: signatory.nip,
     periode_penilaian: `${periodLabel(period)} ${period.year}`,
     predikat: period.predicate, persentase: `${pakPredicates[period.predicate]} %`, koefisien: formatCredit(pakLevels[period.level].coefficient),
     rumus: months === 12 ? "(Kolom 2 x kolom 3)" : `(${months}/12 x kolom 2 x kolom 3)`,
@@ -43,7 +45,9 @@ export async function generatePakDocument(input: PakInput, employeeName: string)
     data[`${key}_catatan`] = row.note || "-";
   }
   const template = await readFile(path.join(process.cwd(), "src/templates/template-pak.docx"));
-  const document = new Docxtemplater(new PizZip(template), { paragraphLoop: true, linebreaks: true, nullGetter: () => { throw new Error("Isian template PAK tidak lengkap."); } });
+  const zip = new PizZip(template);
+  applySignatoryToTemplate(zip, signatory, "pak");
+  const document = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true, nullGetter: () => { throw new Error("Isian template PAK tidak lengkap."); } });
   document.render(data);
   return document.getZip().generate({ type: "nodebuffer", compression: "DEFLATE" });
 }

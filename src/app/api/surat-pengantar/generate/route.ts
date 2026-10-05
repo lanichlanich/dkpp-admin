@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       no: String(input.nomorUrut),
       "file yang dikirim": input.fileYangDikirim,
       jumlah: String(input.jumlah),
-    });
+    }, input.signatory);
     const savedDocument = await saveSuratPengantarDocument({
       userId: user.id,
       nomorSurat: input.nomorSurat,

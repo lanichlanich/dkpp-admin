@@ -1,3 +1,5 @@
+import { applySignatoryToTemplate } from "@/lib/signatory-document";
+import { DEFAULT_SIGNATORY, type Signatory } from "@/lib/signatory";
 import "server-only";
 
 import { readFile } from "node:fs/promises";
@@ -87,10 +89,11 @@ function visibleTags(documentXml: string) {
   return [...tags];
 }
 
-export async function generateDpcpDocument(data: Record<string, string>) {
+export async function generateDpcpDocument(data: Record<string, string>, signatory: Signatory = DEFAULT_SIGNATORY) {
   const templatePath = path.join(process.cwd(), "src", "templates", "template-dpcp.docx");
   const template = await readFile(templatePath);
   const zip = new PizZip(template);
+  applySignatoryToTemplate(zip, signatory, "dpcp");
   const documentFile = zip.file("word/document.xml");
   if (!documentFile) throw new Error("Template DPCP tidak memiliki document.xml.");
 

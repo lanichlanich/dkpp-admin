@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       pangkat_gol_pegawai: employee.rank,
       jabatan_pegawai: employee.position,
       tgl_surat: formatIndonesianDate(input.tanggalSurat),
-    });
+    }, input.signatory);
     const saved = await saveOfficialStatementDocument({
       userId: user.id,
       documentType: input.documentType,

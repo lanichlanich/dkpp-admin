@@ -1,3 +1,5 @@
+import { applySignatoryToTemplate } from "@/lib/signatory-document";
+import { DEFAULT_SIGNATORY, type Signatory } from "@/lib/signatory";
 import "server-only";
 
 import Docxtemplater from "docxtemplater";
@@ -5,10 +7,11 @@ import PizZip from "pizzip";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-export async function generateKgbDocument(data: Record<string, string | number>) {
+export async function generateKgbDocument(data: Record<string, string | number>, signatory: Signatory = DEFAULT_SIGNATORY) {
   const templatePath = path.join(process.cwd(), "src", "templates", "template-kgb.docx");
   const template = await readFile(templatePath);
   const zip = new PizZip(template);
+  applySignatoryToTemplate(zip, signatory, "letter");
   // New forms send the full classified number. Remove only the old template's
   // fixed prefix/suffix while retaining the surrounding runs and formatting.
   if (String(data.nomor_surat).includes("/")) {

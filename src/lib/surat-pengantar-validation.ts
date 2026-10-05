@@ -1,3 +1,4 @@
+import { DEFAULT_SIGNATORY, signatorySchema } from "@/lib/signatory";
 import { z } from "zod";
 import { letterNumberSchema } from "@/lib/letter-number-validation";
 
@@ -19,6 +20,7 @@ const isoDate = z.string()
   }, "Tanggal surat tidak valid.");
 
 export const suratPengantarSchema = z.object({
+  signatory: signatorySchema.default(DEFAULT_SIGNATORY),
   tanggalSurat: isoDate,
   nomorSurat: letterNumberSchema,
   nomorUrut: z.coerce.number().int().min(1, "Nomor urut minimal 1.").max(9_999, "Nomor urut terlalu besar."),

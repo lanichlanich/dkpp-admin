@@ -45,13 +45,6 @@ export async function POST(request: Request) {
   ).get(result.data.nip) as EmployeeRow | undefined;
   if (!employee) return Response.json({ message: "Pegawai PNS aktif tidak ditemukan." }, { status: 422 });
 
-  const head = await db.prepare(
-    `SELECT nip, name, position, rank FROM employees
-     WHERE status = 'Aktif' AND position LIKE 'KEPALA DINAS%'
-     ORDER BY name COLLATE NOCASE LIMIT 1`,
-  ).get() as EmployeeRow | undefined;
-  if (!head) return Response.json({ message: "Data Kepala Dinas aktif tidak ditemukan." }, { status: 422 });
-
   const input = result.data;
   const salary = dpcpSalary(employee.rank, input.mkg);
   const pensionService = dpcpPensionService(input.tmtpns, dpcpRetirementDate(employee.nip, input.bup));
@@ -91,9 +84,9 @@ export async function POST(request: Request) {
       "anak2_ayah/ibu": input.namaAnak2 ? (input.orangTuaAnak2 || dpcpParents(employee.name, input.namaPasangan)) : "",
       alamat_pensiun: input.alamatPensiun,
       tgl_dpcp: formatIndonesianDate(input.tglDpcp),
-      nama_kadis: head.name,
-      nip_kadis: head.nip,
-    });
+      nama_kadis: input.signatory.name,
+      nip_kadis: input.signatory.nip,
+    }, input.signatory);
 
     const savedDocument = await saveDpcpDocument({
       userId: user.id,

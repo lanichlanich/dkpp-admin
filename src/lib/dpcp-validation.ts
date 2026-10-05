@@ -1,3 +1,4 @@
+import { DEFAULT_SIGNATORY, signatorySchema } from "@/lib/signatory";
 import { z } from "zod";
 import { dpcpPensionService, parseDpcpService } from "@/lib/dpcp-calculations";
 
@@ -7,6 +8,7 @@ const isoDate = (label: string) => z.string().refine((value) => Boolean(dpcpPens
 const optionalDate = z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal tidak valid.")]);
 
 export const dpcpSchema = z.object({
+  signatory: signatorySchema.default(DEFAULT_SIGNATORY),
   nip: z.string().regex(/^\d{18}$/, "Pilih pegawai PNS aktif."),
   bup: z.enum(["58 Tahun", "60 Tahun", "65 Tahun"], { error: "Pilih BUP 58, 60, atau 65 Tahun." }),
   tempatLahir: requiredText("Tempat lahir", 100),

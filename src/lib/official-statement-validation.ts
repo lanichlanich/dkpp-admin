@@ -1,3 +1,4 @@
+import { DEFAULT_SIGNATORY, signatorySchema } from "@/lib/signatory";
 import { z } from "zod";
 import { letterNumberSchema } from "@/lib/letter-number-validation";
 
@@ -12,6 +13,7 @@ const isoDate = z.string()
   }, "Tanggal surat tidak valid.");
 
 export const officialStatementSchema = z.object({
+  signatory: signatorySchema.default(DEFAULT_SIGNATORY),
   documentType: z.enum(["hukdis", "hukda"], { message: "Jenis surat wajib dipilih." }),
   nip: z.string().regex(/^\d{18}$/, "Pilih pegawai PNS aktif yang valid."),
   nomorSurat: letterNumberSchema,

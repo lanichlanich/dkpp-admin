@@ -1,3 +1,5 @@
+import { applySignatoryToTemplate } from "@/lib/signatory-document";
+import { DEFAULT_SIGNATORY, type Signatory } from "@/lib/signatory";
 import "server-only";
 
 import { readFile } from "node:fs/promises";
@@ -91,10 +93,11 @@ function visibleAngleTags(documentXml: string) {
   return [...tags];
 }
 
-export async function generateSuratPengantarDocument(replacements: Record<string, string>) {
+export async function generateSuratPengantarDocument(replacements: Record<string, string>, signatory: Signatory = DEFAULT_SIGNATORY) {
   const templatePath = path.join(process.cwd(), "src", "templates", "template-surat-pengantar.docx");
   const template = await readFile(templatePath);
   const zip = new PizZip(template);
+  applySignatoryToTemplate(zip, signatory, "letter");
   const documentFile = zip.file("word/document.xml");
   if (!documentFile) throw new Error("Template surat pengantar tidak memiliki document.xml.");
 

@@ -1,3 +1,4 @@
+import { getSignatoryOptions } from "@/lib/signatory-options";
 import type { Metadata } from "next";
 import { DpcpForm } from "@/components/dpcp/dpcp-form";
 import { DpcpHistory } from "@/components/dpcp/dpcp-history";
@@ -7,6 +8,7 @@ import { getDpcpEmployeeOptions } from "@/lib/employees";
 export const metadata: Metadata = { title: "Pembuatan DPCP" };
 
 export default async function DpcpPage() {
+  const signatories = await getSignatoryOptions();
   const [employees, documents] = await Promise.all([getDpcpEmployeeOptions(), getDpcpHistory()]);
   const today = new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
@@ -22,7 +24,7 @@ export default async function DpcpPage() {
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-950 md:text-3xl">Pembuatan DPCP</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">Pilih pegawai PNS aktif, lengkapi data yang belum tersedia, kemudian unduh Data Perorangan Calon Penerima Pensiun dalam format Word.</p>
       </div>
-      <DpcpForm employees={employees} today={today} />
+      <DpcpForm signatories={signatories} employees={employees} today={today} />
       <DpcpHistory documents={documents} />
     </div>
   );

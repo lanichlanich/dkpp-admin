@@ -1,4 +1,6 @@
 "use client";
+import { SignatoryField } from "@/components/letters/signatory-field";
+import { DEFAULT_SIGNATORY, type Signatory, type SignatoryOption } from "@/lib/signatory";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -35,7 +37,7 @@ function PeriodFields({ value, onChange, prefix, errors }: { value: PakPeriod; o
   </div>;
 }
 
-export function PakForm({ employees, today }: { employees: PakEmployeeOption[]; today: string }) {
+export function PakForm({ employees, today, signatories }: { employees: PakEmployeeOption[]; today: string; signatories: SignatoryOption[] }) {
   const [nip, setNip] = useState("");
   const [status, setStatus] = useState("Semua");
   const [open, setOpen] = useState(false);
@@ -50,7 +52,7 @@ export function PakForm({ employees, today }: { employees: PakEmployeeOption[]; 
       </div>
       {selected && <div className="rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-950"><strong>Status saat ini: {selected.status}.</strong> Pangkat dan jabatan awal berasal dari database saat ini. Cocokkan dengan SK pada periode PAK; perubahan isian di sini hanya berlaku untuk dokumen ini.{selected.positionType !== "JF" && " Jabatan saat ini bukan JF; isi jabatan fungsional historis beserta TMT-nya."} Mengganti pegawai akan mengosongkan isian PAK sebelumnya.</div>}
     </CardContent></Card>
-    {selected ? <PakEditor key={selected.nip} employee={selected} employees={employees} today={today} onBusy={setBusy} /> : <p className="rounded-xl border border-dashed p-8 text-center text-sm text-zinc-500">Pilih pegawai untuk mulai menyusun PAK.</p>}
+    {selected ? <PakEditor signatories={signatories} key={selected.nip} employee={selected} employees={employees} today={today} onBusy={setBusy} /> : <p className="rounded-xl border border-dashed p-8 text-center text-sm text-zinc-500">Pilih pegawai untuk mulai menyusun PAK.</p>}
   </div>;
 }
 
@@ -67,8 +69,9 @@ function initialValues(employee: PakEmployeeOption, today: string): PakInput {
   };
 }
 
-function PakEditor({ employee, employees, today, onBusy }: { employee: PakEmployeeOption; employees: PakEmployeeOption[]; today: string; onBusy: (busy: boolean) => void }) {
+function PakEditor({ employee, today, onBusy, signatories }: { employee: PakEmployeeOption; employees: PakEmployeeOption[]; today: string; onBusy: (busy: boolean) => void; signatories: SignatoryOption[] }) {
   const router = useRouter();
+  const [signatory, setSignatory] = useState<Signatory>(signatories[0] ?? DEFAULT_SIGNATORY);
   const [values, setValues] = useState(() => initialValues(employee, today));
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -83,7 +86,7 @@ function PakEditor({ employee, employees, today, onBusy }: { employee: PakEmploy
   }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const parsed = pakSchema.safeParse(values);
+    const parsed = pakSchema.safeParse({ ...values, signatory, penilaiNama: signatory.name, penilaiNip: signatory.nip });
     if (!parsed.success) {
       setErrors(Object.fromEntries(parsed.error.issues.map((i) => [i.path.join("."), i.message])));
       setFailure("Periksa kembali isian yang ditandai. Semua identitas, periode, dan penilai wajib dilengkapi.");
@@ -135,8 +138,7 @@ function PakEditor({ employee, employees, today, onBusy }: { employee: PakEmploy
       <p className="text-xs leading-5 text-zinc-500">Kebutuhan awal disarankan dari jenjang JF. Sesuaikan dengan target pangkat/jenjang dan PAK terakhir. Selisih AK bukan keputusan kelayakan kenaikan pangkat atau jenjang.</p>
     </CardContent></Card>
     <Card><CardHeader><CardTitle>Penetapan dan pejabat penilai</CardTitle><CardDescription>Penilai harus sesuai pejabat berwenang pada saat penetapan. Pilih dari data pegawai atau isi identitas secara manual.</CardDescription></CardHeader><CardContent className="space-y-5"><LetterNumberField id="nomor" label="Nomor PAK" value={values.nomor} onChange={(value) => setValue("nomor", value)} defaultCode={letterClassificationDefaults.pak} placeholder="1393/KEP/6115/SK/PAK/2026" disabled={submitting} error={errors.nomor} /><div className="grid gap-5 md:grid-cols-2">{field("tanggal", "Tanggal penetapan", "date")}{field("tempatPenetapan", "Ditetapkan di")}</div>
-      <Field id="pilih-penilai" label="Isi penilai dari data pegawai (opsional)"><select id="pilih-penilai" className={selectClass} value="" onChange={(e) => { const assessor = employees.find((item) => item.nip === e.target.value); if (assessor) { setValue("penilaiNama", assessor.name); setValue("penilaiNip", assessor.nip); } }}><option value="">Pilih untuk mengisi nama dan NIP</option>{employees.map((p) => <option key={p.nip} value={p.nip}>{p.name} · {p.status} · {p.position}</option>)}</select></Field>
-      <div className="grid gap-5 md:grid-cols-2">{field("penilaiNama", "Nama pejabat penilai")}{field("penilaiNip", "NIP pejabat penilai")}</div>
+      <SignatoryField value={signatory} onChange={(value) => { setSignatory(value); setErrors({}); }} options={signatories} disabled={submitting} error={Object.entries(errors).filter(([key]) => key.startsWith("signatory") || key.startsWith("penilai")).map(([, message]) => message).join(" ")} />
     </CardContent></Card>
     <Card className="border-indigo-200 bg-indigo-50/30"><CardHeader><CardTitle>Ringkasan PAK</CardTitle><CardDescription>Dokumen Word memuat konversi, akumulasi, dan penetapan, mengikuti contoh dengan kop DKPP Kabupaten Indramayu.</CardDescription></CardHeader><CardContent className="space-y-5">
       {calculation ? <><div className="grid gap-4 sm:grid-cols-3">{[["AK lama", calculation.oldTotal], ["AK baru", calculation.newTotal], ["AK kumulatif", calculation.total]].map(([label, amount]) => <div key={label} className="rounded-lg border bg-white p-4"><p className="text-xs text-zinc-500">{label}</p><p className="mt-1 text-2xl font-semibold">{formatCredit(Number(amount))}</p></div>)}</div><div className="text-sm leading-7"><p>Kenaikan pangkat: {Number.isFinite(calculation.rankDifference) ? `${calculation.rankDifference >= 0 ? "kelebihan" : "kekurangan"} ${formatCredit(Math.abs(calculation.rankDifference))} AK` : "isi kebutuhan AK"}.</p><p>Kenaikan jenjang: {calculation.levelDifference === null ? "tidak berlaku" : `${calculation.levelDifference >= 0 ? "kelebihan" : "kekurangan"} ${formatCredit(Math.abs(calculation.levelDifference))} AK`}.</p></div></> : <p className="text-sm text-zinc-600">Lengkapi jenjang, predikat, dan riwayat untuk melihat perhitungan.</p>}

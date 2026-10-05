@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       "800.1.11.1/2677/Sekre": input.nomorSurat,
       Agustus: input.bulanWfh,
       "04 Agustus 2026": formatIndonesianDate(input.tanggalSurat),
-    });
+    }, input.signatory);
     const savedDocument = await saveWfhDocument({
       userId: user.id,
       nomorSurat: input.nomorSurat,

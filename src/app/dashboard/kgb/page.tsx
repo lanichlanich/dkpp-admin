@@ -1,3 +1,4 @@
+import { getSignatoryOptions } from "@/lib/signatory-options";
 import type { Metadata } from "next";
 import { KgbForm } from "@/components/kgb/kgb-form";
 import { KgbHistory } from "@/components/kgb/kgb-history";
@@ -7,6 +8,7 @@ import { getKgbHistory } from "@/lib/kgb-documents";
 export const metadata: Metadata = { title: "Pembuatan SK KGB" };
 
 export default async function KgbPage() {
+  const signatories = await getSignatoryOptions();
   const [employees, documents] = await Promise.all([getKgbEmployeeOptions(), getKgbHistory()]);
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -17,7 +19,7 @@ export default async function KgbPage() {
           Lengkapi data Kenaikan Gaji Berkala. Gaji baru dihitung otomatis untuk pegawai PNS berdasarkan golongan dan masa kerja sesuai PP No. 5 Tahun 2024.
         </p>
       </div>
-      <KgbForm employees={employees} />
+      <KgbForm signatories={signatories} employees={employees} />
       <KgbHistory documents={documents} />
     </div>
   );

@@ -1,3 +1,4 @@
+import { DEFAULT_SIGNATORY, signatorySchema } from "@/lib/signatory";
 import "server-only";
 
 import { randomUUID } from "node:crypto";
@@ -10,6 +11,7 @@ import type { KerjakuEmployee } from "@/lib/pembukaan-kerjaku-document";
 import { isStorageConfigured, uploadStorageObject } from "@/lib/storage";
 
 export const kerjakuRequestSchema = z.object({
+  signatory: signatorySchema.default(DEFAULT_SIGNATORY),
   tanggalSurat: z.iso.date(),
   nomorSurat: letterNumberSchema,
   bulanDibuka: z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/, "Pilih bulan yang valid."),

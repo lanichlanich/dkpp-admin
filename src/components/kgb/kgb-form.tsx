@@ -1,5 +1,8 @@
 "use client";
 
+import { SignatoryField } from "@/components/letters/signatory-field";
+import { DEFAULT_SIGNATORY, type Signatory, type SignatoryOption } from "@/lib/signatory";
+
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronsUpDown, Download, LoaderCircle } from "lucide-react";
@@ -126,8 +129,9 @@ function EmployeeSelect({ employees, value, disabled, invalid, onChange }: { emp
   );
 }
 
-export function KgbForm({ employees }: { employees: KgbEmployee[] }) {
+export function KgbForm({ employees, signatories }: { employees: KgbEmployee[]; signatories: SignatoryOption[] }) {
   const router = useRouter();
+  const [signatory, setSignatory] = useState<Signatory>(signatories[0] ?? DEFAULT_SIGNATORY);
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -150,7 +154,7 @@ export function KgbForm({ employees }: { employees: KgbEmployee[] }) {
       const response = await fetch("/api/kgb/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, signatory }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({ message: "Dokumen gagal dibuat." }));
@@ -183,6 +187,7 @@ export function KgbForm({ employees }: { employees: KgbEmployee[] }) {
 
   return (
     <form onSubmit={submit} className="space-y-6" noValidate>
+      <SignatoryField value={signatory} onChange={(value) => { setSignatory(value); setErrors({}); }} options={signatories} disabled={submitting} error={errors.signatory?.[0]} />
       <Card>
         <CardHeader className="border-b">
           <CardTitle>Data surat dan pegawai</CardTitle>
@@ -210,7 +215,7 @@ export function KgbForm({ employees }: { employees: KgbEmployee[] }) {
           <Field id="gajiLama" label="Gaji lama" error={errors.gajiLama?.[0]} description={gajiLama > 0 ? `${formatRupiah(gajiLama)} — ${terbilangRupiah(gajiLama)}` : "Masukkan nominal tanpa tanda titik atau koma."}>
             <Input id="gajiLama" type="number" min="1" step="1" value={values.gajiLama} onChange={(e) => setValue("gajiLama", e.target.value)} {...inputProps("gajiLama")} />
           </Field>
-          <Field id="pejabatKgbLama" label="Pejabat penandatangan" error={errors.pejabatKgbLama?.[0]} description="Pilih saran atau ketik jabatan lain.">
+          <Field id="pejabatKgbLama" label="Pejabat penandatangan SK KGB lama" error={errors.pejabatKgbLama?.[0]} description="Isi sesuai keputusan KGB lama yang menjadi dasar, terpisah dari penandatangan dokumen baru.">
             <Input id="pejabatKgbLama" list="pejabat-kgb-options" value={values.pejabatKgbLama} onChange={(e) => setValue("pejabatKgbLama", e.target.value)} {...inputProps("pejabatKgbLama")} />
             <datalist id="pejabat-kgb-options">{officialSuggestions.map((option) => <option key={option} value={option} />)}</datalist>
           </Field>

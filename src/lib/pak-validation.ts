@@ -1,3 +1,4 @@
+import { signatorySchema } from "@/lib/signatory";
 import { z } from "zod";
 import { letterNumberSchema } from "@/lib/letter-number-validation";
 import { pakLevels, pakPredicates } from "@/lib/pak";
@@ -14,12 +15,13 @@ const period = z.object({
 });
 const component = z.object({ old: credit, new: credit, note: z.string().trim().max(80).regex(/^[^<>\x00-\x1f{}]*$/) });
 export const pakSchema = z.object({
+  signatory: signatorySchema.optional(),
   nip: z.string().regex(/^\d{18}$/, "Pilih pegawai PNS."),
   nomor: letterNumberSchema, tanggal: date, tempatPenetapan: text(50), instansi: text(100),
   kartuAsn: text(40), tempatLahir: text(60), tanggalLahir: date, jenisKelamin: z.enum(["Pria", "Wanita"]),
   pangkat: text(80), golongan: z.enum(["I/a", "I/b", "I/c", "I/d", "II/a", "II/b", "II/c", "II/d", "III/a", "III/b", "III/c", "III/d", "IV/a", "IV/b", "IV/c", "IV/d", "IV/e"]),
   tmtPangkat: date, jabatan: text(140), tmtJabatan: date, unitKerja: text(150),
-  penilaiNama: text(100), penilaiNip: z.string().regex(/^\d{18}$/, "NIP penilai harus 18 digit."),
+  penilaiNama: text(100), penilaiNip: z.union([z.literal(""), z.string().regex(/^\d{18}$/, "NIP penilai harus 18 digit.")]),
   period,
   history: z.array(z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("integrasi"), year: z.number().int().min(1900).max(2100), credit }),

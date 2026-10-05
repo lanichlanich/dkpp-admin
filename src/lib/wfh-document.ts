@@ -1,3 +1,5 @@
+import { applySignatoryToTemplate } from "@/lib/signatory-document";
+import { DEFAULT_SIGNATORY, type Signatory } from "@/lib/signatory";
 import "server-only";
 
 import { readFile } from "node:fs/promises";
@@ -91,10 +93,11 @@ function visibleDocumentText(documentXml: string) {
   return [...documentXml.matchAll(textPattern)].map((match) => decodeXml(match[2])).join("");
 }
 
-export async function generateWfhDocument(replacements: Record<string, string>) {
+export async function generateWfhDocument(replacements: Record<string, string>, signatory: Signatory = DEFAULT_SIGNATORY) {
   const templatePath = path.join(process.cwd(), "src", "templates", "template-wfh.docx");
   const template = await readFile(templatePath);
   const zip = new PizZip(template);
+  applySignatoryToTemplate(zip, signatory, "letter");
   const documentFile = zip.file("word/document.xml");
   if (!documentFile) throw new Error("Template surat tugas WFH tidak memiliki document.xml.");
 

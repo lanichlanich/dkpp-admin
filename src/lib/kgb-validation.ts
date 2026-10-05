@@ -1,9 +1,11 @@
+import { DEFAULT_SIGNATORY, signatorySchema } from "@/lib/signatory";
 import { z } from "zod";
 import { letterNumberSchema } from "@/lib/letter-number-validation";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal wajib diisi.");
 
 export const kgbSchema = z.object({
+  signatory: signatorySchema.default(DEFAULT_SIGNATORY),
   nomorSurat: letterNumberSchema,
   tglSurat: isoDate,
   nip: z.string().regex(/^\d{18}$/, "Pilih pegawai PNS yang valid."),

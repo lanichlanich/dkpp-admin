@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   try {
     const document = await generatePembukaanKerjakuDocument({
       tanggalSurat: input.tanggalSurat, nomorSurat: input.nomorSurat,
-      bulanDibuka: input.bulanDibuka, employees: employees as NonNullable<typeof employees[number]>[],
+      bulanDibuka: input.bulanDibuka, employees: employees as NonNullable<typeof employees[number]>[], signatory: input.signatory,
     });
     const saved = await saveKerjakuRequest({
       userId: user.id, nomorSurat: input.nomorSurat, tanggalSurat: input.tanggalSurat,

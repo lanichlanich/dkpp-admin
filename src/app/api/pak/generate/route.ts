@@ -14,6 +14,10 @@ export async function POST(request: Request) {
   if (!result.success) return Response.json({ message: "Periksa kembali isian PAK.", errors: result.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })) }, { status: 422 });
   const employee = await db.prepare("SELECT name, status FROM employees WHERE nip = ? AND asn_type = 'PNS' AND status IN ('Aktif', 'Mutasi', 'Pensiun')").get(result.data.nip) as { name: string; status: string } | undefined;
   if (!employee) return Response.json({ message: "Pegawai PNS aktif, mutasi, atau pensiun tidak ditemukan." }, { status: 422 });
+  if (result.data.signatory) {
+    result.data.penilaiNama = result.data.signatory.name;
+    result.data.penilaiNip = result.data.signatory.nip;
+  }
   try {
     const document = await generatePakDocument(result.data, employee.name);
     const saved = await savePakDocument(user.id, employee, result.data, document);

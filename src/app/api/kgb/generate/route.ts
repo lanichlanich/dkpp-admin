@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       terbilang_gaji_baru: terbilangRupiah(gajiBaru),
       tmt_kgb_baru: formatIndonesianDate(input.tmtKgbBaru),
       tmt_kgb_depan: tmtDepan ? formatIndonesianDate(tmtDepan) : "",
-    });
+    }, input.signatory);
 
     const savedDocument = await saveKgbDocument({
       userId: user.id,

@@ -1,5 +1,8 @@
 "use client";
 
+import { SignatoryField } from "@/components/letters/signatory-field";
+import { DEFAULT_SIGNATORY, type Signatory, type SignatoryOption } from "@/lib/signatory";
+
 import { useMemo, useRef, useState } from "react";
 import { Check, ChevronsUpDown, Download, LoaderCircle, ScanText, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -95,8 +98,9 @@ function EmployeeSelect({ employees, value, disabled, invalid, onChange }: { emp
   );
 }
 
-export function DpcpForm({ employees, today }: { employees: DpcpEmployeeOption[]; today: string }) {
+export function DpcpForm({ employees, today, signatories }: { employees: DpcpEmployeeOption[]; today: string; signatories: SignatoryOption[] }) {
   const router = useRouter();
+  const [signatory, setSignatory] = useState<Signatory>(signatories[0] ?? DEFAULT_SIGNATORY);
   const sourceFilesRef = useRef<HTMLInputElement>(null);
   const [values, setValues] = useState(() => initialValues(today));
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -194,7 +198,7 @@ export function DpcpForm({ employees, today }: { employees: DpcpEmployeeOption[]
       const response = await fetch("/api/dpcp/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, signatory }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({ message: "Dokumen DPCP gagal dibuat." }));
@@ -227,6 +231,7 @@ export function DpcpForm({ employees, today }: { employees: DpcpEmployeeOption[]
 
   return (
     <form onSubmit={submit} className="space-y-6" noValidate>
+      <SignatoryField value={signatory} onChange={(value) => { setSignatory(value); setErrors({}); }} options={signatories} disabled={busy} error={errors.signatory?.[0]} />
       <Card className="border-emerald-200 bg-emerald-50/40">
         <CardHeader className="border-b border-emerald-100">
           <CardTitle className="flex items-center gap-2"><ScanText className="size-5 text-emerald-700" />Isi otomatis dari dokumen</CardTitle>

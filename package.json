@@ -9,6 +9,7 @@
     "lint": "eslint",
     "smoke:auth": "node scripts/smoke-auth.mjs",
     "smoke:letter-classification": "node scripts/smoke-letter-classification.mjs",
+    "smoke:signatory": "node scripts/smoke-signatory.mjs",
     "smoke:pak": "node scripts/smoke-pak.mjs",
     "smoke:dpcp": "node scripts/smoke-dpcp.mjs",
     "smoke:employee-documents": "node scripts/smoke-employee-documents.mjs",

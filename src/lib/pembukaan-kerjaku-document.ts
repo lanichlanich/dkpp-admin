@@ -1,3 +1,5 @@
+import { applySignatoryToTemplate } from "@/lib/signatory-document";
+import { DEFAULT_SIGNATORY, type Signatory } from "@/lib/signatory";
 import "server-only";
 
 import { readFile } from "node:fs/promises";
@@ -67,9 +69,11 @@ export async function generatePembukaanKerjakuDocument(input: {
   nomorSurat: string;
   bulanDibuka: string;
   employees: KerjakuEmployee[];
+  signatory?: Signatory;
 }) {
   const template = await readFile(path.join(process.cwd(), "src", "templates", "template-pembukaan-kerjaku.docx"));
   const zip = new PizZip(template);
+  applySignatoryToTemplate(zip, input.signatory ?? DEFAULT_SIGNATORY);
   const original = zip.file("word/document.xml")?.asText();
   if (!original) throw new Error("Template Kerjaku tidak memiliki document.xml.");
 

@@ -1,5 +1,8 @@
 "use client";
 
+import { SignatoryField } from "@/components/letters/signatory-field";
+import { DEFAULT_SIGNATORY, type Signatory, type SignatoryOption } from "@/lib/signatory";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, LoaderCircle, Plus, Trash2 } from "lucide-react";
@@ -20,10 +23,11 @@ function monthLabel(period: string) {
     .format(new Date(`${period}-01T00:00:00Z`));
 }
 
-export function PembukaanKerjakuForm({ employees, history, today }: {
-  employees: KerjakuEmployee[]; history: KerjakuRequestHistory[]; today: string;
+export function PembukaanKerjakuForm({ employees, history, today, signatories }: {
+  employees: KerjakuEmployee[]; history: KerjakuRequestHistory[]; today: string; signatories: SignatoryOption[];
 }) {
   const router = useRouter();
+  const [signatory, setSignatory] = useState<Signatory>(signatories[0] ?? DEFAULT_SIGNATORY);
   const [tanggalSurat, setTanggalSurat] = useState(today);
   const [nomorSurat, setNomorSurat] = useState("");
   const [bulanDibuka, setBulanDibuka] = useState(today.slice(0, 7));
@@ -45,7 +49,7 @@ export function PembukaanKerjakuForm({ employees, history, today }: {
     try {
       const response = await fetch("/api/pembukaan-kerjaku/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tanggalSurat, nomorSurat, bulanDibuka, employeeNips: selected }),
+        body: JSON.stringify({ tanggalSurat, nomorSurat, bulanDibuka, employeeNips: selected, signatory }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({ message: "Surat gagal dibuat." }));
@@ -69,6 +73,7 @@ export function PembukaanKerjakuForm({ employees, history, today }: {
 
   return <>
     <form onSubmit={submit} className="space-y-6">
+      <SignatoryField value={signatory} onChange={(value) => { setSignatory(value); setErrors({}); }} options={signatories} disabled={submitting} error={errors.signatory?.[0]} />
       <Card>
         <CardHeader className="border-b"><CardTitle>Data surat</CardTitle><CardDescription>Isi nomor lengkap sesuai surat keluar dan pilih bulan yang akan dibuka kembali.</CardDescription></CardHeader>
         <CardContent className="grid gap-5 md:grid-cols-2">

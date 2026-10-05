@@ -63,17 +63,28 @@ for (const template of templates) {
     const beforeParagraphs = [...before.matchAll(/<w:p(?=[\s>])[^>]*>[\s\S]*?<\/w:p>/g)].map((match) => match[0]);
     const afterParagraphs = [...after.matchAll(/<w:p(?=[\s>])[^>]*>[\s\S]*?<\/w:p>/g)].map((match) => match[0]);
     assert.equal(afterParagraphs.length, beforeParagraphs.length, `${template}: paragraph count changed`);
-    const hasElectronicBlock = beforeParagraphs.some((paragraph) => /^Ditandatang\S* secara elektronik oleh\s*:/i.test(visible(paragraph).trim()));
+    const electronicIndex = beforeParagraphs.findIndex((paragraph) => /^Ditandatang\S* secara elektronik oleh\s*:/i.test(visible(paragraph).trim()));
+    const hasElectronicBlock = electronicIndex >= 0;
+    const markerIndex = hasElectronicBlock ? beforeParagraphs.findIndex((paragraph, index) => index >= Math.max(0, electronicIndex - 3) && index < electronicIndex && visible(paragraph).includes('${ttd_pengirim}')) : -1;
+    const signatureStart = markerIndex >= 0 ? markerIndex : electronicIndex;
+    const signatureEnd = hasElectronicBlock ? beforeParagraphs.findIndex((paragraph, index) => index >= electronicIndex && /^NIP/i.test(visible(paragraph).trim())) : -1;
+    const signatureLeft = hasElectronicBlock ? Math.max(420, Number(beforeParagraphs[electronicIndex].match(/<w:ind\b[^>]*\bw:left="(\d+)"/)?.[1] ?? 0)) : 0;
     beforeParagraphs.forEach((paragraph, index) => {
       const isElectronicLabel = /^Ditandatang\S* secara elektronik oleh\s*:/i.test(visible(paragraph).trim());
       const isElectronicTitle = hasElectronicBlock && /^KEPALA DINAS/.test(visible(paragraph));
-      if (isElectronicLabel || isElectronicTitle) {
-        const unchangedFormatting = (xml) => xml.replace(textPattern, "").replace(/<w:jc\b[^>]*\/>/g, "").replace(/<w:br\/>/g, "");
+      if (hasElectronicBlock && index >= signatureStart && index <= signatureEnd) {
+        const unchangedFormatting = (xml) => xml.replace(textPattern, "").replace(/<w:jc\b[^>]*\/>/g, "").replace(/<w:ind\b[^>]*\/>/g, "").replace(/<w:tabs>[\s\S]*?<\/w:tabs>/g, "").replace(/<w:(?:br|tab)\/>/g, "");
         assert.equal(unchangedFormatting(afterParagraphs[index]), unchangedFormatting(paragraph), `${template}: unrelated signature formatting changed`);
-        assert(afterParagraphs[index].includes('<w:jc w:val="center"/>'), `${template}: signature must be centered`);
+        assert(afterParagraphs[index].includes('<w:jc w:val="left"/>'), `${template}: all signature lines must be left aligned`);
+        assert(afterParagraphs[index].includes(`<w:ind w:left="${signatureLeft}"`), `${template}: all signature lines must share the same left edge`);
+        if (isElectronicTitle && signer.status === 'plt') {
+          assert(afterParagraphs[index].includes('w:hanging="420"'), `${template}: Plt. must sit to the left of the aligned office title`);
+          assert(afterParagraphs[index].includes(`w:pos="${signatureLeft}"`), `${template}: office title tab must align with signer identity`);
+          assert(afterParagraphs[index].includes('Plt.</w:t><w:tab/><w:t xml:space="preserve">'), `${template}: use a real tab after Plt.`);
+        } else assert(!afterParagraphs[index].includes('w:hanging='), `${template}: only the acting title has a hanging indent`);
         if (isElectronicLabel) assert.equal(visible(afterParagraphs[index]), "Ditandatangani secara elektronik oleh:");
         if (isElectronicTitle && signer === DEFAULT_SIGNATORY) {
-          assert(afterParagraphs[index].includes('Plt. KEPALA DINAS KETAHANAN PANGAN DAN</w:t><w:br/><w:t xml:space="preserve">PERTANIAN KABUPATEN INDRAMAYU'), `${template}: Plt. title must follow the requested two lines`);
+          assert(afterParagraphs[index].includes('KEPALA DINAS KETAHANAN PANGAN DAN</w:t><w:br/><w:t xml:space="preserve">PERTANIAN KABUPATEN INDRAMAYU'), `${template}: title must follow the requested two lines`);
         }
       } else assert.equal(structure(afterParagraphs[index]), structure(paragraph), `${template}: formatting outside electronic signature changed`);
     });
@@ -81,7 +92,7 @@ for (const template of templates) {
     for (const [name, part] of Object.entries(source.files)) if (!part.dir && name !== "word/document.xml") assert(part.asNodeBuffer().equals(zip.file(name).asNodeBuffer()), `${template}: changed ZIP part ${name}`);
   }
 }
-console.log("PASS eight templates, Definitif/Plt., centered electronic signature with requested title lines, preserved other formatting/ZIP parts/TTE");
+console.log("PASS eight templates, Definitif/Plt., uniform left-aligned signature block and separate hanging Plt., preserved other formatting/ZIP parts/TTE");
 
 const { generateDpcpDocument } = load("src/lib/dpcp-document.ts");
 const dpcpTemplate = new PizZip(readFileSync(path.join(root, "src/templates/template-dpcp.docx"))).file("word/document.xml").asText();
@@ -93,6 +104,15 @@ const dpcp = new PizZip(await generateDpcpDocument(fields, chosen));
 assert(visible(dpcp.file("word/document.xml").asText()).includes(chosen.name));
 assert(!visible(dpcp.file("word/document.xml").asText()).includes(fields.nama_kadis));
 console.log("PASS DPCP selected identity replaces legacy automatic head data");
+
+if (process.argv.includes('--write-pengantar-fixture')) {
+  const buffer = await load('src/lib/surat-pengantar-document.ts').generateSuratPengantarDocument({
+    tanggal: '05 Oktober 2026', 'no surat': '800.1.1.1/123-Sekre', no: '1', jumlah: '1', 'file yang dikirim': 'Berkas pemeriksaan tata letak',
+  }, { ...chosen, name: DEFAULT_SIGNATORY.name, title: DEFAULT_SIGNATORY.title, rank: 'Pembina Tk.I / IV/b' });
+  const directory = path.join(root, '.tmp/signatory/generated');
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(path.join(directory, 'pengantar-plt.docx'), buffer);
+}
 
 if (process.argv.includes("--write-fixture")) {
   const buffer = await load("src/lib/kgb-document.ts").generateKgbDocument({

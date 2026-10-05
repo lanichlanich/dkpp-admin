@@ -27,35 +27,58 @@ function replaceText(paragraph: string, needle: string, replacement: string, lin
   let index = 0;
   return paragraph.replace(textNodes, (_node, attrs: string | undefined) => {
     const text = encode(values[index++]);
-    return `<w:t${attrs ?? ""}>${lineBreaks ? text.replace(/\n/g, '</w:t><w:br/><w:t xml:space="preserve">') : text}</w:t>`;
+    return `<w:t${attrs ?? ""}>${lineBreaks ? text.replace(/\n/g, '</w:t><w:br/><w:t xml:space="preserve">').replace(/\t/g, '</w:t><w:tab/><w:t xml:space="preserve">') : text}</w:t>`;
   });
 }
 
-function centerParagraph(paragraph: string) {
-  if (/<w:jc\b/.test(paragraph)) return paragraph.replace(/<w:jc\b[^>]*\/>/, '<w:jc w:val="center"/>');
-  if (/<w:pPr>/.test(paragraph)) {
-    return paragraph.replace(/<w:pPr>([\s\S]*?)<\/w:pPr>/, (_match, properties: string) => {
-      const alignment = '<w:jc w:val="center"/>';
-      return `<w:pPr>${properties.includes('<w:rPr>') ? properties.replace('<w:rPr>', `${alignment}<w:rPr>`) : properties + alignment}</w:pPr>`;
-    });
-  }
-  return paragraph.replace(/(<w:p(?=[\s>])[^>]*>)/, '$1<w:pPr><w:jc w:val="center"/></w:pPr>');
+function alignSignatureParagraph(paragraph: string, left: number, hanging = false) {
+  if (!/<w:pPr>/.test(paragraph)) paragraph = paragraph.replace(/(<w:p(?=[\s>])[^>]*>)/, '$1<w:pPr></w:pPr>');
+  return paragraph.replace(/<w:pPr>([\s\S]*?)<\/w:pPr>/, (_match, properties: string) => {
+    const right = properties.match(/<w:ind\b[^>]*\bw:right="(\d+)"/)?.[1];
+    properties = properties.replace(/<w:ind\b[^>]*\/>/g, '').replace(/<w:jc\b[^>]*\/>/g, '');
+    if (hanging) {
+      properties = properties.replace(/<w:tabs>[\s\S]*?<\/w:tabs>/g, '');
+      properties = properties.replace(/(?=<(?:w:spacing|w:rPr)\b|$)/, `<w:tabs><w:tab w:val="left" w:pos="${left}"/></w:tabs>`);
+    }
+    const alignment = `<w:ind w:left="${left}"${right ? ` w:right="${right}"` : ''}${hanging ? ' w:hanging="420"' : ''}/><w:jc w:val="left"/>`;
+    properties = properties.replace(/(?=<w:rPr\b|$)/, alignment);
+    return `<w:pPr>${properties}</w:pPr>`;
+  });
 }
 
 export function applySignatoryToTemplate(zip: PizZip, signatory: Signatory, kind: "letter" | "dpcp" | "pak" = "letter") {
   const original = zip.file("word/document.xml")?.asText();
   if (!original) throw new Error("Template dokumen tidak tersedia.");
   const rank = signatoryRank(signatory.rank);
+  // Give every line of the electronic signature the same left edge. Plt. is
+  // placed in a hanging indent and a real Word tab aligns the office title.
+  const sourceParagraphs = [...original.matchAll(paragraphs)];
+  const blockIndents = new Map<number, number>();
+  const paragraphText = (value: string) => [...value.matchAll(textNodes)].map((match) => decode(match[2])).join('').trim();
+  sourceParagraphs.forEach((match, index) => {
+    if (!/^Ditandatang\S* secara elektronik oleh\s*:/i.test(paragraphText(match[0]))) return;
+    const left = Math.max(420, Number(match[0].match(/<w:ind\b[^>]*\bw:left="(\d+)"/)?.[1] ?? 0));
+    let start = index;
+    for (let previous = Math.max(0, index - 3); previous < index; previous++) {
+      if (paragraphText(sourceParagraphs[previous][0]).includes('${ttd_pengirim}')) start = previous;
+    }
+    const end = sourceParagraphs.findIndex((candidate, candidateIndex) => candidateIndex >= index && candidateIndex <= index + 16 && /^NIP/i.test(paragraphText(candidate[0])));
+    if (end < 0) throw new Error('Bagian NIP penandatangan pada template tidak ditemukan.');
+    for (let current = start; current <= end; current++) blockIndents.set(sourceParagraphs[current].index, left);
+  });
   let headingContinuation = false;
   let electronicHeading = false;
   let found = false;
-  const xml = original.replace(paragraphs, (paragraph) => {
+  const xml = original.replace(paragraphs, (paragraph, offset: number) => {
+    const blockIndent = blockIndents.get(offset);
+    if (blockIndent !== undefined) paragraph = alignSignatureParagraph(paragraph, blockIndent);
     const visible = [...paragraph.matchAll(textNodes)].map((match) => decode(match[2])).join("");
     const text = visible.trim();
     if (!text) return paragraph;
+    if (blockIndent !== undefined && text.includes('${ttd_pengirim}')) return replaceText(paragraph, visible, text);
     if (/^Ditandatang\S* secara elektronik oleh\s*:/i.test(text)) {
       electronicHeading = true;
-      return centerParagraph(replaceText(paragraph, visible, "Ditandatangani secara elektronik oleh:"));
+      return replaceText(paragraph, visible, "Ditandatangani secara elektronik oleh:");
     }
     if (headingContinuation && /^(?:DAN PERTANIAN(?: KABUPATEN INDRAMAYU)?|KABUPATEN INDRAMAYU)$/i.test(text)) {
       return replaceText(paragraph, visible, "");
@@ -66,8 +89,8 @@ export function applySignatoryToTemplate(zip: PizZip, signatory: Signatory, kind
       if (electronicHeading) {
         electronicHeading = false;
         const title = signatoryTitle(signatory);
-        const lines = title.replace(/ DAN PERTANIAN KABUPATEN INDRAMAYU$/i, ' DAN\nPERTANIAN KABUPATEN INDRAMAYU');
-        return centerParagraph(replaceText(paragraph, visible, lines, true));
+        const lines = title.replace(/^Plt\. /, 'Plt.\t').replace(/ DAN PERTANIAN KABUPATEN INDRAMAYU$/i, ' DAN\nPERTANIAN KABUPATEN INDRAMAYU');
+        return alignSignatureParagraph(replaceText(paragraph, visible, lines, true), blockIndent ?? 420, signatory.status === 'plt');
       }
       // Preserve the template's separate heading lines for the same office.
       // Other selected offices replace the heading and clear its continuation.

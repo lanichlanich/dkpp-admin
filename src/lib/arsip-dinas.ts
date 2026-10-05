@@ -58,12 +58,12 @@ export async function saveArchiveDocument(input: { userId: string; metadata: z.i
   }
   const now = new Date().toISOString();
   try {
-    await uploadStorageObject(`service-archive/${storageName}`, input.file, "application/pdf");
+    await uploadStorageObject(storageName, input.file, "application/pdf");
     await db.prepare(`INSERT INTO service_archive_documents
       (id, user_id, nama_dokumen, nomor, jenis_dokumen, tgl_dokumen, file_name, storage_name, file_size, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(id, input.userId, input.metadata.namaDokumen, input.metadata.nomor, input.metadata.jenisDokumen,
-        input.metadata.tglDokumen, fileName, `service-archive/${storageName}`, input.file.length, now, now);
+        input.metadata.tglDokumen, fileName, storageName, input.file.length, now, now);
   } catch (error) {
     if (local) await rm(filePath, { force: true });
     throw error;
@@ -84,6 +84,6 @@ export async function updateArchiveDocument(id: string, metadata: z.infer<typeof
 
 export async function getArchiveDownload(id: string) {
   const row = await db.prepare("SELECT file_name, storage_name FROM service_archive_documents WHERE id = ?").get(id) as { file_name: string; storage_name: string } | undefined;
-  if (!row || !/^service-archive\/[0-9a-f-]{36}\.pdf$/i.test(row.storage_name) || !storagePattern.test(path.posix.basename(row.storage_name))) return null;
-  return { fileName: row.file_name, storageName: row.storage_name, filePath: path.join(localDirectory, path.posix.basename(row.storage_name)) };
+  if (!row || !storagePattern.test(row.storage_name)) return null;
+  return { fileName: row.file_name, storageName: row.storage_name, filePath: path.join(localDirectory, row.storage_name) };
 }

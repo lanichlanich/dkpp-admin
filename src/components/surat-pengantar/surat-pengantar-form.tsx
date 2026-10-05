@@ -131,7 +131,7 @@ export function SuratPengantarForm({ today, signatories }: { today: string; sign
         <CardContent className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="flex items-center gap-2 text-sm font-medium text-emerald-950"><ShieldCheck className="size-4" />Format tabel dan penanda TTE dipertahankan</p>
-            <p className="mt-1 text-xs leading-5 text-emerald-800">Tanggal ditulis sebagai {formatIndonesianDate(values.tanggalSurat) || "tanggal Indonesia"}. Kop, penerima, keterangan, dan tanda tangan tidak diubah.</p>
+            <p className="mt-1 text-xs leading-5 text-emerald-800">Tanggal ditulis sebagai {formatIndonesianDate(values.tanggalSurat) || "tanggal Indonesia"}. Identitas dan jabatan penandatangan mengikuti pejabat yang dipilih.</p>
           </div>
           <Button type="submit" size="lg" disabled={submitting} className="min-w-56">
             {submitting ? <><LoaderCircle className="animate-spin" />Membuat dokumen...</> : <><Download />Buat dan unduh DOCX</>}

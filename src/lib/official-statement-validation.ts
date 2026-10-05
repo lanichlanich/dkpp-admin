@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { letterNumberSchema } from "@/lib/letter-number-validation";
 
 const isoDate = z.string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal surat wajib diisi.")
@@ -13,11 +14,7 @@ const isoDate = z.string()
 export const officialStatementSchema = z.object({
   documentType: z.enum(["hukdis", "hukda"], { message: "Jenis surat wajib dipilih." }),
   nip: z.string().regex(/^\d{18}$/, "Pilih pegawai PNS aktif yang valid."),
-  nomorSurat: z.string()
-    .trim()
-    .min(1, "Nomor surat wajib diisi.")
-    .max(120, "Nomor surat terlalu panjang.")
-    .regex(/^[^<>\r\n]+$/, "Nomor surat tidak boleh memuat tanda kurung sudut atau baris baru."),
+  nomorSurat: letterNumberSchema,
   tanggalSurat: isoDate,
 });
 

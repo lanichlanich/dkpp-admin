@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { KgbDocumentHistory } from "@/lib/kgb-documents";
 import { formatIndonesianDate } from "@/lib/kgb";
 import { cn } from "@/lib/utils";
+import { displayKgbLetterNumber } from "@/lib/letter-classification";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
   dateStyle: "medium",
@@ -51,7 +52,7 @@ export function KgbHistory({ documents }: { documents: KgbDocumentHistory[] }) {
                   <TableCell className="pl-4">
                     <div className="max-w-64"><p className="truncate font-medium text-zinc-900">{document.employeeName}</p><p className="text-xs text-zinc-500">{document.employeeNip}</p></div>
                   </TableCell>
-                  <TableCell><Badge variant="outline">800.1.11.13/{document.nomorSurat}-Sekre</Badge></TableCell>
+                  <TableCell><Badge variant="outline">{displayKgbLetterNumber(document.nomorSurat)}</Badge></TableCell>
                   <TableCell>{formatIndonesianDate(document.tglSurat)}</TableCell>
                   <TableCell><p>{dateTimeFormatter.format(new Date(document.createdAt))}</p><p className="text-xs text-zinc-500">oleh {document.createdBy}</p></TableCell>
                   <TableCell><p className="max-w-52 truncate" title={document.fileName}>{document.fileName}</p><p className="text-xs text-zinc-500">{formatFileSize(document.fileSize)}</p></TableCell>

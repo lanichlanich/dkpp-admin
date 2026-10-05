@@ -12,6 +12,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { KerjakuEmployee } from "@/lib/pembukaan-kerjaku-document";
 import type { KerjakuRequestHistory } from "@/lib/pembukaan-kerjaku";
+import { LetterNumberField } from "@/components/letters/letter-number-field";
+import { letterClassificationDefaults } from "@/lib/letter-classification";
 
 function monthLabel(period: string) {
   return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "UTC" })
@@ -69,9 +71,9 @@ export function PembukaanKerjakuForm({ employees, history, today }: {
     <form onSubmit={submit} className="space-y-6">
       <Card>
         <CardHeader className="border-b"><CardTitle>Data surat</CardTitle><CardDescription>Isi nomor lengkap sesuai surat keluar dan pilih bulan yang akan dibuka kembali.</CardDescription></CardHeader>
-        <CardContent className="grid gap-5 md:grid-cols-3">
+        <CardContent className="grid gap-5 md:grid-cols-2">
+          <div className="md:col-span-2"><LetterNumberField value={nomorSurat} onChange={setNomorSurat} defaultCode={letterClassificationDefaults.kerjaku} placeholder="123-Sekret" disabled={submitting} error={errors.nomorSurat?.[0]} /></div>
           <div className="space-y-2"><Label htmlFor="tanggalSurat">Tanggal surat</Label><Input id="tanggalSurat" type="date" value={tanggalSurat} onChange={(e) => setTanggalSurat(e.target.value)} disabled={submitting} required />{errors.tanggalSurat?.[0] && <p className="text-xs text-destructive">{errors.tanggalSurat[0]}</p>}</div>
-          <div className="space-y-2"><Label htmlFor="nomorSurat">Nomor surat lengkap</Label><Input id="nomorSurat" value={nomorSurat} onChange={(e) => setNomorSurat(e.target.value)} placeholder="800.1.5/123-Sekret" maxLength={120} disabled={submitting} required />{errors.nomorSurat?.[0] && <p className="text-xs text-destructive">{errors.nomorSurat[0]}</p>}</div>
           <div className="space-y-2"><Label htmlFor="bulanDibuka">Bulan yang dibuka</Label><Input id="bulanDibuka" type="month" value={bulanDibuka} onChange={(e) => setBulanDibuka(e.target.value)} disabled={submitting} required />{errors.bulanDibuka?.[0] && <p className="text-xs text-destructive">{errors.bulanDibuka[0]}</p>}</div>
         </CardContent>
       </Card>

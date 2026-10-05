@@ -20,6 +20,8 @@ import {
   type KgbEmployee,
 } from "@/lib/kgb";
 import { cn } from "@/lib/utils";
+import { LetterNumberField } from "@/components/letters/letter-number-field";
+import { letterClassificationDefaults } from "@/lib/letter-classification";
 
 type FormValues = {
   nomorSurat: string;
@@ -184,12 +186,10 @@ export function KgbForm({ employees }: { employees: KgbEmployee[] }) {
       <Card>
         <CardHeader className="border-b">
           <CardTitle>Data surat dan pegawai</CardTitle>
-          <CardDescription>Nomor surat diisi angka saja; prefiks dan sufiks sudah tersedia pada template.</CardDescription>
+          <CardDescription>Pilih kode pengurusan KGB dan isi nomor urut beserta kode unit yang digunakan.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-5 md:grid-cols-2">
-          <Field id="nomorSurat" label="Nomor surat" error={errors.nomorSurat?.[0]} description="Contoh: 123 untuk menghasilkan 800.1.11.13/123-Sekre.">
-            <Input id="nomorSurat" name="nomorSurat" type="number" min="0" value={values.nomorSurat} onChange={(e) => setValue("nomorSurat", e.target.value)} {...inputProps("nomorSurat")} />
-          </Field>
+          <div className="md:col-span-2"><LetterNumberField value={values.nomorSurat} onChange={(value) => setValue("nomorSurat", value)} defaultCode={letterClassificationDefaults.kgb} disabled={submitting} error={errors.nomorSurat?.[0]} /></div>
           <Field id="tglSurat" label="Tanggal surat" error={errors.tglSurat?.[0]}>
             <Input id="tglSurat" type="date" value={values.tglSurat} onChange={(e) => setValue("tglSurat", e.target.value)} {...inputProps("tglSurat")} />
           </Field>

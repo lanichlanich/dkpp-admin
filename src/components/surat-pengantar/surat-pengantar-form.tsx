@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatIndonesianDate } from "@/lib/kgb";
+import { LetterNumberField } from "@/components/letters/letter-number-field";
+import { suggestPengantarClassification } from "@/lib/letter-classification";
 
 type FormValues = {
   tanggalSurat: string;
@@ -98,16 +100,14 @@ export function SuratPengantarForm({ today }: { today: string }) {
     <form onSubmit={submit} className="space-y-6" noValidate>
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="flex items-center gap-2"><FilePenLine className="size-5 text-indigo-600" />Isian tag template</CardTitle>
-          <CardDescription>Setiap kolom mengganti satu teks yang berada di dalam tanda &lt;&gt; pada template surat pengantar.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><FilePenLine className="size-5 text-indigo-600" />Data surat pengantar</CardTitle>
+          <CardDescription>Pilih klasifikasi sesuai isi berkas yang dikirim, lalu lengkapi nomor surat dan tanggal.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-5 md:grid-cols-2">
           <Field id="tanggalSurat" label="Tanggal surat" error={errors.tanggalSurat?.[0]} description="Mengganti tag <tanggal>.">
             <Input id="tanggalSurat" type="date" value={values.tanggalSurat} onChange={(event) => setValue("tanggalSurat", event.target.value)} {...inputProps("tanggalSurat")} />
           </Field>
-          <Field id="nomorSurat" label="Nomor surat" error={errors.nomorSurat?.[0]} description="Mengganti tag <no surat>. Masukkan nomor lengkap.">
-            <Input id="nomorSurat" value={values.nomorSurat} onChange={(event) => setValue("nomorSurat", event.target.value)} placeholder="Contoh: 800.1.11.1/3001/Sekre" {...inputProps("nomorSurat")} />
-          </Field>
+          <div className="md:col-span-2"><LetterNumberField value={values.nomorSurat} onChange={(value) => setValue("nomorSurat", value)} defaultCode={suggestPengantarClassification(values.fileYangDikirim)} disabled={submitting} error={errors.nomorSurat?.[0]} /></div>
           <Field id="nomorUrut" label="Nomor urut" error={errors.nomorUrut?.[0]} description="Mengganti tag <no> pada kolom pertama tabel.">
             <Input id="nomorUrut" type="number" min="1" max="9999" step="1" value={values.nomorUrut} onChange={(event) => setValue("nomorUrut", event.target.value)} {...inputProps("nomorUrut")} />
           </Field>

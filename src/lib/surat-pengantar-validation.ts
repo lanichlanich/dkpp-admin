@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { letterNumberSchema } from "@/lib/letter-number-validation";
 
 const singleLineText = (label: string, max: number) => z
   .string()
@@ -19,7 +20,7 @@ const isoDate = z.string()
 
 export const suratPengantarSchema = z.object({
   tanggalSurat: isoDate,
-  nomorSurat: singleLineText("Nomor surat", 120),
+  nomorSurat: letterNumberSchema,
   nomorUrut: z.coerce.number().int().min(1, "Nomor urut minimal 1.").max(9_999, "Nomor urut terlalu besar."),
   fileYangDikirim: singleLineText("File yang dikirim", 500),
   jumlah: z.coerce.number().int().min(1, "Jumlah minimal 1.").max(9_999, "Jumlah terlalu besar."),

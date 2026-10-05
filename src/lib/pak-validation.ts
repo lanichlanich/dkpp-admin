@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { letterNumberSchema } from "@/lib/letter-number-validation";
 import { pakLevels, pakPredicates } from "@/lib/pak";
 
 const text = (max: number) => z.string().trim().min(1, "Wajib diisi.").max(max, `Maksimal ${max} karakter.`).regex(/^[^<>\x00-\x1f{}]+$/, "Gunakan teks satu baris tanpa tanda kurung kurawal/sudut.");
@@ -14,7 +15,7 @@ const period = z.object({
 const component = z.object({ old: credit, new: credit, note: z.string().trim().max(80).regex(/^[^<>\x00-\x1f{}]*$/) });
 export const pakSchema = z.object({
   nip: z.string().regex(/^\d{18}$/, "Pilih pegawai PNS."),
-  nomor: text(100), tanggal: date, tempatPenetapan: text(50), instansi: text(100),
+  nomor: letterNumberSchema, tanggal: date, tempatPenetapan: text(50), instansi: text(100),
   kartuAsn: text(40), tempatLahir: text(60), tanggalLahir: date, jenisKelamin: z.enum(["Pria", "Wanita"]),
   pangkat: text(80), golongan: z.enum(["I/a", "I/b", "I/c", "I/d", "II/a", "II/b", "II/c", "II/d", "III/a", "III/b", "III/c", "III/d", "IV/a", "IV/b", "IV/c", "IV/d", "IV/e"]),
   tmtPangkat: date, jabatan: text(140), tmtJabatan: date, unitKerja: text(150),

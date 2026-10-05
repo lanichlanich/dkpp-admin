@@ -4,13 +4,14 @@ import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { letterNumberSchema } from "@/lib/letter-number-validation";
 import { database as db } from "@/lib/database";
 import type { KerjakuEmployee } from "@/lib/pembukaan-kerjaku-document";
 import { isStorageConfigured, uploadStorageObject } from "@/lib/storage";
 
 export const kerjakuRequestSchema = z.object({
   tanggalSurat: z.iso.date(),
-  nomorSurat: z.string().trim().min(1).max(120).regex(/^[^\r\n<>]+$/, "Nomor surat harus satu baris."),
+  nomorSurat: letterNumberSchema,
   bulanDibuka: z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/, "Pilih bulan yang valid."),
   employeeNips: z.array(z.string().trim().min(1)).min(1, "Pilih setidaknya satu pegawai.").max(500),
 }).refine((value) => new Set(value.employeeNips).size === value.employeeNips.length, {

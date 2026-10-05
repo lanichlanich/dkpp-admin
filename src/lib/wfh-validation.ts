@@ -1,15 +1,11 @@
 import { z } from "zod";
+import { letterNumberSchema } from "@/lib/letter-number-validation";
 import { monthFromIsoDate, WFH_MONTHS, WFH_TEMPLATE_YEAR } from "@/lib/wfh";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal surat wajib diisi.");
 
 export const wfhSchema = z.object({
-  nomorSurat: z
-    .string()
-    .trim()
-    .min(1, "Nomor surat wajib diisi.")
-    .max(120, "Nomor surat terlalu panjang.")
-    .regex(/^[^<>\r\n]+$/, "Nomor surat tidak boleh memuat tanda kurung sudut atau baris baru."),
+  nomorSurat: letterNumberSchema,
   bulanWfh: z.enum(WFH_MONTHS, { error: "Pilih bulan WFH." }),
   tanggalSurat: isoDate,
 }).superRefine((input, context) => {

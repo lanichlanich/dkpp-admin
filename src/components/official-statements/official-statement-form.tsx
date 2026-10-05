@@ -14,6 +14,8 @@ import type { DpcpEmployeeOption } from "@/lib/employees";
 import { formatIndonesianDate } from "@/lib/kgb";
 import type { OfficialStatementType } from "@/lib/official-statement-validation";
 import { cn } from "@/lib/utils";
+import { LetterNumberField } from "@/components/letters/letter-number-field";
+import { letterClassificationDefaults } from "@/lib/letter-classification";
 
 type FormValues = {
   documentType: OfficialStatementType;
@@ -192,11 +194,9 @@ export function OfficialStatementForm({ employees, today }: { employees: DpcpEmp
       </Card>
 
       <Card>
-        <CardHeader className="border-b"><CardTitle>Nomor dan tanggal surat</CardTitle><CardDescription>Kedua kolom ini mengganti tag pada template Word.</CardDescription></CardHeader>
+        <CardHeader className="border-b"><CardTitle>Nomor dan tanggal surat</CardTitle><CardDescription>Pilih klasifikasi berdasarkan isi pernyataan yang akan dibuat.</CardDescription></CardHeader>
         <CardContent className="grid gap-5 md:grid-cols-2">
-          <Field id="nomorSurat" label="Nomor surat" error={errors.nomorSurat?.[0]} description="Masukkan nomor lengkap sesuai penomoran naskah dinas.">
-            <Input id="nomorSurat" value={values.nomorSurat} onChange={(event) => setValue("nomorSurat", event.target.value)} disabled={submitting} aria-invalid={Boolean(errors.nomorSurat?.length)} className="h-10" placeholder="Contoh: 800.1.11.1/123/DKPP" />
-          </Field>
+          <div className="md:col-span-2"><LetterNumberField value={values.nomorSurat} onChange={(value) => setValue("nomorSurat", value)} defaultCode={letterClassificationDefaults[values.documentType]} placeholder="123/DKPP" disabled={submitting} error={errors.nomorSurat?.[0]} /></div>
           <Field id="tanggalSurat" label="Tanggal surat" error={errors.tanggalSurat?.[0]} description={values.tanggalSurat ? `Ditampilkan sebagai ${formatIndonesianDate(values.tanggalSurat)}.` : undefined}>
             <Input id="tanggalSurat" type="date" value={values.tanggalSurat} onChange={(event) => setValue("tanggalSurat", event.target.value)} disabled={submitting} aria-invalid={Boolean(errors.tanggalSurat?.length)} className="h-10" />
           </Field>

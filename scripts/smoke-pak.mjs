@@ -32,7 +32,7 @@ const selected = [
 ];
 assert(selected.every(Boolean), "Missing active/transferred/retired fixture employees");
 const input = {
-  nip: selected[1].nip, nomor: "1393/KEP/6115/SK/PAK/2026", tanggal: "2026-01-05", tempatPenetapan: "Indramayu", instansi: "Pemerintah Kab. Indramayu",
+  nip: selected[1].nip, nomor: "800.1.4.5/1393/KEP/6115/SK/PAK/2026", tanggal: "2026-01-05", tempatPenetapan: "Indramayu", instansi: "Pemerintah Kab. Indramayu",
   kartuAsn: "A200800043006", tempatLahir: "INDRAMAYU", tanggalLahir: "1968-08-28", jenisKelamin: "Pria",
   pangkat: "Penata Muda Tingkat I", golongan: "III/b", tmtPangkat: "2018-04-01", jabatan: "Penyuluh Pertanian Ahli Muda", tmtJabatan: "2024-08-08", unitKerja: "DINAS KETAHANAN PANGAN DAN PERTANIAN",
   penilaiNama: "Drs SUGENG HERYANTO, M.Si", penilaiNip: "196609231987091001",

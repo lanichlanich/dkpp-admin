@@ -1,9 +1,10 @@
 import { z } from "zod";
+import { letterNumberSchema } from "@/lib/letter-number-validation";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal wajib diisi.");
 
 export const kgbSchema = z.object({
-  nomorSurat: z.string().trim().regex(/^\d+$/, "Nomor surat hanya boleh berisi angka.").max(20),
+  nomorSurat: letterNumberSchema,
   tglSurat: isoDate,
   nip: z.string().regex(/^\d{18}$/, "Pilih pegawai PNS yang valid."),
   gajiLama: z.coerce.number().int().positive("Gaji lama wajib lebih dari 0.").max(100_000_000),

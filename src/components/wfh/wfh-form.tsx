@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatIndonesianDate } from "@/lib/kgb";
 import { monthFromIsoDate, WFH_MONTHS, WFH_TEMPLATE_YEAR, type WfhMonth } from "@/lib/wfh";
+import { LetterNumberField } from "@/components/letters/letter-number-field";
+import { letterClassificationDefaults } from "@/lib/letter-classification";
 
 type FormValues = {
   nomorSurat: string;
@@ -89,14 +91,12 @@ export function WfhForm({ today }: { today: string }) {
     <form onSubmit={submit} className="space-y-6" noValidate>
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="flex items-center gap-2"><FilePenLine className="size-5 text-indigo-600" />Isian tag template</CardTitle>
-          <CardDescription>Setiap kolom mengganti satu teks yang berada di dalam tanda &lt;&gt; pada template surat tugas WFH.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><FilePenLine className="size-5 text-indigo-600" />Data surat tugas WFH</CardTitle>
+          <CardDescription>Pilih klasifikasi surat tugas, lalu isi nomor urut, bulan, dan tanggal surat.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-5 md:grid-cols-2">
           <div className="md:col-span-2">
-            <Field id="nomorSurat" label="Nomor surat" error={errors.nomorSurat?.[0]} description="Mengganti tag <800.1.11.1/2677/Sekre>. Masukkan nomor lengkap beserta kode dan sufiks.">
-              <Input id="nomorSurat" value={values.nomorSurat} onChange={(event) => setValue("nomorSurat", event.target.value)} disabled={submitting} aria-invalid={Boolean(errors.nomorSurat?.length)} placeholder="800.1.11.1/2677/Sekre" className="h-10" />
-            </Field>
+            <LetterNumberField value={values.nomorSurat} onChange={(value) => setValue("nomorSurat", value)} defaultCode={letterClassificationDefaults.wfh} placeholder="2677/Sekre" disabled={submitting} error={errors.nomorSurat?.[0]} />
           </div>
           <Field id="bulanWfh" label="Bulan WFH" error={errors.bulanWfh?.[0]} description="Mengganti tag <Agustus>.">
             <select id="bulanWfh" value={values.bulanWfh} onChange={(event) => setValue("bulanWfh", event.target.value as WfhMonth)} disabled={submitting} aria-invalid={Boolean(errors.bulanWfh?.length)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive">

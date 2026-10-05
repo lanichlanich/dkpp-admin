@@ -1,4 +1,4 @@
-export const LOCAL_DOCUMENT_EXTRACTION_KINDS = ["employee-document", "dpcp"] as const;
+export const LOCAL_DOCUMENT_EXTRACTION_KINDS = ["employee-document", "dpcp", "official-archive"] as const;
 
 export type LocalDocumentExtractionKind = (typeof LOCAL_DOCUMENT_EXTRACTION_KINDS)[number];
 export type ExtractionConfidence = "high" | "medium" | "low";
@@ -48,3 +48,5 @@ export const DPCP_EXTRACTION_FIELDS = [
   "orangTuaAnak2",
   "alamatPensiun",
 ] as const;
+
+export const OFFICIAL_ARCHIVE_EXTRACTION_FIELDS = ["namaDokumen", "nomor", "jenisDokumen", "tglDokumen"] as const;

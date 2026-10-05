@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/session";
 import { MAX_MULTIPART_REQUEST_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 
 export const runtime = "nodejs";
-const inputSchema = z.object({ kind: z.enum(["employee-document", "dpcp"]), employeeName: z.string().max(160), employeeNip: z.string().max(30), documentType: z.string().max(80) });
+const inputSchema = z.object({ kind: z.enum(["employee-document", "dpcp", "official-archive"]), employeeName: z.string().max(160), employeeNip: z.string().max(30), documentType: z.string().max(80) });
 const active = new Set<string>();
 export async function POST(request: Request) {
   const user = await getCurrentUser();

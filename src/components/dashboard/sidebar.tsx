@@ -4,7 +4,7 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Award, BriefcaseBusiness, CalendarDays, ChevronDown, ClipboardList, FileBarChart2, FileCheck2, FileSignature, House, LayoutDashboard, LoaderCircle, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
+import { Archive, Award, BriefcaseBusiness, CalendarDays, ChevronDown, ClipboardList, FileBarChart2, FileCheck2, FileSignature, House, LayoutDashboard, LoaderCircle, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,7 @@ const personnelNavigation = [
 ];
 
 const navigation = [
+  { label: "Arsip Dinas", href: "/dashboard/arsip-dinas", icon: Archive },
   { label: "Surat Pengantar", href: "/dashboard/surat-pengantar", icon: Send },
   { label: "Pembukaan Kerjaku", href: "/dashboard/pembukaan-kerjaku", icon: FileSignature },
   { label: "Profil Saya", href: "/dashboard/profile", icon: UserRound },

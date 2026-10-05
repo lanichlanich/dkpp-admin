@@ -211,6 +211,23 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS kerjaku_request_documents_created_idx
     ON kerjaku_request_documents(created_at DESC);
 
+  CREATE TABLE IF NOT EXISTS service_archive_documents (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    nama_dokumen TEXT NOT NULL,
+    nomor TEXT NOT NULL DEFAULT '',
+    jenis_dokumen TEXT NOT NULL,
+    tgl_dokumen TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    storage_name TEXT NOT NULL UNIQUE,
+    file_size INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS service_archive_documents_date_idx
+    ON service_archive_documents(tgl_dokumen DESC, created_at DESC);
+
   CREATE TABLE IF NOT EXISTS official_statement_documents (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

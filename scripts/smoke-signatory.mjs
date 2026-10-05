@@ -60,12 +60,28 @@ for (const template of templates) {
       assert(!text.includes("Pembina Utama Muda"), `${template}: stale rank`);
       if (signer.nip) assert(text.includes(signer.nip), `${template}: missing selected NIP`);
     }
-    assert.equal(structure(after), structure(before), `${template}: formatting or structure changed`);
+    const beforeParagraphs = [...before.matchAll(/<w:p(?=[\s>])[^>]*>[\s\S]*?<\/w:p>/g)].map((match) => match[0]);
+    const afterParagraphs = [...after.matchAll(/<w:p(?=[\s>])[^>]*>[\s\S]*?<\/w:p>/g)].map((match) => match[0]);
+    assert.equal(afterParagraphs.length, beforeParagraphs.length, `${template}: paragraph count changed`);
+    const hasElectronicBlock = beforeParagraphs.some((paragraph) => /^Ditandatang\S* secara elektronik oleh\s*:/i.test(visible(paragraph).trim()));
+    beforeParagraphs.forEach((paragraph, index) => {
+      const isElectronicLabel = /^Ditandatang\S* secara elektronik oleh\s*:/i.test(visible(paragraph).trim());
+      const isElectronicTitle = hasElectronicBlock && /^KEPALA DINAS/.test(visible(paragraph));
+      if (isElectronicLabel || isElectronicTitle) {
+        const unchangedFormatting = (xml) => xml.replace(textPattern, "").replace(/<w:jc\b[^>]*\/>/g, "").replace(/<w:br\/>/g, "");
+        assert.equal(unchangedFormatting(afterParagraphs[index]), unchangedFormatting(paragraph), `${template}: unrelated signature formatting changed`);
+        assert(afterParagraphs[index].includes('<w:jc w:val="center"/>'), `${template}: signature must be centered`);
+        if (isElectronicLabel) assert.equal(visible(afterParagraphs[index]), "Ditandatangani secara elektronik oleh:");
+        if (isElectronicTitle && signer === DEFAULT_SIGNATORY) {
+          assert(afterParagraphs[index].includes('Plt. KEPALA DINAS KETAHANAN PANGAN DAN</w:t><w:br/><w:t xml:space="preserve">PERTANIAN KABUPATEN INDRAMAYU'), `${template}: Plt. title must follow the requested two lines`);
+        }
+      } else assert.equal(structure(afterParagraphs[index]), structure(paragraph), `${template}: formatting outside electronic signature changed`);
+    });
     if (before.includes("${ttd_pengirim}")) assert(text.includes("${ttd_pengirim}"));
     for (const [name, part] of Object.entries(source.files)) if (!part.dir && name !== "word/document.xml") assert(part.asNodeBuffer().equals(zip.file(name).asNodeBuffer()), `${template}: changed ZIP part ${name}`);
   }
 }
-console.log("PASS eight templates, Definitif/Plt., no stale name/NIP/rank, unchanged formatting/ZIP parts/TTE");
+console.log("PASS eight templates, Definitif/Plt., centered electronic signature with requested title lines, preserved other formatting/ZIP parts/TTE");
 
 const { generateDpcpDocument } = load("src/lib/dpcp-document.ts");
 const dpcpTemplate = new PizZip(readFileSync(path.join(root, "src/templates/template-dpcp.docx"))).file("word/document.xml").asText();

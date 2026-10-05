@@ -9,7 +9,7 @@ const encode = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&l
 
 // Replace a span even when Word splits it across runs. Keep run properties,
 // paragraph properties, breaks, drawings, and all other ZIP parts intact.
-function replaceText(paragraph: string, needle: string, replacement: string) {
+function replaceText(paragraph: string, needle: string, replacement: string, lineBreaks = false) {
   const values = [...paragraph.matchAll(textNodes)].map((match) => decode(match[2]));
   const start = values.join("").indexOf(needle);
   if (start < 0) return paragraph;
@@ -25,7 +25,21 @@ function replaceText(paragraph: string, needle: string, replacement: string) {
     offset = next;
   }
   let index = 0;
-  return paragraph.replace(textNodes, (_node, attrs: string | undefined) => `<w:t${attrs ?? ""}>${encode(values[index++])}</w:t>`);
+  return paragraph.replace(textNodes, (_node, attrs: string | undefined) => {
+    const text = encode(values[index++]);
+    return `<w:t${attrs ?? ""}>${lineBreaks ? text.replace(/\n/g, '</w:t><w:br/><w:t xml:space="preserve">') : text}</w:t>`;
+  });
+}
+
+function centerParagraph(paragraph: string) {
+  if (/<w:jc\b/.test(paragraph)) return paragraph.replace(/<w:jc\b[^>]*\/>/, '<w:jc w:val="center"/>');
+  if (/<w:pPr>/.test(paragraph)) {
+    return paragraph.replace(/<w:pPr>([\s\S]*?)<\/w:pPr>/, (_match, properties: string) => {
+      const alignment = '<w:jc w:val="center"/>';
+      return `<w:pPr>${properties.includes('<w:rPr>') ? properties.replace('<w:rPr>', `${alignment}<w:rPr>`) : properties + alignment}</w:pPr>`;
+    });
+  }
+  return paragraph.replace(/(<w:p(?=[\s>])[^>]*>)/, '$1<w:pPr><w:jc w:val="center"/></w:pPr>');
 }
 
 export function applySignatoryToTemplate(zip: PizZip, signatory: Signatory, kind: "letter" | "dpcp" | "pak" = "letter") {
@@ -33,17 +47,28 @@ export function applySignatoryToTemplate(zip: PizZip, signatory: Signatory, kind
   if (!original) throw new Error("Template dokumen tidak tersedia.");
   const rank = signatoryRank(signatory.rank);
   let headingContinuation = false;
+  let electronicHeading = false;
   let found = false;
   const xml = original.replace(paragraphs, (paragraph) => {
     const visible = [...paragraph.matchAll(textNodes)].map((match) => decode(match[2])).join("");
     const text = visible.trim();
     if (!text) return paragraph;
+    if (/^Ditandatang\S* secara elektronik oleh\s*:/i.test(text)) {
+      electronicHeading = true;
+      return centerParagraph(replaceText(paragraph, visible, "Ditandatangani secara elektronik oleh:"));
+    }
     if (headingContinuation && /^(?:DAN PERTANIAN(?: KABUPATEN INDRAMAYU)?|KABUPATEN INDRAMAYU)$/i.test(text)) {
       return replaceText(paragraph, visible, "");
     }
     headingContinuation = false;
     if (/^(?:Plt\.?\s*)?KEPALA DINAS KETAHANAN PANGAN/i.test(text)) {
       found = true;
+      if (electronicHeading) {
+        electronicHeading = false;
+        const title = signatoryTitle(signatory);
+        const lines = title.replace(/ DAN PERTANIAN KABUPATEN INDRAMAYU$/i, ' DAN\nPERTANIAN KABUPATEN INDRAMAYU');
+        return centerParagraph(replaceText(paragraph, visible, lines, true));
+      }
       // Preserve the template's separate heading lines for the same office.
       // Other selected offices replace the heading and clear its continuation.
       if (signatory.title.replace(/^Plt\.?\s*/i, "").trim().toUpperCase() === DEFAULT_SIGNATORY.title && text === text.toUpperCase()) {

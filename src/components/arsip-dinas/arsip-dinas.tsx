@@ -18,6 +18,7 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
   const today = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Jakarta" }).format(new Date());
   const [documents, setDocuments] = useState(initialDocuments);
   const [fields, setFields] = useState<MetadataFields>(() => empty(today));
+  const [dateEdited, setDateEdited] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -42,7 +43,7 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message ?? "Dokumen gagal dibaca.");
       const values = payload.values as MetadataFields;
-      setFields((current) => ({ namaDokumen: current.namaDokumen || values.namaDokumen || "", nomor: current.nomor || values.nomor || "", jenisDokumen: current.jenisDokumen || values.jenisDokumen || "", tglDokumen: current.tglDokumen !== today ? current.tglDokumen : values.tglDokumen || today }));
+      setFields((current) => ({ namaDokumen: current.namaDokumen || values.namaDokumen || "", nomor: current.nomor || values.nomor || "", jenisDokumen: current.jenisDokumen || values.jenisDokumen || "", tglDokumen: dateEdited ? current.tglDokumen : values.tglDokumen || current.tglDokumen }));
       setWarnings(payload.warnings ?? []);
       toast.success("Pembacaan Gemini selesai. Periksa kembali hasilnya sebelum disimpan.");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Gemini tidak dapat membaca dokumen. Isi form secara manual."); }
@@ -61,14 +62,14 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
       if (editing) setDocuments((current) => current.map((item) => item.id === editing ? payload.document : item));
       else setDocuments((current) => [payload.document, ...current]);
       toast.success(editing ? "Metadata arsip diperbarui." : "Arsip dinas berhasil disimpan.");
-      setFields(empty(today)); setFile(null); setEditing(null); setWarnings([]);
+      setFields(empty(today)); setDateEdited(false); setFile(null); setEditing(null); setWarnings([]);
       const input = document.getElementById("archive-pdf") as HTMLInputElement | null; if (input) input.value = "";
     } catch (error) { toast.error(error instanceof Error ? error.message : "Arsip gagal disimpan."); }
     finally { setSaving(false); }
   }
 
-  function startEdit(doc: ArchiveDocument) { setEditing(doc.id); setFields({ namaDokumen: doc.namaDokumen, nomor: doc.nomor, jenisDokumen: doc.jenisDokumen, tglDokumen: doc.tglDokumen }); setFile(null); setWarnings([]); window.scrollTo({ top: 0, behavior: "smooth" }); }
-  function cancelEdit() { setEditing(null); setFields(empty(today)); setFile(null); const input = document.getElementById("archive-pdf") as HTMLInputElement | null; if (input) input.value = ""; }
+  function startEdit(doc: ArchiveDocument) { setEditing(doc.id); setFields({ namaDokumen: doc.namaDokumen, nomor: doc.nomor, jenisDokumen: doc.jenisDokumen, tglDokumen: doc.tglDokumen }); setDateEdited(true); setFile(null); setWarnings([]); window.scrollTo({ top: 0, behavior: "smooth" }); }
+  function cancelEdit() { setEditing(null); setFields(empty(today)); setDateEdited(false); setFile(null); const input = document.getElementById("archive-pdf") as HTMLInputElement | null; if (input) input.value = ""; }
 
   return <div className="space-y-6">
     <Card>
@@ -79,9 +80,9 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
             <div className="space-y-2"><Label htmlFor="archive-name">Nama dokumen</Label><Input id="archive-name" value={fields.namaDokumen} onChange={(e) => update("namaDokumen", e.target.value)} placeholder="Contoh: Surat Edaran Jam Kerja" maxLength={180} required disabled={saving} /></div>
             <div className="space-y-2"><Label htmlFor="archive-number">Nomor dokumen <span className="font-normal text-zinc-500">(jika ada)</span></Label><Input id="archive-number" value={fields.nomor} onChange={(e) => update("nomor", e.target.value)} placeholder="Boleh dikosongkan" maxLength={120} disabled={saving} /></div>
             <div className="space-y-2"><Label htmlFor="archive-kind">Jenis dokumen</Label><Input id="archive-kind" value={fields.jenisDokumen} onChange={(e) => update("jenisDokumen", e.target.value)} placeholder="Contoh: Surat Edaran" maxLength={100} required disabled={saving} /></div>
-            <div className="space-y-2"><Label htmlFor="archive-date">Tanggal dokumen</Label><Input id="archive-date" type="date" value={fields.tglDokumen} onChange={(e) => update("tglDokumen", e.target.value)} required disabled={saving} /></div>
+            <div className="space-y-2"><Label htmlFor="archive-date">Tanggal dokumen</Label><Input id="archive-date" type="date" value={fields.tglDokumen} onChange={(e) => { setDateEdited(true); update("tglDokumen", e.target.value); }} required disabled={saving} /></div>
           </div>
-          {!editing && <div className="space-y-2"><Label htmlFor="archive-pdf">Softfile PDF</Label><div className="flex flex-col gap-2 sm:flex-row"><Input id="archive-pdf" type="file" accept="application/pdf,.pdf" onChange={(e) => chooseFile(e.target.files?.[0] ?? null)} disabled={saving || reading} required className="max-w-xl file:mr-3 file:rounded-md file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-emerald-800" /><Button type="button" variant="outline" onClick={readWithGemini} disabled={!file || reading || saving}>{reading ? <><LoaderCircle className="animate-spin" />Membaca...</> : <><Sparkles />Baca dengan Gemini</>}</Button></div><p className="text-xs text-zinc-500">Jika Gemini gagal membaca, kolom di atas tetap dapat diisi manual. Tinjau kembali hasil pembacaan sebelum menyimpan.</p></div>}
+          {!editing && <div className="space-y-2"><Label htmlFor="archive-pdf">Softfile PDF</Label><div className="flex flex-col gap-2 sm:flex-row"><Input id="archive-pdf" type="file" accept="application/pdf,.pdf" onChange={(e) => chooseFile(e.target.files?.[0] ?? null)} disabled={saving || reading} required className="max-w-xl file:mr-3 file:rounded-md file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-emerald-800" /><Button type="button" variant="outline" onClick={readWithGemini} disabled={!file || reading || saving}>{reading ? <><LoaderCircle className="animate-spin" />Membaca...</> : <><Sparkles />Baca dengan Gemini</>}</Button></div><p className="text-xs text-zinc-500">Gemini membaca nama, nomor, jenis, dan tanggal dokumen jika tercantum. Jika gagal menemukan tanggal atau gagal membaca, isian dapat dilengkapi manual. Tinjau hasilnya sebelum menyimpan.</p></div>}
           {warnings.length > 0 && <div role="status" className="space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{warnings.map((warning, i) => <p key={i}>{warning}</p>)}</div>}
           <div className="flex flex-wrap justify-end gap-2">{editing && <Button type="button" variant="outline" onClick={cancelEdit} disabled={saving}>Batal edit</Button>}<Button type="submit" disabled={saving || reading}>{saving ? <><LoaderCircle className="animate-spin" />Menyimpan...</> : editing ? <><Pencil />Simpan perubahan</> : <><Upload />Simpan arsip</>}</Button></div>
         </form>

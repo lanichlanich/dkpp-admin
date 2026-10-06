@@ -45,7 +45,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex h-full flex-col bg-gradient-to-b from-emerald-600 via-green-700 to-sky-700 text-emerald-50">
       <div className="flex h-20 shrink-0 items-center gap-3 border-b border-white/20 bg-white/[0.08] px-3.5">
         <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white p-1 shadow-lg shadow-emerald-950/25 ring-1 ring-amber-200/70"><Image src="/dkpp-admin-logo.png" alt="" width={52} height={52} className="size-12 object-contain" priority /></span>
-        <div className="min-w-0 flex-1"><p className="text-[15px] font-semibold leading-5 text-white">DKPP-Admin</p><p className="truncate text-[11px] text-emerald-100/85">Administrasi Kepegawaian</p></div>
+        <div className="min-w-0 flex-1"><p className="text-[15px] font-semibold leading-5 text-white">DKPP-Admin</p><p className="truncate text-[11px] text-emerald-100/85">Administrasi DKPP</p></div>
         {onNavigate && <Button variant="ghost" size="icon" onClick={onNavigate} aria-label="Tutup menu" className="size-10 shrink-0 text-white/85 hover:bg-white/15 hover:text-white"><X className="size-4" /></Button>}
       </div>
       <nav aria-label="Menu utama" className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-6">
@@ -75,7 +75,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
       <div className="shrink-0 border-t border-white/20 p-4">
-        <div className="rounded-xl bg-white/10 p-3 text-xs leading-5 text-emerald-100 ring-1 ring-inset ring-white/10"><p className="font-medium text-white">DKPP-Admin</p><p>Ruang kerja administrasi pegawai</p></div>
+        <div className="rounded-xl bg-white/10 p-3 text-xs leading-5 text-emerald-100 ring-1 ring-inset ring-white/10"><p className="font-medium text-white">DKPP-Admin</p><p>Administrasi DKPP</p></div>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ const TABLES = new Set([
   "pak_documents",
   "wfh_documents",
   "surat_pengantar_documents",
+  "surat_lupa_absen_documents",
   "kerjaku_request_documents",
   "official_statement_documents",
   "service_archive_documents",

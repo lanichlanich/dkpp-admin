@@ -211,6 +211,29 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS kerjaku_request_documents_created_idx
     ON kerjaku_request_documents(created_at DESC);
 
+  CREATE TABLE IF NOT EXISTS surat_lupa_absen_documents (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    employee_nip TEXT NOT NULL,
+    employee_name TEXT NOT NULL,
+    employee_position TEXT NOT NULL,
+    absence_date TEXT NOT NULL,
+    letter_date TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    supervisor_nip TEXT NOT NULL,
+    supervisor_name TEXT NOT NULL,
+    supervisor_position TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    storage_name TEXT NOT NULL UNIQUE,
+    file_size INTEGER NOT NULL CHECK (file_size BETWEEN 1 AND 2097152),
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS surat_lupa_absen_documents_created_idx
+    ON surat_lupa_absen_documents(created_at DESC);
+  CREATE INDEX IF NOT EXISTS surat_lupa_absen_documents_date_idx
+    ON surat_lupa_absen_documents(absence_date DESC, created_at DESC);
+
   CREATE TABLE IF NOT EXISTS service_archive_documents (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

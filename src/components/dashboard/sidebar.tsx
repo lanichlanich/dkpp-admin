@@ -4,21 +4,24 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Archive, Award, BriefcaseBusiness, CalendarDays, ChevronDown, ClipboardList, FileBarChart2, FileCheck2, FileSignature, House, LayoutDashboard, ListTree, LoaderCircle, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
+import { Archive, Award, BriefcaseBusiness, CalendarDays, ChevronDown, ClipboardList, FileBarChart2, FileCheck2, FileSignature, FolderOpen, House, LayoutDashboard, ListTree, LoaderCircle, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const personnelNavigation = [
   { label: "Daftar Pegawai", href: "/dashboard/pegawai", icon: UsersRound },
-  { label: "Daftar WFH/WFO", href: "/dashboard/daftar-wfh", icon: CalendarDays },
-  { label: "Laporan Pegawai WFH/WFO", href: "/dashboard/laporan-pegawai-wfh-wfo", icon: FileBarChart2 },
   { label: "Daftar Hukdis", href: "/dashboard/hukdis", icon: Scale },
   { label: "Surat HUKDIS & HUKDA", href: "/dashboard/surat-hukdis-hukda", icon: FileCheck2 },
-  { label: "Surat Tugas WFH", href: "/dashboard/wfh", icon: House },
-  { label: "Laporan WFH", href: "/dashboard/laporan-wfh", icon: ClipboardList },
   { label: "DPCP", href: "/dashboard/dpcp", icon: ScrollText },
   { label: "PAK", href: "/dashboard/pak", icon: Award },
   { label: "SK KGB", href: "/dashboard/kgb", icon: FileSignature },
+];
+
+const generalNavigation = [
+  { label: "Daftar WFH/WFO", href: "/dashboard/daftar-wfh", icon: CalendarDays },
+  { label: "Laporan Pegawai WFH/WFO", href: "/dashboard/laporan-pegawai-wfh-wfo", icon: FileBarChart2 },
+  { label: "Surat Tugas WFH", href: "/dashboard/wfh", icon: House },
+  { label: "Laporan WFH", href: "/dashboard/laporan-wfh", icon: ClipboardList },
 ];
 
 const navigation = [
@@ -40,7 +43,9 @@ function NavigationIcon({ icon: Icon, className }: { icon: LucideIcon; className
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const personnelActive = personnelNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  const generalActive = generalNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
   const [personnelOpen, setPersonnelOpen] = useState(personnelActive);
+  const [generalOpen, setGeneralOpen] = useState(generalActive);
   return (
     <div className="flex h-full flex-col bg-gradient-to-b from-emerald-600 via-green-700 to-sky-700 text-emerald-50">
       <div className="flex h-20 shrink-0 items-center gap-3 border-b border-white/20 bg-white/[0.08] px-3.5">
@@ -59,6 +64,16 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </button>
         {personnelOpen && <div className="ml-3 space-y-1 border-l border-amber-200/45 pl-3">
           {personnelNavigation.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const Icon = item.icon;
+            return <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={Icon} className="size-4 shrink-0" /><span className="min-w-0 leading-5">{item.label}</span></Link>;
+          })}
+        </div>}
+        <button type="button" aria-expanded={generalOpen} onClick={() => setGeneralOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", generalActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
+          <FolderOpen aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Umum</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", generalOpen && "rotate-180")} />
+        </button>
+        {generalOpen && <div className="ml-3 space-y-1 border-l border-amber-200/45 pl-3">
+          {generalNavigation.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
             return <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={Icon} className="size-4 shrink-0" /><span className="min-w-0 leading-5">{item.label}</span></Link>;

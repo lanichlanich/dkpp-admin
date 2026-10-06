@@ -104,6 +104,31 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS notifications_user_created_idx
     ON notifications(user_id, created_at DESC);
 
+  CREATE TABLE IF NOT EXISTS audit_logs (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    actor_name TEXT NOT NULL,
+    actor_username TEXT NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('INSERT', 'UPDATE', 'DELETE', 'BATCH')),
+    entity TEXT NOT NULL,
+    route TEXT,
+    ip_address TEXT,
+    os_name TEXT NOT NULL,
+    browser_name TEXT NOT NULL,
+    device_type TEXT NOT NULL,
+    user_agent TEXT NOT NULL,
+    request_id TEXT,
+    country_code TEXT,
+    timezone TEXT,
+    changed_fields TEXT NOT NULL,
+    affected_rows INTEGER NOT NULL,
+    operation_count INTEGER NOT NULL,
+    details TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS audit_logs_created_idx ON audit_logs(created_at DESC);
+  CREATE INDEX IF NOT EXISTS audit_logs_entity_idx ON audit_logs(entity, created_at DESC);
+
   CREATE TABLE IF NOT EXISTS kgb_documents (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

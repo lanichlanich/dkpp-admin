@@ -8,6 +8,7 @@ export type PublicUser = {
 
 export type Employee = {
   nip: string;
+  jobPositionId: string | null;
   name: string;
   parentUnit: string;
   unit: string;

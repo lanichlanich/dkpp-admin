@@ -13,10 +13,7 @@ const employeeSchema = z.object({
   nip: z.string().trim().regex(/^\d{18}$/, "NIP harus terdiri dari tepat 18 digit."),
   name: requiredText("Nama", 160),
   parentUnit: requiredText("Unor induk", 200),
-  unit: requiredText("Unor", 200),
-  position: requiredText("Jabatan", 200),
-  positionType: requiredText("Jenis jabatan", 50),
-  echelon: requiredText("Eselon", 30),
+  jobPositionId: requiredText("Penempatan jabatan", 80),
   rank: requiredText("Golongan/pangkat", 100),
   asnType: requiredText("Jenis ASN", 30),
   status: z.enum(["Aktif", "Pensiun", "Mutasi"], { error: "Pilih status pegawai." }),
@@ -38,10 +35,7 @@ export async function saveEmployeeAction(
     nip: formData.get("nip"),
     name: formData.get("name"),
     parentUnit: formData.get("parentUnit"),
-    unit: formData.get("unit"),
-    position: formData.get("position"),
-    positionType: formData.get("positionType"),
-    echelon: formData.get("echelon"),
+    jobPositionId: formData.get("jobPositionId"),
     rank: formData.get("rank"),
     asnType: formData.get("asnType"),
     status: formData.get("status"),
@@ -53,7 +47,20 @@ export async function saveEmployeeAction(
 
   const mode = formData.get("mode") === "edit" ? "edit" : "create";
   const originalNip = String(formData.get("originalNip") ?? "");
-  const employee = parsed.data;
+  const position = await db.prepare(`SELECT id, name, unit, position_type, echelon
+    FROM job_positions WHERE id = ?`).get(parsed.data.jobPositionId) as {
+      id: string; name: string; unit: string; position_type: string; echelon: string;
+    } | undefined;
+  if (!position) {
+    return { status: "error", message: "Penempatan jabatan tidak ditemukan. Muat ulang halaman dan pilih kembali.", submittedAt: Date.now() };
+  }
+  const employee = {
+    ...parsed.data,
+    unit: position.unit,
+    position: position.name,
+    positionType: position.position_type,
+    echelon: position.echelon,
+  };
   const now = new Date().toISOString();
 
   if (mode === "create") {
@@ -64,12 +71,12 @@ export async function saveEmployeeAction(
 
     await db.prepare(
       `INSERT INTO employees (
-        nip, name, parent_unit, unit, position, position_type, echelon,
+        nip, name, parent_unit, unit, position, position_type, echelon, job_position_id,
         rank, asn_type, gender, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       employee.nip, employee.name, employee.parentUnit, employee.unit,
-      employee.position, employee.positionType, employee.echelon, employee.rank,
+      employee.position, employee.positionType, employee.echelon, position.id, employee.rank,
       employee.asnType, employee.nip.slice(-4, -3) === "1" ? "Laki-laki" : employee.nip.slice(-4, -3) === "2" ? "Perempuan" : "Tidak diketahui", employee.status, now, now,
     );
     await createNotification(user.id, "success", "Pegawai ditambahkan", `${employee.name} (${employee.nip}) berhasil ditambahkan.`);
@@ -80,11 +87,11 @@ export async function saveEmployeeAction(
     const result = await db.prepare(
       `UPDATE employees SET
         name = ?, parent_unit = ?, unit = ?, position = ?, position_type = ?,
-        echelon = ?, rank = ?, asn_type = ?, gender = ?, status = ?, updated_at = ?
+        echelon = ?, job_position_id = ?, rank = ?, asn_type = ?, gender = ?, status = ?, updated_at = ?
        WHERE nip = ?`,
     ).run(
       employee.name, employee.parentUnit, employee.unit, employee.position,
-      employee.positionType, employee.echelon, employee.rank, employee.asnType,
+      employee.positionType, employee.echelon, position.id, employee.rank, employee.asnType,
       employee.nip.slice(-4, -3) === "1" ? "Laki-laki" : employee.nip.slice(-4, -3) === "2" ? "Perempuan" : "Tidak diketahui", employee.status, now, employee.nip,
     );
     if (result.changes === 0) {

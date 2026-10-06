@@ -1,19 +1,22 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { LoaderCircle, Pencil, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, LoaderCircle, Pencil, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { saveEmployeeAction } from "@/actions/employees";
 import { FieldError, FormMessage } from "@/components/auth/form-message";
 import { SearchableSelect } from "@/components/employees/searchable-select";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Employee } from "@/lib/db";
 import type { EmployeeOptions } from "@/lib/employees";
+import { cn } from "@/lib/utils";
 
 function RequiredLabel({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
   return <Label htmlFor={htmlFor}>{children}<span className="ml-1 text-red-500" aria-hidden="true">*</span></Label>;
@@ -28,6 +31,10 @@ export function EmployeeFormDialog({ employee, options }: { employee?: Employee;
   const editing = Boolean(employee);
   const [open, setOpen] = useState(false);
   const [state, action] = useActionState(saveEmployeeAction, {});
+  const initialPositionId = employee?.jobPositionId ?? options.positions.find((position) => position.name === employee?.position && position.unit === employee?.unit)?.id ?? "";
+  const [positionId, setPositionId] = useState(initialPositionId);
+  const [positionOpen, setPositionOpen] = useState(false);
+  const selectedPosition = options.positions.find((position) => position.id === positionId);
   const router = useRouter();
 
   useEffect(() => {
@@ -53,7 +60,7 @@ export function EmployeeFormDialog({ employee, options }: { employee?: Employee;
       ) : (
         <Button onClick={() => setOpen(true)} className="bg-indigo-600 text-white hover:bg-indigo-700"><Plus className="size-4" />Tambah pegawai</Button>
       )}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(nextOpen) => { if (nextOpen) setPositionId(initialPositionId); setOpen(nextOpen); }}>
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-4xl">
           <DialogHeader><DialogTitle>{editing ? "Edit data pegawai" : "Tambah pegawai"}</DialogTitle><DialogDescription>Kolom bertanda <span className="text-red-500">*</span> wajib diisi. Validasi akhir dilakukan di server.</DialogDescription></DialogHeader>
           <form action={action} className="space-y-5">
@@ -66,12 +73,13 @@ export function EmployeeFormDialog({ employee, options }: { employee?: Employee;
             </div>
             <div className="grid gap-5 md:grid-cols-2">
               <div className="space-y-2"><RequiredLabel htmlFor="parentUnit">Unor induk</RequiredLabel><SearchableSelect name="parentUnit" options={options.parentUnits} defaultValue={employee?.parentUnit} placeholder="Pilih unor induk" searchPlaceholder="Cari unor induk..." invalid={Boolean(state.errors?.parentUnit)} /><FieldError messages={state.errors?.parentUnit} /></div>
-              <div className="space-y-2"><RequiredLabel htmlFor="unit">Unor</RequiredLabel><SearchableSelect name="unit" options={options.units} defaultValue={employee?.unit} placeholder="Pilih unit organisasi" searchPlaceholder="Cari unor..." invalid={Boolean(state.errors?.unit)} /><FieldError messages={state.errors?.unit} /></div>
+              <div className="space-y-2"><Label>Unor penempatan</Label><div className="flex h-11 items-center rounded-lg border bg-zinc-50 px-3 text-sm text-zinc-700">{selectedPosition?.unit ?? "Terisi otomatis dari jabatan"}</div></div>
             </div>
-            <div className="space-y-2"><RequiredLabel htmlFor="position">Jabatan</RequiredLabel><SearchableSelect name="position" options={options.positions} defaultValue={employee?.position} placeholder="Pilih jabatan" searchPlaceholder="Cari jabatan..." invalid={Boolean(state.errors?.position)} /><FieldError messages={state.errors?.position} /></div>
+            <input type="hidden" name="jobPositionId" value={positionId} />
+            <div className="space-y-2"><RequiredLabel htmlFor="jobPositionId">Jabatan</RequiredLabel><Popover open={positionOpen} onOpenChange={setPositionOpen}><PopoverTrigger render={<Button id="jobPositionId" type="button" variant="outline" role="combobox" aria-expanded={positionOpen} aria-invalid={Boolean(state.errors?.jobPositionId)} className="h-11 w-full justify-between overflow-hidden px-3 font-normal" />}><span className={cn("min-w-0 truncate text-left", !selectedPosition && "text-muted-foreground")}>{selectedPosition ? `${selectedPosition.name} · ${selectedPosition.unit} · ${selectedPosition.positionType}/${selectedPosition.echelon}` : "Pilih jabatan dan unit..."}</span><ChevronsUpDown className="size-4 shrink-0 opacity-50" /></PopoverTrigger><PopoverContent align="start" className="w-[var(--anchor-width)] p-0"><Command><CommandInput placeholder="Cari jabatan atau unit..." /><CommandList className="max-h-72"><CommandEmpty>Jabatan tidak ditemukan.</CommandEmpty><CommandGroup>{options.positions.map((position) => <CommandItem key={position.id} value={`${position.name} ${position.unit} ${position.positionType} ${position.echelon}`} onSelect={() => { setPositionId(position.id); setPositionOpen(false); }}><Check className={cn("size-4 shrink-0", positionId === position.id ? "opacity-100" : "opacity-0")} /><span className="min-w-0"><span className="block truncate">{position.name}</span><span className="block truncate text-xs text-zinc-500">{position.unit} · {position.positionType} · {position.echelon}</span></span></CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent></Popover><FieldError messages={state.errors?.jobPositionId} /></div>
             <div className="grid gap-5 md:grid-cols-3">
-              <div className="space-y-2"><RequiredLabel htmlFor="positionType">Jenis jabatan</RequiredLabel><SearchableSelect name="positionType" options={options.positionTypes} defaultValue={employee?.positionType} placeholder="Pilih jenis" invalid={Boolean(state.errors?.positionType)} /><FieldError messages={state.errors?.positionType} /></div>
-              <div className="space-y-2"><RequiredLabel htmlFor="echelon">Eselon</RequiredLabel><SearchableSelect name="echelon" options={options.echelons} defaultValue={employee?.echelon} placeholder="Pilih eselon" invalid={Boolean(state.errors?.echelon)} /><FieldError messages={state.errors?.echelon} /></div>
+              <div className="space-y-2"><Label htmlFor="positionTypeDisplay">Jenis jabatan</Label><Input id="positionTypeDisplay" value={selectedPosition?.positionType ?? ""} readOnly className="h-11 bg-zinc-50" /></div>
+              <div className="space-y-2"><Label htmlFor="echelonDisplay">Eselon</Label><Input id="echelonDisplay" value={selectedPosition?.echelon ?? ""} readOnly className="h-11 bg-zinc-50" /></div>
               <div className="space-y-2"><RequiredLabel htmlFor="rank">Golongan/pangkat</RequiredLabel><SearchableSelect name="rank" options={options.ranks} defaultValue={employee?.rank} placeholder="Pilih golongan" searchPlaceholder="Cari golongan..." invalid={Boolean(state.errors?.rank)} /><FieldError messages={state.errors?.rank} /></div>
             </div>
             <div className="grid gap-5 md:grid-cols-2">

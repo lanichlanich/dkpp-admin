@@ -4,12 +4,13 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Archive, Award, BriefcaseBusiness, CalendarDays, ChevronDown, ClipboardList, FileBarChart2, FileCheck2, FileSignature, FileText, FolderOpen, History, House, LayoutDashboard, ListTree, LoaderCircle, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
+import { Archive, Award, BriefcaseBusiness, CalendarDays, ChevronDown, ClipboardList, FileBarChart2, FileCheck2, FileSignature, FileText, FolderOpen, History, House, LayoutDashboard, ListTree, LoaderCircle, Network, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const personnelNavigation = [
   { label: "Daftar Pegawai", href: "/dashboard/pegawai", icon: UsersRound },
+  { label: "Daftar Jabatan", href: "/dashboard/jabatan", icon: Network },
   { label: "Daftar Hukdis", href: "/dashboard/hukdis", icon: Scale },
   { label: "Surat HUKDIS & HUKDA", href: "/dashboard/surat-hukdis-hukda", icon: FileCheck2 },
   { label: "DPCP", href: "/dashboard/dpcp", icon: ScrollText },

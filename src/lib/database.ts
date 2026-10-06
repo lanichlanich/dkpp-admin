@@ -9,6 +9,8 @@ const TABLES = new Set([
   "users",
   "sessions",
   "employees",
+  "job_positions",
+  "job_positions",
   "notifications",
   "kgb_documents",
   "dpcp_documents",

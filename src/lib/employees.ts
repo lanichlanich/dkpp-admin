@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/session";
 
 type EmployeeRow = {
   nip: string;
+  job_position_id: string | null;
   name: string;
   parent_unit: string;
   unit: string;
@@ -27,6 +28,7 @@ function mapEmployee(row: EmployeeRow): Employee {
   const gender = genderDigit === "1" ? "Laki-laki" : genderDigit === "2" ? "Perempuan" : "Tidak diketahui";
   return {
     nip: row.nip,
+    jobPositionId: row.job_position_id,
     name: row.name,
     parentUnit: row.parent_unit,
     unit: row.unit,
@@ -98,7 +100,7 @@ export const getDpcpEmployeeOptions = cache(async (): Promise<DpcpEmployeeOption
 export type EmployeeOptions = {
   parentUnits: string[];
   units: string[];
-  positions: string[];
+  positions: EmployeePositionOption[];
   positionTypes: string[];
   echelons: string[];
   ranks: string[];
@@ -107,13 +109,26 @@ export type EmployeeOptions = {
   statuses: string[];
 };
 
+export type EmployeePositionOption = {
+  id: string;
+  name: string;
+  unit: string;
+  positionType: string;
+  echelon: string;
+};
+
 export const getEmployeeOptions = cache(async (): Promise<EmployeeOptions> => {
   const employees = await getEmployees();
   const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "id"));
+  const positions = await db.prepare(`SELECT id, name, unit, position_type AS positionType, echelon
+    FROM job_positions ORDER BY name COLLATE NOCASE, unit COLLATE NOCASE`).all() as EmployeePositionOption[];
   return {
     parentUnits: unique(employees.map((employee) => employee.parentUnit)),
     units: unique(employees.map((employee) => employee.unit)),
-    positions: unique(employees.map((employee) => employee.position)),
+    positions: positions.length ? positions : unique(employees.map((employee) => employee.position)).map((name) => ({
+      id: "", name, unit: "", positionType: employees.find((employee) => employee.position === name)?.positionType ?? "",
+      echelon: employees.find((employee) => employee.position === name)?.echelon ?? "",
+    })),
     positionTypes: unique(employees.map((employee) => employee.positionType)),
     echelons: unique(employees.map((employee) => employee.echelon)),
     ranks: unique(employees.map((employee) => employee.rank)),

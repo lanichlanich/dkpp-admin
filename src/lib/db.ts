@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -62,6 +63,20 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS employees_name_idx ON employees(name COLLATE NOCASE);
   CREATE INDEX IF NOT EXISTS employees_unit_idx ON employees(unit COLLATE NOCASE);
   CREATE INDEX IF NOT EXISTS employees_status_idx ON employees(status);
+
+  CREATE TABLE IF NOT EXISTS job_positions (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    unit TEXT NOT NULL,
+    position_type TEXT NOT NULL,
+    echelon TEXT NOT NULL,
+    parent_id TEXT REFERENCES job_positions(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(name, unit, position_type, echelon)
+  );
+  CREATE INDEX IF NOT EXISTS job_positions_parent_idx ON job_positions(parent_id);
+  CREATE INDEX IF NOT EXISTS job_positions_name_idx ON job_positions(name COLLATE NOCASE);
 
   CREATE TABLE IF NOT EXISTS wfh_schedule_months (
     period TEXT PRIMARY KEY,
@@ -518,6 +533,9 @@ const employeeColumns = db.prepare("PRAGMA table_info(employees)").all() as Arra
 if (!employeeColumns.some((column) => column.name === "gender")) {
   db.exec("ALTER TABLE employees ADD COLUMN gender TEXT NOT NULL DEFAULT 'Tidak diketahui'");
 }
+if (!employeeColumns.some((column) => column.name === "job_position_id")) {
+  db.exec("ALTER TABLE employees ADD COLUMN job_position_id TEXT REFERENCES job_positions(id) ON DELETE SET NULL");
+}
 
 const employeeCount = (
   db.prepare("SELECT COUNT(*) AS count FROM employees").get() as { count: number }
@@ -569,6 +587,54 @@ if (employeeCount === 0) {
       now,
     );
   }
+}
+
+const initialPositions = db.prepare(`
+  SELECT position AS name, unit, position_type, echelon
+  FROM employees GROUP BY position, unit, position_type, echelon ORDER BY position, unit, position_type, echelon
+`).all() as Array<{ name: string; unit: string; position_type: string; echelon: string }>;
+const addPosition = db.prepare(`
+  INSERT OR IGNORE INTO job_positions (id, name, unit, position_type, echelon, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`);
+const now = new Date().toISOString();
+for (const position of initialPositions) {
+  addPosition.run(randomUUID(), position.name, position.unit, position.position_type, position.echelon, now, now);
+}
+db.prepare(`UPDATE employees SET job_position_id = (
+  SELECT jp.id FROM job_positions jp
+  WHERE jp.name = employees.position AND jp.unit = employees.unit
+    AND jp.position_type = employees.position_type AND jp.echelon = employees.echelon LIMIT 1
+) WHERE job_position_id IS NULL`).run();
+
+const positionsForHierarchy = db.prepare("SELECT id, name, unit, parent_id FROM job_positions").all() as Array<{
+  id: string; name: string; unit: string; parent_id: string | null;
+}>;
+const findPosition = (predicate: (position: typeof positionsForHierarchy[number]) => boolean) =>
+  positionsForHierarchy.find(predicate);
+const rootPosition = findPosition((position) => position.name.toLocaleUpperCase("id-ID").startsWith("KEPALA DINAS"));
+const secretaryPosition = findPosition((position) => position.name.toLocaleUpperCase("id-ID").startsWith("SEKRETARIS DINAS"));
+const setPositionParent = db.prepare("UPDATE job_positions SET parent_id = ?, updated_at = ? WHERE id = ? AND parent_id IS NULL");
+for (const position of positionsForHierarchy) {
+  const name = position.name.toLocaleUpperCase("id-ID");
+  let parent: typeof position | undefined;
+  if (rootPosition && position.id !== rootPosition.id) {
+    if (name.startsWith("KEPALA SUB BAGIAN TU UPTD ")) {
+      const expectedName = `KEPALA ${name.slice("KEPALA SUB BAGIAN TU ".length)}`;
+      parent = findPosition((candidate) => candidate.name.toLocaleUpperCase("id-ID") === expectedName);
+    } else if (name.startsWith("SEKRETARIS DINAS") || name.startsWith("KEPALA BIDANG") || name.startsWith("KEPALA UPTD")) {
+      parent = rootPosition;
+    } else if (name.startsWith("KEPALA SUB BAGIAN")) {
+      parent = secretaryPosition;
+    } else {
+      parent = findPosition((candidate) => candidate.id !== position.id && candidate.unit === position.unit && (
+        candidate.name.toLocaleUpperCase("id-ID").startsWith("KEPALA ") ||
+        candidate.name.toLocaleUpperCase("id-ID").startsWith("SEKRETARIS DINAS")
+      ));
+      parent ??= rootPosition;
+    }
+  }
+  if (parent && parent.id !== position.id) setPositionParent.run(parent.id, now, position.id);
 }
 
 if (process.env.NODE_ENV !== "production") {

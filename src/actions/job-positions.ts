@@ -10,7 +10,7 @@ const text = (label: string, max = 200) => z.string().trim().min(1, `${label} wa
 const positionSchema = z.object({
   id: z.string().trim().max(80),
   name: text("Nama jabatan"),
-  unit: text("Unit organisasi"),
+  organizationUnitId: z.string().uuid("Pilih unit organisasi yang valid."),
   positionType: z.enum(["JS", "JF", "JFU"], { error: "Pilih jenis jabatan yang valid." }),
   echelon: text("Eselon", 30),
   parentId: z.string().trim().max(80),
@@ -32,12 +32,15 @@ function refreshPositionPages() {
 export async function saveJobPositionAction(_state: JobPositionFormState, formData: FormData): Promise<JobPositionFormState> {
   await requireUser();
   const parsed = positionSchema.safeParse({
-    id: formData.get("id"), name: formData.get("name"), unit: formData.get("unit"),
+    id: formData.get("id"), name: formData.get("name"), organizationUnitId: formData.get("organizationUnitId"),
     positionType: formData.get("positionType"), echelon: formData.get("echelon"), parentId: formData.get("parentId"),
   });
   if (!parsed.success) return { status: "error", errors: parsed.error.flatten().fieldErrors, submittedAt: Date.now() };
 
-  const { id, name, unit, positionType, echelon } = parsed.data;
+  const { id, name, positionType, echelon, organizationUnitId } = parsed.data;
+  const organizationUnit = await db.prepare("SELECT id, name FROM organization_units WHERE id = ?").get(organizationUnitId) as { id: string; name: string } | undefined;
+  if (!organizationUnit) return { status: "error", message: "Unit organisasi yang dipilih tidak tersedia.", submittedAt: Date.now() };
+  const unit = organizationUnit.name;
   const parentId = parsed.data.parentId || null;
   if (parentId) {
     const parent = await db.prepare("SELECT id FROM job_positions WHERE id = ?").get(parentId);
@@ -50,8 +53,8 @@ export async function saveJobPositionAction(_state: JobPositionFormState, formDa
   if (duplicate) return { status: "error", message: "Jabatan dengan nama dan unit tersebut sudah terdaftar.", submittedAt: Date.now() };
 
   if (id) {
-    const existing = await db.prepare(`SELECT name, unit, position_type, echelon
-      FROM job_positions WHERE id = ?`).get(id) as { name: string; unit: string; position_type: string; echelon: string } | undefined;
+    const existing = await db.prepare(`SELECT name, unit, organization_unit_id, position_type, echelon
+      FROM job_positions WHERE id = ?`).get(id) as { name: string; unit: string; organization_unit_id: string | null; position_type: string; echelon: string } | undefined;
     if (!existing) return { status: "error", message: "Jabatan tidak ditemukan.", submittedAt: Date.now() };
     const rows = await db.prepare("SELECT id, parent_id FROM job_positions").all() as Array<{ id: string; parent_id: string | null }>;
     const parents = new Map(rows.map((row) => [row.id, row.parent_id]));
@@ -64,10 +67,10 @@ export async function saveJobPositionAction(_state: JobPositionFormState, formDa
     }
     const updatedAt = new Date().toISOString();
     const statements = [{
-      sql: `UPDATE job_positions SET name = ?, unit = ?, position_type = ?, echelon = ?, parent_id = ?, updated_at = ? WHERE id = ?`,
-      values: [name, unit, positionType, echelon, parentId, updatedAt, id],
+      sql: `UPDATE job_positions SET name = ?, unit = ?, organization_unit_id = ?, position_type = ?, echelon = ?, parent_id = ?, updated_at = ? WHERE id = ?`,
+      values: [name, unit, organizationUnitId, positionType, echelon, parentId, updatedAt, id],
     }];
-    if (existing.name !== name || existing.unit !== unit || existing.position_type !== positionType || existing.echelon !== echelon) {
+    if (existing.name !== name || existing.unit !== unit || existing.organization_unit_id !== organizationUnitId || existing.position_type !== positionType || existing.echelon !== echelon) {
       statements.push({
         sql: `UPDATE employees SET position = ?, unit = ?, position_type = ?, echelon = ?, updated_at = ? WHERE job_position_id = ?`,
         values: [name, unit, positionType, echelon, updatedAt, id],
@@ -76,9 +79,9 @@ export async function saveJobPositionAction(_state: JobPositionFormState, formDa
     await db.transaction(statements);
   } else {
     await db.prepare(`INSERT INTO job_positions
-      (id, name, unit, position_type, echelon, parent_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(randomUUID(), name, unit, positionType, echelon, parentId, new Date().toISOString(), new Date().toISOString());
+      (id, name, unit, organization_unit_id, position_type, echelon, parent_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(randomUUID(), name, unit, organizationUnitId, positionType, echelon, parentId, new Date().toISOString(), new Date().toISOString());
   }
 
   refreshPositionPages();

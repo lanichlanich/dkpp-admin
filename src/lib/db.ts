@@ -64,12 +64,23 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS employees_unit_idx ON employees(unit COLLATE NOCASE);
   CREATE INDEX IF NOT EXISTS employees_status_idx ON employees(status);
 
+  CREATE TABLE IF NOT EXISTS organization_units (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    parent_id TEXT REFERENCES organization_units(id) ON DELETE RESTRICT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS organization_units_name_idx ON organization_units(lower(name));
+  CREATE INDEX IF NOT EXISTS organization_units_parent_idx ON organization_units(parent_id);
+
   CREATE TABLE IF NOT EXISTS job_positions (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     unit TEXT NOT NULL,
     position_type TEXT NOT NULL,
     echelon TEXT NOT NULL,
+    organization_unit_id TEXT REFERENCES organization_units(id) ON DELETE RESTRICT,
     parent_id TEXT REFERENCES job_positions(id) ON DELETE SET NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
@@ -536,6 +547,14 @@ if (!employeeColumns.some((column) => column.name === "gender")) {
 if (!employeeColumns.some((column) => column.name === "job_position_id")) {
   db.exec("ALTER TABLE employees ADD COLUMN job_position_id TEXT REFERENCES job_positions(id) ON DELETE SET NULL");
 }
+const jobPositionColumns = db.prepare("PRAGMA table_info(job_positions)").all() as Array<{ name: string }>;
+if (!jobPositionColumns.some((column) => column.name === "organization_unit_id")) {
+  try {
+    db.exec("ALTER TABLE job_positions ADD COLUMN organization_unit_id TEXT REFERENCES organization_units(id) ON DELETE RESTRICT");
+  } catch (error) {
+    if (!(error instanceof Error) || !/duplicate column name: organization_unit_id/i.test(error.message)) throw error;
+  }
+}
 
 const employeeCount = (
   db.prepare("SELECT COUNT(*) AS count FROM employees").get() as { count: number }
@@ -593,14 +612,29 @@ const initialPositions = db.prepare(`
   SELECT position AS name, unit, position_type, echelon
   FROM employees GROUP BY position, unit, position_type, echelon ORDER BY position, unit, position_type, echelon
 `).all() as Array<{ name: string; unit: string; position_type: string; echelon: string }>;
+const initialUnits = db.prepare(`
+  SELECT unit AS name FROM employees WHERE trim(unit) <> ''
+  UNION SELECT unit AS name FROM job_positions WHERE trim(unit) <> ''
+`).all() as Array<{ name: string }>;
+const insertOrganizationUnit = db.prepare(`
+  INSERT OR IGNORE INTO organization_units (id, name, created_at, updated_at)
+  VALUES (?, ?, ?, ?)
+`);
+const now = new Date().toISOString();
+for (const unit of initialUnits) {
+  const existingUnit = db.prepare("SELECT id FROM organization_units WHERE lower(name) = lower(?) LIMIT 1").get(unit.name);
+  if (!existingUnit) insertOrganizationUnit.run(randomUUID(), unit.name.trim(), now, now);
+}
 const addPosition = db.prepare(`
   INSERT OR IGNORE INTO job_positions (id, name, unit, position_type, echelon, created_at, updated_at)
   VALUES (?, ?, ?, ?, ?, ?, ?)
 `);
-const now = new Date().toISOString();
 for (const position of initialPositions) {
   addPosition.run(randomUUID(), position.name, position.unit, position.position_type, position.echelon, now, now);
 }
+db.prepare(`UPDATE job_positions SET organization_unit_id = (
+  SELECT unit.id FROM organization_units unit WHERE lower(unit.name) = lower(job_positions.unit) LIMIT 1
+) WHERE organization_unit_id IS NULL`).run();
 db.prepare(`UPDATE employees SET job_position_id = (
   SELECT jp.id FROM job_positions jp
   WHERE jp.name = employees.position AND jp.unit = employees.unit

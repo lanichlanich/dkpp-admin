@@ -9,7 +9,7 @@ const TABLES = new Set([
   "users",
   "sessions",
   "employees",
-  "job_positions",
+  "organization_units",
   "job_positions",
   "notifications",
   "kgb_documents",

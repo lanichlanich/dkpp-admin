@@ -8,6 +8,7 @@ export type JobPosition = {
   id: string;
   name: string;
   unit: string;
+  organizationUnitId: string | null;
   positionType: string;
   echelon: string;
   parentId: string | null;
@@ -18,7 +19,7 @@ export type JobPosition = {
 
 export const getJobPositions = cache(async (): Promise<JobPosition[]> => {
   await requireUser();
-  return await db.prepare(`SELECT jp.id, jp.name, jp.unit, jp.position_type AS positionType,
+  return await db.prepare(`SELECT jp.id, jp.name, jp.unit, jp.organization_unit_id AS organizationUnitId, jp.position_type AS positionType,
     jp.echelon, jp.parent_id AS parentId, parent.name AS parentName,
     (SELECT COUNT(*) FROM employees e WHERE e.job_position_id = jp.id) AS employeeCount,
     (SELECT COUNT(*) FROM employees e WHERE e.job_position_id = jp.id AND e.status = 'Aktif') AS activeEmployeeCount

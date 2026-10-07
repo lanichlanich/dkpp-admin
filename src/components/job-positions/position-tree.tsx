@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { JobPosition } from "@/lib/job-positions";
+import type { OrganizationUnit } from "@/lib/organization-units";
 
 type PositionNode = JobPosition & { children: PositionNode[] };
 const positionTypeLabels: Record<string, string> = { JS: "Struktural", JF: "Fungsional", JFU: "Pelaksana" };
@@ -34,8 +35,8 @@ function makeTree(positions: JobPosition[]) {
   return roots;
 }
 
-function PositionEditor({ position, positions, open, onOpenChange }: {
-  position: JobPosition | null; positions: JobPosition[]; open: boolean; onOpenChange: (open: boolean) => void;
+function PositionEditor({ position, positions, units, open, onOpenChange }: {
+  position: JobPosition | null; positions: JobPosition[]; units: OrganizationUnit[]; open: boolean; onOpenChange: (open: boolean) => void;
 }) {
   const [state, action] = useActionState(saveJobPositionAction, {});
   const router = useRouter();
@@ -56,7 +57,7 @@ function PositionEditor({ position, positions, open, onOpenChange }: {
         <input type="hidden" name="id" value={position?.id ?? ""} />
         <FormMessage status={state.status} message={state.status === "error" ? state.message : undefined} />
         <div className="space-y-2"><Label htmlFor="position-name">Nama jabatan</Label><Input id="position-name" name="name" required maxLength={200} defaultValue={position?.name ?? ""} placeholder="Contoh: KEPALA DINAS KETAHANAN PANGAN DAN PERTANIAN" aria-invalid={Boolean(state.errors?.name)} /><FieldError messages={state.errors?.name} /></div>
-        <div className="space-y-2"><Label htmlFor="position-unit">Unit organisasi</Label><Input id="position-unit" name="unit" required maxLength={200} defaultValue={position?.unit ?? ""} placeholder="Contoh: DINAS KETAHANAN PANGAN DAN PERTANIAN" aria-invalid={Boolean(state.errors?.unit)} /><FieldError messages={state.errors?.unit} /></div>
+        <div className="space-y-2"><Label htmlFor="position-unit">Unit organisasi</Label><select id="position-unit" name="organizationUnitId" required defaultValue={position?.organizationUnitId ?? ""} className="h-11 w-full rounded-lg border border-input bg-white px-3 text-sm"><option value="" disabled>Pilih unit organisasi</option>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}</select>{units.length === 0 && <p className="text-xs text-amber-700">Tambahkan unit organisasi terlebih dahulu.</p>}<FieldError messages={state.errors?.organizationUnitId} /></div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2"><Label htmlFor="position-type">Jenis jabatan</Label><select id="position-type" name="positionType" defaultValue={position?.positionType ?? "JS"} className="h-11 w-full rounded-lg border border-input bg-white px-3 text-sm"><option value="JS">JS · Struktural</option><option value="JF">JF · Fungsional</option><option value="JFU">JFU · Pelaksana</option></select></div>
           <div className="space-y-2"><Label htmlFor="position-echelon">Eselon/jenjang</Label><Input id="position-echelon" name="echelon" required maxLength={30} defaultValue={position?.echelon ?? "NON"} placeholder="Misal: III.a atau NON" /></div>
@@ -97,7 +98,7 @@ function PositionNodeRow({ node, depth, expandedIds, forceExpanded, onToggle, on
   </>;
 }
 
-export function PositionTree({ positions }: { positions: JobPosition[] }) {
+export function PositionTree({ positions, units }: { positions: JobPosition[]; units: OrganizationUnit[] }) {
   const router = useRouter();
   const roots = useMemo(() => makeTree(positions), [positions]);
   const [query, setQuery] = useState("");
@@ -169,7 +170,7 @@ export function PositionTree({ positions }: { positions: JobPosition[] }) {
       {normalizedQuery && !visibleRoots.length && <div className="p-10 text-center text-sm text-zinc-500">Tidak ada jabatan yang cocok dengan pencarian.</div>}
       <div className="flex items-center gap-2 border-t bg-zinc-50/60 px-4 py-3 text-xs text-zinc-500"><Network className="size-4 shrink-0" />Data pegawai dan hirarki jabatan tersimpan dalam satu katalog penempatan.</div>
     </section>
-    {editorOpen && <PositionEditor key={selected?.id ?? "new"} position={selected} positions={positions} open={editorOpen} onOpenChange={setEditorOpen} />}
+    {editorOpen && <PositionEditor key={selected?.id ?? "new"} position={selected} positions={positions} units={units} open={editorOpen} onOpenChange={setEditorOpen} />}
     <AlertDialog open={Boolean(toDelete)} onOpenChange={(isOpen) => { if (!isOpen && !deleting) setToDelete(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Hapus jabatan?</AlertDialogTitle><AlertDialogDescription>“{toDelete?.name} · {toDelete?.unit}” akan dihapus dari katalog. Penghapusan hanya tersedia jika tidak ada pegawai atau jabatan bawahan yang terhubung.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel><AlertDialogAction onClick={(event) => { event.preventDefault(); deletePosition(); }} disabled={deleting} className="bg-red-600 text-white hover:bg-red-700">{deleting ? <><LoaderCircle className="animate-spin" />Menghapus...</> : "Hapus jabatan"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </>;
 }

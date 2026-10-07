@@ -4,7 +4,7 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Archive, Award, BriefcaseBusiness, Building2, CalendarDays, ChevronDown, ClipboardList, FileBarChart2, FileCheck2, FileSignature, FileText, FolderOpen, History, House, LayoutDashboard, ListTree, LoaderCircle, Network, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
+import { Archive, Award, BriefcaseBusiness, Building2, CalendarDays, ChevronDown, ClipboardList, CloudUpload, FileBarChart2, FileCheck2, FileSignature, FileText, FolderOpen, History, House, LayoutDashboard, ListTree, LoaderCircle, Network, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +35,7 @@ const correspondenceNavigation = [
 ];
 
 const navigation = [
+  { label: "Backup Google Drive", href: "/dashboard/backup", icon: CloudUpload },
   { label: "Log Audit Perubahan Data", href: "/dashboard/log-audit", icon: History },
   { label: "Profil Saya", href: "/dashboard/profile", icon: UserRound },
 ];

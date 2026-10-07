@@ -5,7 +5,7 @@ import { isIP } from "node:net";
 import { headers } from "next/headers";
 import { Pool, types, type PoolClient } from "pg";
 
-const TABLES = new Set([
+const TABLE_NAMES = [
   "users",
   "sessions",
   "employees",
@@ -27,7 +27,9 @@ const TABLES = new Set([
   "wfh_schedule_months",
   "wfh_schedule_entries",
   "audit_logs",
-]);
+] as const;
+
+const TABLES = new Set<string>(TABLE_NAMES);
 
 const AUDITED_TABLES = new Set([...TABLES].filter((table) => ![
   "sessions", "notifications", "audit_logs",
@@ -46,6 +48,10 @@ type PreparedQuery = {
 type DatabaseAdapter = {
   prepare(sql: string): PreparedQuery;
   transaction(statements: Array<{ sql: string; values: QueryValue[] }>): Promise<void>;
+  backupTables(): Promise<{
+    tables: Record<string, Record<string, unknown>[]>;
+    storageObjects: Array<{ name: string; metadata: Record<string, unknown> | null }>;
+  }>;
 };
 
 type AuditOperation = {
@@ -293,6 +299,33 @@ function createPostgresAdapter(url: string): DatabaseAdapter {
   }
 
   return {
+    async backupTables() {
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+        const tables: Record<string, Record<string, unknown>[]> = {};
+        for (const table of TABLE_NAMES) {
+          if (table === "sessions") continue;
+          const result = await client.query(`SELECT * FROM adminflow.${table}`);
+          tables[table] = result.rows;
+        }
+        const storageResult = await client.query<{ name: string; metadata: Record<string, unknown> | null }>(
+          `SELECT objects.name, objects.metadata
+           FROM storage.objects AS objects
+           JOIN storage.buckets AS buckets ON buckets.id = objects.bucket_id
+           WHERE buckets.name = $1
+           ORDER BY objects.name`,
+          [process.env.SUPABASE_STORAGE_BUCKET || "dkpp-admin"],
+        );
+        await client.query("COMMIT");
+        return { tables, storageObjects: storageResult.rows };
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
     async transaction(statements) {
       const mutations = statements.map((statement) => parseMutation(statement.sql));
       const request = mutations.some(Boolean) ? await getAuditRequest() : null;
@@ -364,6 +397,17 @@ function createSqliteAdapter(): DatabaseAdapter {
   const sqliteDatabase = import("@/lib/db").then((module) => module.db);
 
   return {
+    async backupTables() {
+      const database = await sqliteDatabase;
+      return database.transaction(() => {
+        const tables: Record<string, Record<string, unknown>[]> = {};
+        for (const table of TABLE_NAMES) {
+          if (table === "sessions") continue;
+          tables[table] = database.prepare(`SELECT * FROM "${table}"`).all() as Record<string, unknown>[];
+        }
+        return { tables, storageObjects: [] };
+      })();
+    },
     async transaction(statements) {
       const database = await sqliteDatabase;
       const mutations = statements.map((statement) => parseMutation(statement.sql));
@@ -415,3 +459,7 @@ function createSqliteAdapter(): DatabaseAdapter {
 export const database = connectionString
   ? createPostgresAdapter(connectionString)
   : createSqliteAdapter();
+
+export async function createBackupSnapshot() {
+  return database.backupTables();
+}

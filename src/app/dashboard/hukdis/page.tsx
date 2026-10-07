@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { CalendarDays, Scale } from "lucide-react";
 import { HukdisFormDialog } from "@/components/hukdis/hukdis-form-dialog";
-import { HukdisPrintButton } from "@/components/hukdis/print-button";
+import { HukdisReportActions } from "@/components/hukdis/report-actions";
 import { Button } from "@/components/ui/button";
 import { getHukdisEmployees } from "@/lib/employees";
 import { getHukdisRecords } from "@/lib/hukdis";
 import { hukdisSanctions } from "@/lib/hukdis-types";
+import { DEFAULT_SIGNATORY } from "@/lib/signatory";
 
 export const metadata: Metadata = { title: "Daftar Hukdis" };
 
@@ -46,7 +47,7 @@ export default async function HukdisPage({
   const period = `${year}-${String(month).padStart(2, "0")}`;
   const records = await getHukdisRecords(period);
   const recordsByNip = new Map(records.map((record) => [record.employeeNip, record]));
-  const head = employees.find((employee) => employee.position.startsWith("KEPALA DINAS"));
+  const head = employees.find((employee) => /RORY\s+FIRMANSYAH/i.test(employee.name));
 
   return (
     <div className="mx-auto max-w-[110rem] space-y-6">
@@ -58,7 +59,7 @@ export default async function HukdisPage({
             Isi jenis hukuman dan nomor keputusan per pegawai aktif, lalu cetak dalam format laporan DKPP.
           </p>
         </div>
-        <HukdisPrintButton />
+        <HukdisReportActions period={period} />
       </div>
 
       <form className="hukdis-screen-controls flex flex-col gap-3 rounded-xl border bg-white p-4 sm:flex-row sm:items-end" method="get">
@@ -138,11 +139,11 @@ export default async function HukdisPage({
 
         <div className="hukdis-signature">
           <p>Mengetahui</p>
-          <p>KEPALA DINAS KETAHANAN PANGAN DAN PERTANIAN</p>
+          <p>Plt. KEPALA DINAS KETAHANAN PANGAN DAN PERTANIAN</p>
           <p>KABUPATEN INDRAMAYU</p>
           <div className="hukdis-signature-space" />
-          <p className="font-bold">{head?.name ?? "-"}</p>
-          <p>NIP. {head?.nip ?? "-"}</p>
+          <p className="font-bold">{head?.name ?? DEFAULT_SIGNATORY.name}</p>
+          <p>NIP. {(head?.nip ?? DEFAULT_SIGNATORY.nip) || "-"}</p>
         </div>
       </section>
     </div>

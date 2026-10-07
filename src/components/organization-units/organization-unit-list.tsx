@@ -16,6 +16,30 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { OrganizationUnit } from "@/lib/organization-units";
 
 type UnitNode = OrganizationUnit & { children: UnitNode[] };
+type UnitCategory = "dinas" | "sekretariat" | "sub-bagian" | "bidang" | "uptd" | "sub-tu-uptd" | "lainnya";
+
+const unitCategories: Record<UnitCategory, { label: string; badge: string; icon: string; row: string; marker: string }> = {
+  dinas: { label: "Dinas", badge: "bg-emerald-100 text-emerald-900 ring-emerald-200", icon: "bg-emerald-100 text-emerald-800", row: "bg-emerald-50/70", marker: "border-l-emerald-600" },
+  sekretariat: { label: "Sekretariat", badge: "bg-cyan-100 text-cyan-900 ring-cyan-200", icon: "bg-cyan-100 text-cyan-800", row: "bg-cyan-50/70", marker: "border-l-cyan-600" },
+  "sub-bagian": { label: "Subbag Umum/Keuangan", badge: "bg-amber-100 text-amber-950 ring-amber-200", icon: "bg-amber-100 text-amber-800", row: "bg-amber-50/70", marker: "border-l-amber-600" },
+  bidang: { label: "Bidang", badge: "bg-sky-100 text-sky-900 ring-sky-200", icon: "bg-sky-100 text-sky-800", row: "bg-sky-50/70", marker: "border-l-sky-600" },
+  uptd: { label: "UPTD", badge: "bg-violet-100 text-violet-900 ring-violet-200", icon: "bg-violet-100 text-violet-800", row: "bg-violet-50/70", marker: "border-l-violet-600" },
+  "sub-tu-uptd": { label: "Sub TU UPTD", badge: "bg-rose-100 text-rose-900 ring-rose-200", icon: "bg-rose-100 text-rose-800", row: "bg-rose-50/70", marker: "border-l-rose-600" },
+  lainnya: { label: "Unit lainnya", badge: "bg-slate-100 text-slate-800 ring-slate-200", icon: "bg-slate-100 text-slate-700", row: "bg-slate-50/70", marker: "border-l-slate-400" },
+};
+
+const visibleCategories: UnitCategory[] = ["dinas", "sekretariat", "sub-bagian", "bidang", "uptd", "sub-tu-uptd"];
+
+function classifyUnit(name: string): UnitCategory {
+  const normalized = name.trim().toLocaleUpperCase("id-ID");
+  if (/^SUB BAGIAN (TU|TATA USAHA)\b/.test(normalized) && normalized.includes("UPTD")) return "sub-tu-uptd";
+  if (/^SUB BAGIAN\b/.test(normalized) && /\b(UMUM|KEUANGAN)\b/.test(normalized)) return "sub-bagian";
+  if (normalized.startsWith("SEKRETARIAT")) return "sekretariat";
+  if (normalized.startsWith("DINAS")) return "dinas";
+  if (normalized.startsWith("BIDANG")) return "bidang";
+  if (normalized.startsWith("UPTD")) return "uptd";
+  return "lainnya";
+}
 
 function makeTree(units: OrganizationUnit[]) {
   const byId = new Map<string, UnitNode>(units.map((unit) => [unit.id, { ...unit, children: [] }]));
@@ -66,13 +90,14 @@ function UnitRow({ node, depth, expanded, onToggle, onEdit, onDelete }: {
 }) {
   const hasChildren = node.children.length > 0;
   const isExpanded = expanded.has(node.id);
+  const category = unitCategories[classifyUnit(node.name)];
   return <>
-    <TableRow>
-      <TableCell className="min-w-[24rem] py-3" style={{ paddingLeft: `${16 + Math.min(depth, 10) * 22}px` }}>
+    <TableRow className={category.row}>
+      <TableCell className={`min-w-[24rem] border-l-4 py-3 ${category.marker}`} style={{ paddingLeft: `${16 + Math.min(depth, 10) * 22}px` }}>
         <div className="flex items-start gap-2">
           <button type="button" aria-label={`${isExpanded ? "Ciutkan" : "Buka"} unit bawahan ${node.name}`} aria-expanded={isExpanded} onClick={() => onToggle(node.id)} disabled={!hasChildren} className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-md text-zinc-500 hover:bg-zinc-100 disabled:opacity-30">{hasChildren ? isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" /> : <span className="size-1.5 rounded-full bg-zinc-300" />}</button>
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700"><Building2 className="size-4" /></span>
-          <div className="min-w-0"><p className="font-medium text-zinc-900">{node.name}</p><p className="mt-0.5 text-xs text-zinc-500">{node.parentName ? `Induk: ${node.parentName}` : "Unit tertinggi"}</p></div>
+          <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${category.icon}`}><Building2 className="size-4" /></span>
+          <div className="min-w-0"><p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium text-zinc-900"><span>{node.name}</span><span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold leading-4 ring-1 ring-inset ${category.badge}`}>{category.label}</span></p><p className="mt-0.5 text-xs text-zinc-500">{node.parentName ? `Induk: ${node.parentName}` : "Unit tertinggi"}</p></div>
         </div>
       </TableCell>
       <TableCell className="min-w-32"><span className="inline-flex items-center gap-1.5 text-sm text-zinc-700"><UsersRound className="size-4 text-zinc-400" />{node.employeeCount} pegawai</span></TableCell>
@@ -117,6 +142,7 @@ export function OrganizationUnitList({ units }: { units: OrganizationUnit[] }) {
         <Button type="button" onClick={() => edit(null)} className="bg-indigo-600 text-white hover:bg-indigo-700"><Plus className="size-4" />Tambah unit</Button>
       </div>
       <div className="border-b bg-zinc-50/60 p-4"><div className="relative w-full sm:max-w-md"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="pl-9" placeholder="Cari unit organisasi" aria-label="Cari unit organisasi" /></div></div>
+      <div className="flex flex-wrap gap-2 border-b bg-white px-4 py-3" role="list" aria-label="Legenda kategori unit organisasi">{visibleCategories.map((key) => { const category = unitCategories[key]; return <span key={key} role="listitem" className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${category.badge}`}>{category.label}</span>; })}</div>
       {!units.length ? <div className="grid min-h-56 place-items-center p-6 text-center"><div><span className="mx-auto grid size-12 place-items-center rounded-full bg-emerald-50 text-emerald-700"><Building2 className="size-5" /></span><p className="mt-3 font-medium text-zinc-900">Belum ada unit organisasi</p><p className="mt-1 text-sm text-zinc-500">Tambahkan unit pertama untuk menghubungkannya dengan jabatan dan pegawai.</p></div></div> : <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead className="pl-4">Unit organisasi</TableHead><TableHead>Pegawai</TableHead><TableHead>Jabatan</TableHead><TableHead className="pr-4 text-right">Aksi</TableHead></TableRow></TableHeader><TableBody>{visibleRoots.map((root) => <UnitRow key={root.id} node={root} depth={0} expanded={expanded} onToggle={toggle} onEdit={edit} onDelete={setToDelete} />)}</TableBody></Table></div>}
       {normalizedQuery && !visibleRoots.length && <div className="p-10 text-center text-sm text-zinc-500">Tidak ada unit yang cocok dengan pencarian.</div>}
       <div className="flex items-center gap-2 border-t bg-zinc-50/60 px-4 py-3 text-xs text-zinc-500"><Building2 className="size-4 shrink-0" />Nama unit pada jabatan dan pegawai diperbarui otomatis saat unit diedit.</div>

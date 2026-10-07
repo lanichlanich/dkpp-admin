@@ -38,7 +38,7 @@ function makeTree(positions: JobPosition[]) {
 function PositionEditor({ position, positions, units, open, onOpenChange }: {
   position: JobPosition | null; positions: JobPosition[]; units: OrganizationUnit[]; open: boolean; onOpenChange: (open: boolean) => void;
 }) {
-  const [state, action] = useActionState(saveJobPositionAction, {});
+  const [state, action, saving] = useActionState(saveJobPositionAction, {});
   const router = useRouter();
   useEffect(() => {
     if (!state.submittedAt) return;
@@ -63,7 +63,7 @@ function PositionEditor({ position, positions, units, open, onOpenChange }: {
           <div className="space-y-2"><Label htmlFor="position-echelon">Eselon/jenjang</Label><Input id="position-echelon" name="echelon" required maxLength={30} defaultValue={position?.echelon ?? "NON"} placeholder="Misal: III.a atau NON" /></div>
         </div>
         <div className="space-y-2"><Label htmlFor="parent-position">Atasan langsung</Label><select id="parent-position" name="parentId" defaultValue={position?.parentId ?? ""} className="h-11 w-full rounded-lg border border-input bg-white px-3 text-sm"><option value="">Jabatan tertinggi / belum ditentukan</option>{candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name} · {candidate.unit}</option>)}</select><p className="text-xs text-zinc-500">Server mencegah jabatan menjadi atasan bagi dirinya sendiri atau membentuk siklus.</p><FieldError messages={state.errors?.parentId} /></div>
-        <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Batal</Button><Button type="submit" className="bg-indigo-600 text-white hover:bg-indigo-700">{position ? "Simpan perubahan" : "Tambah jabatan"}</Button></DialogFooter>
+        <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Batal</Button><Button type="submit" disabled={saving} className="bg-indigo-600 text-white hover:bg-indigo-700">{saving ? <><LoaderCircle className="size-4 animate-spin" />Menyimpan...</> : position ? "Simpan perubahan" : "Tambah jabatan"}</Button></DialogFooter>
       </form>
     </DialogContent>
   </Dialog>;

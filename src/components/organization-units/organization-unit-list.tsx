@@ -36,7 +36,7 @@ function makeTree(units: OrganizationUnit[]) {
 function UnitEditor({ unit, units, open, onOpenChange }: {
   unit: OrganizationUnit | null; units: OrganizationUnit[]; open: boolean; onOpenChange: (open: boolean) => void;
 }) {
-  const [state, action] = useActionState(saveOrganizationUnitAction, {});
+  const [state, action, saving] = useActionState(saveOrganizationUnitAction, {});
   const router = useRouter();
   useEffect(() => {
     if (!state.submittedAt) return;
@@ -55,7 +55,7 @@ function UnitEditor({ unit, units, open, onOpenChange }: {
         <FormMessage status={state.status} message={state.status === "error" ? state.message : undefined} />
         <div className="space-y-2"><Label htmlFor="organization-unit-name">Nama unit organisasi</Label><Input id="organization-unit-name" name="name" required maxLength={200} defaultValue={unit?.name ?? ""} placeholder="Contoh: SEKRETARIAT DINAS ..." aria-invalid={Boolean(state.errors?.name)} /><FieldError messages={state.errors?.name} /></div>
         <div className="space-y-2"><Label htmlFor="organization-unit-parent">Unit induk</Label><select id="organization-unit-parent" name="parentId" defaultValue={unit?.parentId ?? ""} className="h-11 w-full rounded-lg border border-input bg-white px-3 text-sm"><option value="">Unit tertinggi / belum ditentukan</option>{units.filter((candidate) => candidate.id !== unit?.id).map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}</select><p className="text-xs text-zinc-500">Hirarki unit membantu mengelompokkan unit kerja. Sistem mencegah terbentuknya siklus.</p><FieldError messages={state.errors?.parentId} /></div>
-        <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Batal</Button><Button type="submit" className="bg-indigo-600 text-white hover:bg-indigo-700">{unit ? "Simpan perubahan" : "Tambah unit"}</Button></DialogFooter>
+        <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Batal</Button><Button type="submit" disabled={saving} className="bg-indigo-600 text-white hover:bg-indigo-700">{saving ? <><LoaderCircle className="size-4 animate-spin" />Menyimpan...</> : unit ? "Simpan perubahan" : "Tambah unit"}</Button></DialogFooter>
       </form>
     </DialogContent>
   </Dialog>;

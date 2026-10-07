@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { database as db } from "@/lib/database";
+import { isInactiveJobPositionName } from "@/lib/job-position-visibility";
 import { requireUser } from "@/lib/session";
 
 const text = (label: string, max = 200) => z.string().trim().min(1, `${label} wajib diisi.`).max(max, `${label} terlalu panjang.`);
@@ -38,13 +39,17 @@ export async function saveJobPositionAction(_state: JobPositionFormState, formDa
   if (!parsed.success) return { status: "error", errors: parsed.error.flatten().fieldErrors, submittedAt: Date.now() };
 
   const { id, name, positionType, echelon, organizationUnitId } = parsed.data;
+  if (isInactiveJobPositionName(name)) {
+    return { status: "error", message: "Jabatan Penyuluh Pertanian sudah nonaktif dan tidak dapat ditambahkan kembali.", submittedAt: Date.now() };
+  }
   const organizationUnit = await db.prepare("SELECT id, name FROM organization_units WHERE id = ?").get(organizationUnitId) as { id: string; name: string } | undefined;
   if (!organizationUnit) return { status: "error", message: "Unit organisasi yang dipilih tidak tersedia.", submittedAt: Date.now() };
   const unit = organizationUnit.name;
   const parentId = parsed.data.parentId || null;
   if (parentId) {
-    const parent = await db.prepare("SELECT id FROM job_positions WHERE id = ?").get(parentId);
+    const parent = await db.prepare("SELECT id, name FROM job_positions WHERE id = ?").get(parentId) as { id: string; name: string } | undefined;
     if (!parent) return { status: "error", message: "Atasan yang dipilih tidak tersedia.", submittedAt: Date.now() };
+    if (isInactiveJobPositionName(parent.name)) return { status: "error", message: "Jabatan Penyuluh Pertanian sudah nonaktif dan tidak dapat dipilih sebagai atasan.", submittedAt: Date.now() };
     if (parentId === id) return { status: "error", message: "Jabatan tidak dapat menjadi atasannya sendiri.", submittedAt: Date.now() };
   }
 
@@ -94,11 +99,15 @@ export async function moveJobPositionAction(id: string, parentId: string | null)
   const parsedParentId = parentId === null ? { success: true as const, data: null } : z.string().uuid().safeParse(parentId);
   if (!parsedId.success || !parsedParentId.success) return { success: false, message: "Data jabatan tidak valid." };
 
-  const rows = await db.prepare("SELECT id, parent_id FROM job_positions").all() as Array<{ id: string; parent_id: string | null }>;
+  const rows = await db.prepare("SELECT id, name, parent_id FROM job_positions").all() as Array<{ id: string; name: string; parent_id: string | null }>;
   const parents = new Map(rows.map((row) => [row.id, row.parent_id]));
+  const names = new Map(rows.map((row) => [row.id, row.name]));
   if (!parents.has(parsedId.data)) return { success: false, message: "Jabatan yang dipindahkan tidak ditemukan." };
   const nextParentId = parsedParentId.data;
   if (nextParentId && !parents.has(nextParentId)) return { success: false, message: "Jabatan atasan tidak ditemukan." };
+  if (isInactiveJobPositionName(names.get(parsedId.data) ?? "") || (nextParentId && isInactiveJobPositionName(names.get(nextParentId) ?? ""))) {
+    return { success: false, message: "Jabatan Penyuluh Pertanian sudah nonaktif dan tidak dapat dipindahkan dalam hirarki aktif." };
+  }
   if (nextParentId === parsedId.data) return { success: false, message: "Jabatan tidak dapat menjadi atasannya sendiri." };
   if (parents.get(parsedId.data) === nextParentId) return { success: true, message: "Posisi jabatan tidak berubah." };
 

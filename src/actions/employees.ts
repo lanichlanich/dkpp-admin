@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { database as db } from "@/lib/database";
 import { createNotification } from "@/lib/notifications";
+import { isInactiveJobPositionName } from "@/lib/job-position-visibility";
 import { requireUser } from "@/lib/session";
 
 const requiredText = (label: string, max = 160) =>
@@ -53,6 +54,14 @@ export async function saveEmployeeAction(
     } | undefined;
   if (!position) {
     return { status: "error", message: "Penempatan jabatan tidak ditemukan. Muat ulang halaman dan pilih kembali.", submittedAt: Date.now() };
+  }
+  if (isInactiveJobPositionName(position.name)) {
+    const current = mode === "edit" && originalNip === parsed.data.nip
+      ? await db.prepare("SELECT job_position_id FROM employees WHERE nip = ?").get(originalNip) as { job_position_id: string | null } | undefined
+      : undefined;
+    if (current?.job_position_id !== position.id || parsed.data.status === "Aktif") {
+      return { status: "error", message: "Jabatan Penyuluh Pertanian sudah nonaktif. Pilih jabatan aktif untuk penempatan baru.", submittedAt: Date.now() };
+    }
   }
   const employee = {
     ...parsed.data,

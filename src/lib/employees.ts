@@ -4,6 +4,7 @@ import { cache } from "react";
 import type { Employee } from "@/lib/db";
 import { database as db } from "@/lib/database";
 import { getBirthDateIsoFromNip, getRetirementAge, getRetirementTmt } from "@/lib/retirement-age";
+import { isInactiveJobPositionName } from "@/lib/job-position-visibility";
 import { requireUser } from "@/lib/session";
 
 type EmployeeRow = {
@@ -121,11 +122,13 @@ export const getEmployeeOptions = cache(async (): Promise<EmployeeOptions> => {
   const employees = await getEmployees();
   const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "id"));
   const positions = await db.prepare(`SELECT id, name, unit, position_type AS positionType, echelon
-    FROM job_positions ORDER BY name COLLATE NOCASE, unit COLLATE NOCASE`).all() as EmployeePositionOption[];
+    FROM job_positions WHERE lower(name) NOT LIKE '%penyuluh pertanian%'
+    ORDER BY name COLLATE NOCASE, unit COLLATE NOCASE`).all() as EmployeePositionOption[];
+  const availablePositions = positions.filter((position) => !isInactiveJobPositionName(position.name));
   return {
     parentUnits: unique(employees.map((employee) => employee.parentUnit)),
     units: unique(employees.map((employee) => employee.unit)),
-    positions: positions.length ? positions : unique(employees.map((employee) => employee.position)).map((name) => ({
+    positions: availablePositions.length ? availablePositions : unique(employees.map((employee) => employee.position).filter((name) => !isInactiveJobPositionName(name))).map((name) => ({
       id: "", name, unit: "", positionType: employees.find((employee) => employee.position === name)?.positionType ?? "",
       echelon: employees.find((employee) => employee.position === name)?.echelon ?? "",
     })),

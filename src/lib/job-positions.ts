@@ -24,5 +24,6 @@ export const getJobPositions = cache(async (): Promise<JobPosition[]> => {
     (SELECT COUNT(*) FROM employees e WHERE e.job_position_id = jp.id) AS employeeCount,
     (SELECT COUNT(*) FROM employees e WHERE e.job_position_id = jp.id AND e.status = 'Aktif') AS activeEmployeeCount
     FROM job_positions jp LEFT JOIN job_positions parent ON parent.id = jp.parent_id
+    WHERE lower(jp.name) NOT LIKE '%penyuluh pertanian%'
     ORDER BY jp.name COLLATE NOCASE, jp.unit COLLATE NOCASE`).all() as JobPosition[];
 });

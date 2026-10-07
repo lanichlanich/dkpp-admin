@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Employee } from "@/lib/db";
 import type { EmployeeOptions } from "@/lib/employees";
+import { isInactiveJobPositionName } from "@/lib/job-position-visibility";
 import { cn } from "@/lib/utils";
 
 function RequiredLabel({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
@@ -34,7 +35,14 @@ export function EmployeeFormDialog({ employee, options }: { employee?: Employee;
   const initialPositionId = employee?.jobPositionId ?? options.positions.find((position) => position.name === employee?.position && position.unit === employee?.unit)?.id ?? "";
   const [positionId, setPositionId] = useState(initialPositionId);
   const [positionOpen, setPositionOpen] = useState(false);
-  const selectedPosition = options.positions.find((position) => position.id === positionId);
+  const selectedPosition = options.positions.find((position) => position.id === positionId)
+    ?? (employee && isInactiveJobPositionName(employee.position) ? {
+      id: employee.jobPositionId ?? "",
+      name: `${employee.position} (nonaktif)`,
+      unit: employee.unit,
+      positionType: employee.positionType,
+      echelon: employee.echelon,
+    } : undefined);
   const router = useRouter();
 
   useEffect(() => {

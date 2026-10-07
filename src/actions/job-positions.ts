@@ -85,6 +85,36 @@ export async function saveJobPositionAction(_state: JobPositionFormState, formDa
   return { status: "success", message: id ? "Data jabatan diperbarui." : "Jabatan ditambahkan ke daftar.", submittedAt: Date.now() };
 }
 
+export async function moveJobPositionAction(id: string, parentId: string | null) {
+  await requireUser();
+  const parsedId = z.string().uuid().safeParse(id);
+  const parsedParentId = parentId === null ? { success: true as const, data: null } : z.string().uuid().safeParse(parentId);
+  if (!parsedId.success || !parsedParentId.success) return { success: false, message: "Data jabatan tidak valid." };
+
+  const rows = await db.prepare("SELECT id, parent_id FROM job_positions").all() as Array<{ id: string; parent_id: string | null }>;
+  const parents = new Map(rows.map((row) => [row.id, row.parent_id]));
+  if (!parents.has(parsedId.data)) return { success: false, message: "Jabatan yang dipindahkan tidak ditemukan." };
+  const nextParentId = parsedParentId.data;
+  if (nextParentId && !parents.has(nextParentId)) return { success: false, message: "Jabatan atasan tidak ditemukan." };
+  if (nextParentId === parsedId.data) return { success: false, message: "Jabatan tidak dapat menjadi atasannya sendiri." };
+  if (parents.get(parsedId.data) === nextParentId) return { success: true, message: "Posisi jabatan tidak berubah." };
+
+  const visited = new Set<string>();
+  let current = nextParentId;
+  while (current) {
+    if (current === parsedId.data || visited.has(current)) {
+      return { success: false, message: "Jabatan tidak dapat dipindahkan ke bawah dirinya sendiri." };
+    }
+    visited.add(current);
+    current = parents.get(current) ?? null;
+  }
+
+  await db.prepare("UPDATE job_positions SET parent_id = ?, updated_at = ? WHERE id = ?")
+    .run(nextParentId, new Date().toISOString(), parsedId.data);
+  refreshPositionPages();
+  return { success: true, message: "Hirarki jabatan berhasil diperbarui." };
+}
+
 export async function deleteJobPositionAction(id: string) {
   await requireUser();
   const safeId = z.string().uuid().safeParse(id);

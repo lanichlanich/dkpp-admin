@@ -2,7 +2,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import PizZip from "pizzip";
-import { KAK_SECTIONS, type KakDraft, type KakSectionKey } from "@/lib/kak-types";
+import { formatKakRupiah, KAK_SECTIONS, type KakDraft, type KakSectionKey } from "@/lib/kak-types";
 import type { KakOptions } from "@/lib/kak-validation";
 
 const escapeXml = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
@@ -41,26 +41,28 @@ function fillCell(cell: string, value: string, section?: KakSectionKey) {
 }
 const withoutLeadingCode = (value: string) => value.replace(/^\s*\.?\d+(?:\.\d+)*\s+/, "").trim();
 
-/** Fill the corrected user template; preserve its geometry and every other ZIP part. */
+/** Fill the corrected body and supplied cover; preserve geometry and opaque ZIP parts. */
 export async function generateKakDocument(draft: KakDraft, options: KakOptions) {
   const zip = new PizZip(await readFile(path.join(process.cwd(), "src", "templates", "template-kak.docx")));
   let xml = zip.file("word/document.xml")!.asText();
-  if ((xml.match(/<w:tbl(?:\s[^>]*)?>/g) || []).length !== 6) throw new Error("Struktur template KAK berubah.");
+  if ((xml.match(/<w:tbl(?:\s[^>]*)?>/g) || []).length !== 7) throw new Error("Struktur template KAK berubah.");
   const m = draft.metadata;
   const metadata = [m.perangkatDaerah, m.urusanPemerintahan, m.bidangUrusan, m.program, m.kegiatan, m.subKegiatan].map(withoutLeadingCode);
+  const cover = [withoutLeadingCode(m.program), withoutLeadingCode(m.kegiatan), withoutLeadingCode(m.subKegiatan), formatKakRupiah(m.paguAnggaran), m.lokasi];
   const signerName = options.signatory?.name || m.penandatanganNama || "[Nama PA/KPA]";
   const signerNip = options.signatory?.nip ?? m.penandatanganNip;
   const signatures = [[signerName, options.pptkNama || "[Nama PPTK]"], [`NIP. ${signerNip || "[Perlu dilengkapi]"}`, `NIP. ${options.pptkNip || "[Perlu dilengkapi]"}`]];
   const filled = new Set<KakSectionKey>();
   let tableIndex = 0;
   xml = xml.replace(/<w:tbl(?:\s[^>]*)?>[\s\S]*?<\/w:tbl>/g, (table) => {
-    const currentTable = tableIndex++;
+    const currentTable = tableIndex++ - 1;
     let rowIndex = 0;
     return table.replace(/<w:tr(?:\s[^>]*)?>[\s\S]*?<\/w:tr>/g, (row) => {
       const currentRow = rowIndex++;
       let cellIndex = 0;
       return row.replace(/<w:tc(?:\s[^>]*)?>[\s\S]*?<\/w:tc>/g, (cell) => {
         const currentCell = cellIndex++;
+        if (currentTable === -1 && currentCell === 2) return fillCell(cell, cover[currentRow] || "[Perlu dilengkapi]");
         if (currentTable === 0 && currentCell === 2) return fillCell(cell, metadata[currentRow] || "[Perlu dilengkapi]");
         const slot = visibleText(cell).match(/<generate ai:([A-Za-z]+)>/)?.[1];
         if (slot) {
@@ -87,10 +89,14 @@ export async function generateKakDocument(draft: KakDraft, options: KakOptions) 
     const value = visibleText(p);
     if (value === "${kak.title}") return paragraph(p, `Rencana Sub Kegiatan ${m.subKegiatan}`);
     if (value === "${kak.year}") return paragraph(p, `Tahun Anggaran ${m.tahunAnggaran}`);
+    if (value === "${kak.cover.year}") return paragraph(p, `TAHUN ANGGARAN ${m.tahunAnggaran}`);
     if (value.trim() === "${kak.date}") return paragraph(p, value.replace("${kak.date}", `Indramayu, ${date}`));
     return p;
   });
   if (/<generate ai:[^>]+>|\$\{kak\.[^}]+\}/.test(visibleText(xml))) throw new Error("Masih ada tag kosong dalam draft KAK.");
   zip.file("word/document.xml", xml);
+  const header = zip.file("word/header-kak-cover.xml")?.asText();
+  if (!header || visibleText(header) !== "${kak.cover.sequence}") throw new Error("Header cover KAK tidak sesuai.");
+  zip.file("word/header-kak-cover.xml", header.replace(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/, (p) => paragraph(p, options.nomorUrutSubKegiatan || "")));
   return zip.generate({ type: "nodebuffer", compression: "DEFLATE" });
 }

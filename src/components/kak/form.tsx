@@ -33,6 +33,7 @@ export function KakForm({ history, today, signatories, employees }: { history: K
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [date, setDate] = useState(today);
+  const [sequence, setSequence] = useState("");
   const [pptkNip, setPptkNip] = useState(defaultPptk?.nip || "");
   const [pptkOpen, setPptkOpen] = useState(false);
   const selectedPptk = employees.find((employee) => employee.nip === pptkNip);
@@ -46,7 +47,7 @@ export function KakForm({ history, today, signatories, employees }: { history: K
     setBusy(true); setError(""); setResult(null);
     try {
       const body = new FormData(); body.set("file", file);
-      body.set("options", JSON.stringify({ tanggalDokumen: date, pptkNama: selectedPptk?.name || "", pptkNip: selectedPptk?.nip || "", ...(override ? { signatory } : {}) }));
+      body.set("options", JSON.stringify({ tanggalDokumen: date, nomorUrutSubKegiatan: sequence, pptkNama: selectedPptk?.name || "", pptkNip: selectedPptk?.nip || "", ...(override ? { signatory } : {}) }));
       const response = await fetch("/api/kak/generate", { method: "POST", body });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Draft KAK gagal dibuat.");
@@ -63,9 +64,10 @@ export function KakForm({ history, today, signatories, employees }: { history: K
   }
   return <div className="space-y-6">
     <form onSubmit={submit} className="space-y-4">
-      <Card><CardHeader><CardTitle>Unggah RKA, unduh draft KAK</CardTitle><CardDescription>Gemini membaca RKA, mencocokkan referensi Renstra/Renja DKPP, lalu mengisi 19 bagian pada template KAK. RKA sumber dan draft Word disimpan dalam arsip.</CardDescription></CardHeader>
+      <Card><CardHeader><CardTitle>Unggah RKA, unduh draft KAK</CardTitle><CardDescription>Gemini membaca RKA, mencocokkan referensi Renstra/Renja DKPP, lalu mengisi cover dan 19 bagian pada template KAK. RKA sumber dan draft Word disimpan dalam arsip.</CardDescription></CardHeader>
         <CardContent className="space-y-4"><div className="space-y-2"><Label htmlFor="kak-rka">RKA rincian satu sub kegiatan (PDF)</Label><Input id="kak-rka" ref={fileRef} type="file" accept=".pdf,application/pdf" required disabled={busy} /><p className="text-xs text-zinc-500">Maksimal {MAX_UPLOAD_SIZE_MB} MB. Gunakan PDF yang jelas dan memuat tahun anggaran serta pagu.</p></div>
           <div className="space-y-2"><Label htmlFor="kak-date">Tanggal KAK</Label><Input id="kak-date" type="date" required value={date} onChange={(e) => setDate(e.target.value)} disabled={busy} className="max-w-xs" /></div>
+          <div className="space-y-2"><Label htmlFor="kak-sequence">Nomor urut sub kegiatan pada cover (opsional)</Label><Input id="kak-sequence" value={sequence} onChange={(e) => setSequence(e.target.value)} maxLength={32} placeholder="Contoh: 5" disabled={busy} className="max-w-xs" /><p className="text-xs text-zinc-500">Isi sesuai rekap sub kegiatan tahun anggaran. Jika kosong, bagian kanan atas cover dibiarkan kosong.</p></div>
           <div className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-medium">Referensi otomatis DKPP</p><p className="mt-1">Renstra 2025–2029 dan Rancangan Akhir Renja 2027 digunakan sesuai tahun KAK. Anda cukup mengunggah RKA.</p><p className="mt-2 text-xs">Pagu dan target keluaran tetap mengikuti RKA. Perbedaan dengan rencana indikatif akan ditampilkan sebagai catatan.</p></div>
           <details className="rounded-xl border p-4"><summary className="cursor-pointer text-sm font-medium">Identitas tambahan</summary><div className="mt-4 space-y-4"><p className="text-sm text-zinc-500">PPTK dipilih dari pegawai aktif. Bawaan: Muhamad Iqbal. Nama dan NIP mengikuti data pegawai terpilih.</p><div className="space-y-2"><Label htmlFor="kak-pptk">Nama PPTK</Label><Popover open={pptkOpen} onOpenChange={setPptkOpen}><PopoverTrigger render={<Button id="kak-pptk" type="button" variant="outline" role="combobox" aria-expanded={pptkOpen} disabled={busy || employees.length === 0} className="h-11 w-full justify-between overflow-hidden px-3 font-normal" />}><span className={cn("min-w-0 truncate text-left", !selectedPptk && "text-muted-foreground")}>{selectedPptk ? `${selectedPptk.name} · ${selectedPptk.nip}` : employees.length ? "Pilih PPTK" : "Daftar pegawai aktif kosong"}</span><ChevronsUpDown className="size-4 shrink-0 opacity-50" /></PopoverTrigger><PopoverContent align="start" className="w-[var(--anchor-width)] p-0"><Command><CommandInput placeholder="Cari nama, NIP, atau jabatan..." /><CommandList><CommandEmpty>Pegawai tidak ditemukan.</CommandEmpty><CommandGroup>{employees.map((employee) => <CommandItem key={employee.nip} value={`${employee.name} ${employee.nip} ${employee.position} ${employee.unit}`} onSelect={() => { setPptkNip(employee.nip); setPptkOpen(false); }}><Check className={cn("size-4 shrink-0", pptkNip === employee.nip ? "opacity-100" : "opacity-0")} /><span className="min-w-0"><span className="block truncate">{employee.name}</span><span className="block truncate text-xs text-muted-foreground">{employee.nip} · {employee.position}</span></span></CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent></Popover></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} disabled={busy} />Ganti penandatangan dari RKA</label>{override && <SignatoryField value={signatory} onChange={setSignatory} options={signatories} disabled={busy} />}</div></details>
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

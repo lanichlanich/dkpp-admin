@@ -19,11 +19,12 @@ try {
   db.prepare("INSERT INTO sessions (token_hash,user_id,expires_at,created_at) VALUES (?,?,?,?)").run(createHash("sha256").update(token).digest("hex"), id, new Date(Date.now() + 600000).toISOString(), now);
   assert.equal((await generate(body(new File(["%PDF-"], "rka.pdf")), false)).status, 401);
   assert.equal((await generate(body(new File(["%PDF-"], "rka.pdf"), { tanggalDokumen: "bad" }))).status, 400);
+  assert.equal((await generate(body(new File(["%PDF-"], "rka.pdf"), { tanggalDokumen: "2026-10-08", nomorUrutSubKegiatan: "<5>" }))).status, 400);
   for (const file of [new File(["not pdf"], "rka.pdf"), new File(["%PDF-"], "rka.txt"), new File([], "rka.pdf")]) assert.equal((await generate(body(file))).status, 422);
   assert.equal((await generate(body(new File([Buffer.alloc(2097153)], "rka.pdf")))).status, 413);
   assert.equal((await fetch(`${base}/api/kak/${randomUUID()}/download`, { headers })).status, 404);
   const page = await fetch(`${base}/dashboard/pembuatan-kak`, { headers });
-  assert.equal(page.status, 200); const html = await page.text(); assert(html.includes("Pembuatan KAK") && html.includes("Perencanaan"));
+  assert.equal(page.status, 200); const html = await page.text(); assert(html.includes("Pembuatan KAK") && html.includes("Perencanaan") && html.includes("Nomor urut sub kegiatan pada cover"));
   console.log("PASS HTTP authentication, input validation, 2 MB cap, missing-document response and KAK page");
   const sourcePath = process.argv[2];
   if (sourcePath) {
@@ -50,7 +51,7 @@ try {
     assert.equal(archived.references.length, 2); assert(archived.legalBasisIds.length > 0);
     assert(!xml.includes("&lt;generate"));
     const template = new PizZip(readFileSync("src/templates/template-kak.docx"));
-    for (const name of Object.keys(template.files)) if (!template.files[name].dir && name !== "word/document.xml") assert(template.files[name].asNodeBuffer().equals(zip.file(name).asNodeBuffer()), name);
+    for (const name of Object.keys(template.files)) if (!template.files[name].dir && !["word/document.xml", "word/header-kak-cover.xml"].includes(name)) assert(template.files[name].asNodeBuffer().equals(zip.file(name).asNodeBuffer()), name);
     const rka = await fetch(`${base}/api/kak/${result.id}/download?source=rka`, { headers });
     assert.equal(rka.status, 200); assert(Buffer.from(await rka.arrayBuffer()).equals(source));
     assert.equal((await fetch(`${base}/api/kak/${result.id}/download`)).status, 401);

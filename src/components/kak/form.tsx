@@ -1,15 +1,19 @@
 "use client";
 import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Download, LoaderCircle, Sparkles } from "lucide-react";
+import { Check, ChevronsUpDown, Download, LoaderCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SignatoryField } from "@/components/letters/signatory-field";
 import { DEFAULT_SIGNATORY, type Signatory, type SignatoryOption } from "@/lib/signatory";
 import { formatKakRupiah, type KakDraft, type KakHistory, type KakReference } from "@/lib/kak-types";
+import type { PptkEmployeeOption } from "@/lib/employees";
+import { cn } from "@/lib/utils";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 
 type Result = { id: string; fileName: string; metadata: KakDraft["metadata"]; warnings: string[]; references: KakReference[] };
@@ -17,15 +21,21 @@ function ReferenceList({ references }: { references: KakReference[] }) {
   if (!references.length) return null;
   return <details className="text-sm text-emerald-800"><summary className="cursor-pointer font-medium">Sumber referensi yang digunakan</summary><ul className="mt-2 space-y-2">{references.map((r) => <li key={r.id}><p className="font-medium">{r.title}</p><p className="mt-1 text-xs text-zinc-500">{r.locators.join("; ")}</p></li>)}</ul></details>;
 }
-export function KakForm({ history, today, signatories }: { history: KakHistory[]; today: string; signatories: SignatoryOption[] }) {
+function findDefaultPptk(employees: PptkEmployeeOption[]) {
+  return employees.find((employee) => employee.name.toLocaleUpperCase("id-ID").replace(/[^A-Z]/g, "").replace("MUHAMMAD", "MUHAMAD").startsWith("MUHAMADIQBAL"));
+}
+
+export function KakForm({ history, today, signatories, employees }: { history: KakHistory[]; today: string; signatories: SignatoryOption[]; employees: PptkEmployeeOption[] }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const defaultPptk = findDefaultPptk(employees);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [date, setDate] = useState(today);
-  const [pptkNama, setPptkNama] = useState("");
-  const [pptkNip, setPptkNip] = useState("");
+  const [pptkNip, setPptkNip] = useState(defaultPptk?.nip || "");
+  const [pptkOpen, setPptkOpen] = useState(false);
+  const selectedPptk = employees.find((employee) => employee.nip === pptkNip);
   const [override, setOverride] = useState(false);
   const [signatory, setSignatory] = useState<Signatory>(signatories[0] || DEFAULT_SIGNATORY);
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -36,7 +46,7 @@ export function KakForm({ history, today, signatories }: { history: KakHistory[]
     setBusy(true); setError(""); setResult(null);
     try {
       const body = new FormData(); body.set("file", file);
-      body.set("options", JSON.stringify({ tanggalDokumen: date, pptkNama, pptkNip, ...(override ? { signatory } : {}) }));
+      body.set("options", JSON.stringify({ tanggalDokumen: date, pptkNama: selectedPptk?.name || "", pptkNip: selectedPptk?.nip || "", ...(override ? { signatory } : {}) }));
       const response = await fetch("/api/kak/generate", { method: "POST", body });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Draft KAK gagal dibuat.");
@@ -57,7 +67,7 @@ export function KakForm({ history, today, signatories }: { history: KakHistory[]
         <CardContent className="space-y-4"><div className="space-y-2"><Label htmlFor="kak-rka">RKA rincian satu sub kegiatan (PDF)</Label><Input id="kak-rka" ref={fileRef} type="file" accept=".pdf,application/pdf" required disabled={busy} /><p className="text-xs text-zinc-500">Maksimal {MAX_UPLOAD_SIZE_MB} MB. Gunakan PDF yang jelas dan memuat tahun anggaran serta pagu.</p></div>
           <div className="space-y-2"><Label htmlFor="kak-date">Tanggal KAK</Label><Input id="kak-date" type="date" required value={date} onChange={(e) => setDate(e.target.value)} disabled={busy} className="max-w-xs" /></div>
           <div className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-medium">Referensi otomatis DKPP</p><p className="mt-1">Renstra 2025–2029 dan Rancangan Akhir Renja 2027 digunakan sesuai tahun KAK. Anda cukup mengunggah RKA.</p><p className="mt-2 text-xs">Pagu dan target keluaran tetap mengikuti RKA. Perbedaan dengan rencana indikatif akan ditampilkan sebagai catatan.</p></div>
-          <details className="rounded-xl border p-4"><summary className="cursor-pointer text-sm font-medium">Identitas tambahan (opsional)</summary><div className="mt-4 space-y-4"><p className="text-sm text-zinc-500">Penandatangan mengikuti RKA. PPTK yang belum diisi diberi penanda untuk dilengkapi pada draft.</p><div className="grid gap-4 md:grid-cols-2"><div className="space-y-2"><Label htmlFor="kak-pptk">Nama PPTK</Label><Input id="kak-pptk" value={pptkNama} onChange={(e) => setPptkNama(e.target.value)} maxLength={160} disabled={busy} /></div><div className="space-y-2"><Label htmlFor="kak-pptk-nip">NIP PPTK</Label><Input id="kak-pptk-nip" value={pptkNip} onChange={(e) => setPptkNip(e.target.value.replace(/\D/g, ""))} maxLength={18} disabled={busy} /></div></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} disabled={busy} />Ganti penandatangan dari RKA</label>{override && <SignatoryField value={signatory} onChange={setSignatory} options={signatories} disabled={busy} />}</div></details>
+          <details className="rounded-xl border p-4"><summary className="cursor-pointer text-sm font-medium">Identitas tambahan</summary><div className="mt-4 space-y-4"><p className="text-sm text-zinc-500">PPTK dipilih dari pegawai aktif. Bawaan: Muhamad Iqbal. Nama dan NIP mengikuti data pegawai terpilih.</p><div className="space-y-2"><Label htmlFor="kak-pptk">Nama PPTK</Label><Popover open={pptkOpen} onOpenChange={setPptkOpen}><PopoverTrigger render={<Button id="kak-pptk" type="button" variant="outline" role="combobox" aria-expanded={pptkOpen} disabled={busy || employees.length === 0} className="h-11 w-full justify-between overflow-hidden px-3 font-normal" />}><span className={cn("min-w-0 truncate text-left", !selectedPptk && "text-muted-foreground")}>{selectedPptk ? `${selectedPptk.name} · ${selectedPptk.nip}` : employees.length ? "Pilih PPTK" : "Daftar pegawai aktif kosong"}</span><ChevronsUpDown className="size-4 shrink-0 opacity-50" /></PopoverTrigger><PopoverContent align="start" className="w-[var(--anchor-width)] p-0"><Command><CommandInput placeholder="Cari nama, NIP, atau jabatan..." /><CommandList><CommandEmpty>Pegawai tidak ditemukan.</CommandEmpty><CommandGroup>{employees.map((employee) => <CommandItem key={employee.nip} value={`${employee.name} ${employee.nip} ${employee.position} ${employee.unit}`} onSelect={() => { setPptkNip(employee.nip); setPptkOpen(false); }}><Check className={cn("size-4 shrink-0", pptkNip === employee.nip ? "opacity-100" : "opacity-0")} /><span className="min-w-0"><span className="block truncate">{employee.name}</span><span className="block truncate text-xs text-muted-foreground">{employee.nip} · {employee.position}</span></span></CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent></Popover></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} disabled={busy} />Ganti penandatangan dari RKA</label>{override && <SignatoryField value={signatory} onChange={setSignatory} options={signatories} disabled={busy} />}</div></details>
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}{busy ? "Gemini sedang menyusun KAK..." : "Generate dan unduh draft KAK"}</Button>
           {busy && <p role="status" className="text-sm text-zinc-500">Pembacaan RKA dan pengisian template dapat memerlukan hingga beberapa menit.</p>}

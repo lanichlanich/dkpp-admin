@@ -5,6 +5,7 @@ import { GeminiApiError } from "@/lib/gemini-client";
 import { generateKakDocument } from "@/lib/kak-document";
 import { kakOptionsSchema } from "@/lib/kak-validation";
 import { saveKak } from "@/lib/kak";
+import { getPptkEmployeeOptions } from "@/lib/employees";
 import { MAX_MULTIPART_REQUEST_SIZE_BYTES } from "@/lib/upload-limits";
 
 export const runtime = "nodejs";
@@ -24,6 +25,10 @@ export async function POST(request: Request) {
     try { options = kakOptionsSchema.safeParse(JSON.parse(String(form.get("options") || "{}"))); }
     catch { return NextResponse.json({ error: "Data form tidak valid." }, { status: 400 }); }
     if (!options.success) return NextResponse.json({ error: options.error.issues[0]?.message || "Periksa form." }, { status: 400 });
+    if (options.data.pptkNip) {
+      const employee = (await getPptkEmployeeOptions()).find((candidate) => candidate.nip === options.data.pptkNip);
+      if (!employee || employee.name !== options.data.pptkNama) return NextResponse.json({ error: "PPTK harus dipilih dari daftar pegawai aktif." }, { status: 400 });
+    }
     const result = await generateKakDraft(file);
     if (!options.data.pptkNama) result.draft.warnings.push("Nama dan NIP PPTK belum diisi; lengkapi pada draft sebelum digunakan.");
     const document = await generateKakDocument(result.draft, options.data);

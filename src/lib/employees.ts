@@ -69,6 +69,18 @@ export const getHukdisEmployees = cache(async (): Promise<Employee[]> => {
 
 export type KgbEmployeeOption = Pick<Employee, "nip" | "name" | "rank">;
 
+export type PptkEmployeeOption = Pick<Employee, "nip" | "name" | "position" | "unit">;
+
+export const getPptkEmployeeOptions = cache(async (): Promise<PptkEmployeeOption[]> => {
+  await requireUser();
+  return await db.prepare(
+    `SELECT nip, name, position, unit
+     FROM employees
+     WHERE status = 'Aktif'
+     ORDER BY name COLLATE NOCASE`,
+  ).all() as PptkEmployeeOption[];
+});
+
 export const getKgbEmployeeOptions = cache(async (): Promise<KgbEmployeeOption[]> => {
   await requireUser();
   return await db.prepare(

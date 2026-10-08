@@ -42,9 +42,9 @@ const grids = (x) => [...x.matchAll(/<w:tblGrid\b[^>]*>[\s\S]*?<\/w:tblGrid>/g)]
 assert.deepEqual(grids(xml), grids(source.file("word/document.xml").asText()));
 const cover = xml.match(/<w:tbl(?:\s[^>]*)?>[\s\S]*?<\/w:tbl>/)[0];
 for (const value of ["Program Uji", "Kegiatan Uji", "Cetakan &amp; Penggandaan", "29.359.021,00", "Indramayu"]) assert(cover.includes(value), `Cover field ${value}`);
-assert(xml.includes("PETUNJUK OPERASIONAL") && xml.includes("TAHUN ANGGARAN 2028"));
+assert(xml.includes("KERANGKA ACUAN KERJA") && !xml.includes("PETUNJUK OPERASIONAL") && xml.includes("TAHUN ANGGARAN 2028"));
 const documentText = [...xml.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(m => m[1]).join("");
-assert(documentText.indexOf("PETUNJUK OPERASIONAL") < documentText.indexOf("Kerangka Acuan Kerja"));
+assert(documentText.indexOf("KERANGKA ACUAN KERJA") < documentText.indexOf("Kerangka Acuan Kerja"));
 assert.equal(grids(xml).length, 7); assert.equal(sections(xml).length, 5);
 assert(output.file("word/header-kak-cover.xml").asText().includes("05 &amp; A"));
 assert(!output.file("word/header-kak-cover.xml").asText().includes("${kak."));

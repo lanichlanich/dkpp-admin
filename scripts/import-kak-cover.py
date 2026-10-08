@@ -50,6 +50,10 @@ year = [p for p in body.findall('w:p', ns) if ''.join(p.xpath('.//w:t/text()', n
 if len(year) != 1:
     raise SystemExit('Cover year slot changed.')
 fill_paragraph(year[0], '${kak.cover.year}')
+title = [p for p in body.findall('w:p', ns) if ''.join(p.xpath('.//w:t/text()', namespaces=ns)) in ['PETUNJUK OPERASIONAL', 'KERANGKA ACUAN KERJA']]
+if len(title) != 1:
+    raise SystemExit('Cover title slot changed.')
+fill_paragraph(title[0], 'KERANGKA ACUAN KERJA')
 header = etree.fromstring(cover.read('word/header1.xml'))
 if len(header.findall('w:p', ns)) != 1:
     raise SystemExit('Cover header slot changed.')

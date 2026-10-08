@@ -47,7 +47,7 @@ try {
     assert.equal(bytes.length, row.file_size);
     const zip = new PizZip(bytes); const xml = zip.file("word/document.xml").asText();
     assert(xml.includes("29.359.021,00") && xml.includes("2027") && xml.includes("RORY FIRMANSYAH"));
-    assert(xml.includes("Renstra DKPP Tahun 2025-2029") && xml.includes("Rancangan Akhir Renja DKPP Tahun 2027"));
+    assert(!xml.includes("Acuan perencanaan:"), "Keterangan acuan perencanaan tidak boleh dicetak pada dasar hukum.");
     assert(xml.includes("160 Tahun 2024"), "Dasar hukum tugas/fungsi DKPP tidak diisi.");
     const archived = JSON.parse(row.draft_json);
     assert.equal(archived.options.nomorUrutSubKegiatan, "26");

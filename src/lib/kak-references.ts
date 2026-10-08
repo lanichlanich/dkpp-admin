@@ -75,6 +75,5 @@ export function formatKakLegalBasis(ids: string[], context: Awaited<ReturnType<t
     if (seen.has(key)) return false; seen.add(key); return true;
   })
     .map((law, index) => `${index + 1}. ${law!.text.replace(/\s*;$/, ".")}`);
-  const plans = context.references.map((r) => r.title).join("; ");
-  return `${lines.length ? lines.join("\n") : "[Dasar hukum yang relevan perlu dilengkapi dan diverifikasi.]"}${plans ? `\nAcuan perencanaan: ${plans}.` : ""}`;
+  return lines.length ? lines.join("\n") : "[Dasar hukum yang relevan perlu dilengkapi dan diverifikasi.]";
 }

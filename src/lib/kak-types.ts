@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const KAK_SECTIONS = [
   ["latarBelakang", "Latar Belakang", "Jelaskan dari konteks umum ke kebutuhan spesifik sub kegiatan dan risiko yang akan diatasi."],
-  ["dasarHukum", "Dasar Hukum Tugas Fungsi/Kebijakan", "Pilih dasar hukum yang relevan dari katalog referensi Renstra/Renja. Bedakan peraturan sebagai dasar hukum dan Renstra/Renja sebagai acuan perencanaan."],
+  ["dasarHukum", "Dasar Hukum Tugas Fungsi/Kebijakan", "Pilih peraturan yang relevan dari katalog referensi Renstra/Renja. Jangan menambahkan keterangan acuan perencanaan dalam bagian dasar hukum."],
   ["gambaranUmum", "Gambaran Umum", "Jelaskan lingkup kegiatan, keluaran dan volumenya serta keterkaitan dengan program/kegiatan dalam RKA."],
   ["maksudTujuan", "Maksud dan Tujuan", "Ringkas keluaran, manfaat dan dampak yang diharapkan; jangan mengarang visi/misi atau angka kinerja."],
   ["maksud", "Maksud", "Jelaskan maksud operasional sub kegiatan."],

@@ -37,7 +37,14 @@ for (const text of ["2028", "DINAS UJI &amp; PERENCANAAN", "PA / KPA", "PEJABAT 
 assert([...xml.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(m => m[1]).join("").includes("Penanggung Jawab / PPTK"));
 assert(!xml.includes("&lt;generate")); assert(!xml.includes("&lt;nama_sub_kegiatan&gt;")); assert(!xml.includes("(Nama Jelas)"));
 const sections = (x) => [...x.matchAll(/<w:sectPr\b[^>]*>[\s\S]*?<\/w:sectPr>/g)].map(m => m[0]);
-assert.deepEqual(sections(xml), sections(source.file("word/document.xml").asText()));
+const sourceSections = sections(source.file("word/document.xml").asText());
+assert.deepEqual(sections(xml), sourceSections.map((section, index) => {
+  const resized = section.replace(/<w:pgSz\b[^>]*\/>/, '<w:pgSz w:w="11906" w:h="18709"/>');
+  return index === 1 ? resized.replace(/<w:type\b[^>]*\/>/, '<w:type w:val="nextPage"/>') : resized;
+}));
+for (const section of sections(xml)) assert(section.includes('<w:pgSz w:w="11906" w:h="18709"/>'), "Every section must use F4");
+assert(sections(xml)[1].includes('<w:type w:val="nextPage"/>'), "Body must start on the page after the cover");
+assert(xml.includes('<wp:positionH relativeFrom="column"><wp:align>center</wp:align></wp:positionH>'), "Center cover logo on F4");
 const grids = (x) => [...x.matchAll(/<w:tblGrid\b[^>]*>[\s\S]*?<\/w:tblGrid>/g)].map(m => m[0]);
 assert.deepEqual(grids(xml), grids(source.file("word/document.xml").asText()));
 const cover = xml.match(/<w:tbl(?:\s[^>]*)?>[\s\S]*?<\/w:tbl>/)[0];
@@ -59,7 +66,7 @@ assert(missing.includes("[Nama PA/KPA]")); assert(missing.includes("[Nama PPTK]"
 const noSequence = new PizZip(await generateKakDocument(draft, { tanggalDokumen: "2026-10-08", pptkNama: "", pptkNip: "" })).file("word/header-kak-cover.xml").asText();
 assert(!noSequence.includes("${kak.") && !noSequence.includes("Nomor urut"));
 for (const file of [new File(["%PDF-"], "rka.txt"), new File(["not a pdf"], "rka.pdf"), new File([], "rka.pdf"), new File([Buffer.alloc(2097153)], "rka.pdf")]) await assert.rejects(generateKakDraft(file));
-console.log("PASS KAK: cover/sequence, 19 slots, 3 risks, XML escaping, editable signatures, missing-data markers, ZIP/sections preservation, input validation and 2 MB limit");
+console.log("PASS KAK: F4 on all sections, separate cover/body, cover/sequence, 19 slots, 3 risks, XML escaping, editable signatures, missing-data markers, ZIP preservation, input validation and 2 MB limit");
 const dkpp = { ...metadata, tahunAnggaran: 2027, perangkatDaerah: "DINAS KETAHANAN PANGAN DAN PERTANIAN", subKegiatan: "Penyediaan Barang Cetakan dan Penggandaan", kodeSubKegiatan: ".01.2.06.0005" };
 const context = await getKakReferenceContext(dkpp);
 assert.equal(context.references.length, 2);

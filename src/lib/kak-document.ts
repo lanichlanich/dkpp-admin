@@ -41,11 +41,22 @@ function fillCell(cell: string, value: string, section?: KakSectionKey) {
 }
 const withoutLeadingCode = (value: string) => value.replace(/^\s*\.?\d+(?:\.\d+)*\s+/, "").trim();
 
-/** Fill the corrected body and supplied cover; preserve geometry and opaque ZIP parts. */
+/** Fill the supplied layout on F4 paper, preserving styles, margins and opaque ZIP parts. */
 export async function generateKakDocument(draft: KakDraft, options: KakOptions) {
   const zip = new PizZip(await readFile(path.join(process.cwd(), "src", "templates", "template-kak.docx")));
   let xml = zip.file("word/document.xml")!.asText();
   if ((xml.match(/<w:tbl(?:\s[^>]*)?>/g) || []).length !== 7) throw new Error("Struktur template KAK berubah.");
+  let sectionIndex = 0;
+  xml = xml.replace(/<w:sectPr\b[^>]*>[\s\S]*?<\/w:sectPr>/g, (section) => {
+    const currentSection = sectionIndex++;
+    // F4 210 x 330 mm, rounded to Word twips; apply to the cover and every body section.
+    const resized = section.replace(/<w:pgSz\b[^>]*\/>/, '<w:pgSz w:w="11906" w:h="18709"/>');
+    // Equal paper sizes require an explicit page break before the first body section.
+    return currentSection === 1 ? resized.replace(/<w:type\b[^>]*\/>/, '<w:type w:val="nextPage"/>') : resized;
+  });
+  if (sectionIndex !== 5) throw new Error("Section template KAK tidak sesuai.");
+  // Keep the cover logo centered when its original Letter width becomes F4.
+  xml = xml.replace(/<wp:positionH\b[^>]*relativeFrom="column"[^>]*>[\s\S]*?<\/wp:positionH>/, '<wp:positionH relativeFrom="column"><wp:align>center</wp:align></wp:positionH>');
   const m = draft.metadata;
   const metadata = [m.perangkatDaerah, m.urusanPemerintahan, m.bidangUrusan, m.program, m.kegiatan, m.subKegiatan].map(withoutLeadingCode);
   const cover = [withoutLeadingCode(m.program), withoutLeadingCode(m.kegiatan), withoutLeadingCode(m.subKegiatan), formatKakRupiah(m.paguAnggaran), m.lokasi];

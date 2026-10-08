@@ -4,7 +4,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { database as db } from "@/lib/database";
 import { isStorageConfigured, uploadStorageObject, deleteStorageObject } from "@/lib/storage";
-import type { KakDraft, KakHistory } from "@/lib/kak-types";
+import type { KakDraft, KakHistory, ReferencedKakDraft } from "@/lib/kak-types";
 import type { KakOptions } from "@/lib/kak-validation";
 
 const directory = path.join(process.cwd(), "data", "kak-documents");
@@ -35,7 +35,10 @@ export async function saveKak(input: { userId: string; draft: KakDraft; options:
 }
 export async function getKakHistory(): Promise<KakHistory[]> {
   const rows = await db.prepare(`SELECT d.*, u.name AS created_by FROM kak_documents d JOIN users u ON u.id=d.user_id ORDER BY d.created_at DESC LIMIT 100`).all() as Array<Record<string, string | number>>;
-  return rows.map((r) => ({ id: String(r.id), tahunAnggaran: Number(r.tahun_anggaran), subKegiatan: String(r.sub_kegiatan), kodeSubKegiatan: String(r.kode_sub_kegiatan), paguAnggaran: String(r.pagu_anggaran), fileName: String(r.file_name), sourceName: String(r.source_name), createdAt: String(r.created_at), createdBy: String(r.created_by), warnings: (JSON.parse(String(r.draft_json)) as KakDraft).warnings }));
+  return rows.map((r) => {
+    const draft = JSON.parse(String(r.draft_json)) as Partial<ReferencedKakDraft>;
+    return { id: String(r.id), tahunAnggaran: Number(r.tahun_anggaran), subKegiatan: String(r.sub_kegiatan), kodeSubKegiatan: String(r.kode_sub_kegiatan), paguAnggaran: String(r.pagu_anggaran), fileName: String(r.file_name), sourceName: String(r.source_name), createdAt: String(r.created_at), createdBy: String(r.created_by), warnings: draft.warnings || [], references: draft.references || [] };
+  });
 }
 export async function getKakDownload(id: string, source: boolean) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;

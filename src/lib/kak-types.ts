@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const KAK_SECTIONS = [
   ["latarBelakang", "Latar Belakang", "Jelaskan dari konteks umum ke kebutuhan spesifik sub kegiatan dan risiko yang akan diatasi."],
-  ["dasarHukum", "Dasar Hukum Tugas Fungsi/Kebijakan", "Hanya sebut nomor peraturan yang tertulis dalam RKA. Jika tidak tersedia, tandai dasar hukum/Renstra/Renja yang perlu dilengkapi dan diverifikasi."],
+  ["dasarHukum", "Dasar Hukum Tugas Fungsi/Kebijakan", "Pilih dasar hukum yang relevan dari katalog referensi Renstra/Renja. Bedakan peraturan sebagai dasar hukum dan Renstra/Renja sebagai acuan perencanaan."],
   ["gambaranUmum", "Gambaran Umum", "Jelaskan lingkup kegiatan, keluaran dan volumenya serta keterkaitan dengan program/kegiatan dalam RKA."],
   ["maksudTujuan", "Maksud dan Tujuan", "Ringkas keluaran, manfaat dan dampak yang diharapkan; jangan mengarang visi/misi atau angka kinerja."],
   ["maksud", "Maksud", "Jelaskan maksud operasional sub kegiatan."],
@@ -41,6 +41,9 @@ export const kakDraftSchema = z.object({
   warnings: z.array(text(600).min(1)).max(30),
 });
 export type KakDraft = z.infer<typeof kakDraftSchema>;
+export const kakMetadataSchema = kakDraftSchema.shape.metadata;
+export type KakReference = { id: string; title: string; sha256: string; locators: string[] };
+export type ReferencedKakDraft = KakDraft & { references: KakReference[]; legalBasisIds: string[] };
 
 export function formatKakRupiah(value: string) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 2 }).format(Number(value));
@@ -49,4 +52,5 @@ export function formatKakRupiah(value: string) {
 export type KakHistory = {
   id: string; tahunAnggaran: number; subKegiatan: string; kodeSubKegiatan: string;
   paguAnggaran: string; fileName: string; sourceName: string; createdAt: string; createdBy: string; warnings: string[];
+  references?: KakReference[];
 };

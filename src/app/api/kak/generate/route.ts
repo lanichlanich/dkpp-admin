@@ -8,7 +8,7 @@ import { saveKak } from "@/lib/kak";
 import { MAX_MULTIPART_REQUEST_SIZE_BYTES } from "@/lib/upload-limits";
 
 export const runtime = "nodejs";
-export const maxDuration = 180;
+export const maxDuration = 300;
 const active = new Set<string>();
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     if (!options.data.pptkNama) result.draft.warnings.push("Nama dan NIP PPTK belum diisi; lengkapi pada draft sebelum digunakan.");
     const document = await generateKakDocument(result.draft, options.data);
     const saved = await saveKak({ userId: user.id, ...result, document, options: options.data, sourceName: file.name });
-    return NextResponse.json({ ...saved, metadata: result.draft.metadata, warnings: result.draft.warnings }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ ...saved, metadata: result.draft.metadata, warnings: result.draft.warnings, references: result.draft.references }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     if (error instanceof GeminiApiError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error("KAK generation failed", error);

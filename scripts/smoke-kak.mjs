@@ -33,6 +33,9 @@ try {
     assert.equal(response.status, 200, JSON.stringify(result));
     assert.equal(result.metadata.tahunAnggaran, 2027); assert.equal(result.metadata.paguAnggaran, "29359021.00");
     assert.equal(result.metadata.rincianAnggaran.length, 8);
+    assert.equal(result.references.length, 2);
+    assert(result.references.every(r => /^[0-9a-f]{64}$/.test(r.sha256) && r.locators.length));
+    assert(result.warnings.some(w => w.includes("Renstra") && w.includes("berbeda")));
     assert(result.warnings.some(w => /PPTK/i.test(w)));
     const row = db.prepare("SELECT * FROM kak_documents WHERE id=? AND user_id=?").get(result.id, id);
     assert(row); assert.equal(row.source_file_size, source.length);
@@ -41,6 +44,10 @@ try {
     assert.equal(bytes.length, row.file_size);
     const zip = new PizZip(bytes); const xml = zip.file("word/document.xml").asText();
     assert(xml.includes("29.359.021,00") && xml.includes("2027") && xml.includes("RORY FIRMANSYAH"));
+    assert(xml.includes("Renstra DKPP Tahun 2025-2029") && xml.includes("Rancangan Akhir Renja DKPP Tahun 2027"));
+    assert(xml.includes("160 Tahun 2024"), "Dasar hukum tugas/fungsi DKPP tidak diisi.");
+    const archived = JSON.parse(row.draft_json);
+    assert.equal(archived.references.length, 2); assert(archived.legalBasisIds.length > 0);
     assert(!xml.includes("&lt;generate"));
     const template = new PizZip(readFileSync("src/templates/template-kak.docx"));
     for (const name of Object.keys(template.files)) if (!template.files[name].dir && name !== "word/document.xml") assert(template.files[name].asNodeBuffer().equals(zip.file(name).asNodeBuffer()), name);

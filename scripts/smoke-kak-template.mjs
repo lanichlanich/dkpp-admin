@@ -20,6 +20,7 @@ const { kakOptionsSchema } = load("src/lib/kak-validation.ts");
 const { generateKakDocument } = load("src/lib/kak-document.ts");
 const { generateKakDraft } = load("src/lib/gemini-kak.ts");
 const { getKakReferenceContext, formatKakLegalBasis } = load("src/lib/kak-references.ts");
+const { resolveKakSequence } = load("src/lib/kak-sequence.ts");
 const metadata = { tahunAnggaran: 2028, perangkatDaerah: "DINAS UJI & PERENCANAAN", urusanPemerintahan: "Urusan Uji", bidangUrusan: "Bidang Uji", program: "Program Uji", kegiatan: "Kegiatan Uji", subKegiatan: "Cetakan & Penggandaan", kodeSubKegiatan: "01.2.06.0005", sumberDana: "DAU", lokasi: "Indramayu", waktuPelaksanaan: "Januari s.d Desember", kelompokSasaran: "Perangkat Daerah", keluaran: "Paket", targetKeluaran: "1 Paket", paguAnggaran: "29359021.00", penandatanganNama: "", penandatanganNip: "", penandatanganJabatan: "", rincianAnggaran: [] };
 const draft = kakDraftSchema.parse({ metadata, sections: Object.fromEntries(KAK_SECTIONS.map(([key]) => [key, `ISIAN ${key} & pemeriksaan.\nParagraf kedua.`])), risks: Array.from({ length: 3 }, (_, i) => ({ risiko: `RISIKO ${i}`, penyebab: `SEBAB ${i}`, mitigasi: `MITIGASI ${i}` })), warnings: [] });
 assert.equal(kakDraftSchema.safeParse({ ...draft, metadata: { ...metadata, paguAnggaran: "Rp 29.359.021" } }).success, false);
@@ -68,6 +69,42 @@ assert(!noSequence.includes("${kak.") && !noSequence.includes("Nomor urut"));
 for (const file of [new File(["%PDF-"], "rka.txt"), new File(["not a pdf"], "rka.pdf"), new File([], "rka.pdf"), new File([Buffer.alloc(2097153)], "rka.pdf")]) await assert.rejects(generateKakDraft(file));
 console.log("PASS KAK: F4 on all sections, separate cover/body, cover/sequence, 19 slots, 3 risks, XML escaping, editable signatures, missing-data markers, ZIP preservation, input validation and 2 MB limit");
 const dkpp = { ...metadata, tahunAnggaran: 2027, perangkatDaerah: "DINAS KETAHANAN PANGAN DAN PERTANIAN", subKegiatan: "Penyediaan Barang Cetakan dan Penggandaan", kodeSubKegiatan: ".01.2.06.0005" };
+const sequences = JSON.parse(readFileSync("src/data/kak-sub-kegiatan-2027.json", "utf8"));
+assert.equal(sequences.entries.length, 69);
+assert.equal(sequences.year, 2027);
+assert.equal(new Set(sequences.entries.map(entry => entry.code)).size, 69);
+assert.deepEqual(sequences.entries.map(entry => entry.number), Array.from({ length: 69 }, (_, i) => i + 1));
+for (const entry of sequences.entries) {
+  for (const code of [entry.code, `.${entry.code.split(".").slice(2).join(".")}`, ""]) {
+    const resolved = await resolveKakSequence({ ...dkpp, subKegiatan: entry.name, kodeSubKegiatan: code });
+    assert.equal(resolved.number, String(entry.number), `Sequence for ${entry.code}, RKA code ${code}`);
+    assert.equal(resolved.reference.sha256, sequences.sha256);
+    assert(resolved.reference.locators[0].includes(`A${entry.row}:C${entry.row}`));
+    assert.equal(resolved.warning, undefined);
+  }
+}
+assert.equal((await resolveKakSequence(dkpp)).number, "26");
+assert.equal((await resolveKakSequence({ ...dkpp, kodeSubKegiatan: " 2.09.01.2.06.0005 ", subKegiatan: "PENYEDIAAN  BARANG CETAKAN DAN PENGGANDAAN" })).number, "26");
+assert.equal((await resolveKakSequence({ ...dkpp, kodeSubKegiatan: "", subKegiatan: "2.09.01.2.06.0005 Penyediaan Barang Cetakan dan Penggandaan" })).number, "26");
+for (const changed of [
+  { tahunAnggaran: 2028 }, { perangkatDaerah: "DINAS KESEHATAN" },
+  { kodeSubKegiatan: "3.27.01.2.06.0005" }, { kodeSubKegiatan: "0005" },
+  { kodeSubKegiatan: "", subKegiatan: "Penyediaan Barang Cetakan" },
+  { kodeSubKegiatan: ".03.2.01.0014", subKegiatan: "Nama belum terbaca" },
+  { kodeSubKegiatan: "2.09.01.2.06.0004" },
+]) {
+  const unresolved = await resolveKakSequence({ ...dkpp, ...changed });
+  assert.equal(unresolved.number, ""); assert(unresolved.warning.includes("belum diisi"));
+  assert.equal(unresolved.reference, undefined);
+}
+const manualSequence = await resolveKakSequence(dkpp, " 77 ");
+assert.equal(manualSequence.number, "77"); assert.equal(manualSequence.reference, undefined);
+assert.equal((await resolveKakSequence(dkpp, " ")).number, "26");
+const automaticDoc = new PizZip(await generateKakDocument({ ...draft, metadata: dkpp }, { tanggalDokumen: "2026-10-08", pptkNama: "", pptkNip: "" }));
+const automaticHeader = automaticDoc.file("word/header-kak-cover.xml").asText();
+assert.equal([...automaticHeader.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(match => match[1]).join(""), "26");
+assert(automaticHeader.includes('<w:jc w:val="right"/>'), "Sequence must stay at the upper right of the cover");
+console.log("PASS supplied sequence list: all 69 activities, full/short codes, exact names, cover number 26, year/organization/conflict guards and manual override");
 const context = await getKakReferenceContext(dkpp);
 assert.equal(context.references.length, 2);
 assert(context.text.includes("29.359.021") && context.text.includes("120.000.000"));

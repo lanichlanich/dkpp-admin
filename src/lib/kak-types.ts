@@ -53,4 +53,6 @@ export type KakHistory = {
   id: string; tahunAnggaran: number; subKegiatan: string; kodeSubKegiatan: string;
   paguAnggaran: string; fileName: string; sourceName: string; createdAt: string; createdBy: string; warnings: string[];
   references?: KakReference[];
+  nomorUrutSubKegiatan?: string;
+  nomorUrutReference?: KakReference;
 };

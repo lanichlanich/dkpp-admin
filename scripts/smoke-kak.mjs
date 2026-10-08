@@ -24,7 +24,7 @@ try {
   assert.equal((await generate(body(new File([Buffer.alloc(2097153)], "rka.pdf")))).status, 413);
   assert.equal((await fetch(`${base}/api/kak/${randomUUID()}/download`, { headers })).status, 404);
   const page = await fetch(`${base}/dashboard/pembuatan-kak`, { headers });
-  assert.equal(page.status, 200); const html = await page.text(); assert(html.includes("Pembuatan KAK") && html.includes("Perencanaan") && html.includes("Nomor urut sub kegiatan pada cover"));
+  assert.equal(page.status, 200); const html = await page.text(); assert(html.includes("Pembuatan KAK") && html.includes("Perencanaan") && html.includes("Nomor urut sub kegiatan pada cover") && html.includes("Otomatis dari RKA TA 2027"));
   console.log("PASS HTTP authentication, input validation, 2 MB cap, missing-document response and KAK page");
   const sourcePath = process.argv[2];
   if (sourcePath) {
@@ -35,6 +35,8 @@ try {
     assert.equal(result.metadata.tahunAnggaran, 2027); assert.equal(result.metadata.paguAnggaran, "29359021.00");
     assert.equal(result.metadata.rincianAnggaran.length, 8);
     assert.equal(result.references.length, 2);
+    assert.equal(result.nomorUrutSubKegiatan, "26");
+    assert.equal(result.nomorUrutReference.id, "kak-sub-kegiatan-dkpp-2027");
     assert(result.references.every(r => /^[0-9a-f]{64}$/.test(r.sha256) && r.locators.length));
     assert(result.warnings.some(w => w.includes("Renstra") && w.includes("berbeda")));
     assert(result.warnings.some(w => /PPTK/i.test(w)));
@@ -48,6 +50,14 @@ try {
     assert(xml.includes("Renstra DKPP Tahun 2025-2029") && xml.includes("Rancangan Akhir Renja DKPP Tahun 2027"));
     assert(xml.includes("160 Tahun 2024"), "Dasar hukum tugas/fungsi DKPP tidak diisi.");
     const archived = JSON.parse(row.draft_json);
+    assert.equal(archived.options.nomorUrutSubKegiatan, "26");
+    assert.deepEqual(archived.options.nomorUrutReference, result.nomorUrutReference);
+    const header = zip.file("word/header-kak-cover.xml").asText();
+    assert.equal([...header.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(match => match[1]).join(""), "26");
+    const historyPage = await fetch(`${base}/dashboard/pembuatan-kak`, { headers });
+    assert.equal(historyPage.status, 200);
+    const historyHtml = await historyPage.text();
+    assert(historyHtml.includes("Nomor urut cover:") && historyHtml.includes(result.nomorUrutReference.title));
     assert.equal(archived.references.length, 2); assert(archived.legalBasisIds.length > 0);
     assert(!xml.includes("&lt;generate"));
     const template = new PizZip(readFileSync("src/templates/template-kak.docx"));
@@ -58,7 +68,7 @@ try {
     assert.equal((await fetch(`${base}/api/kak/${result.id}/download?source=rka`)).status, 401);
     mkdirSync(".tmp/kak", { recursive: true }); writeFileSync(".tmp/kak/http-sample.docx", bytes);
     writeFileSync(".tmp/kak/http-draft.json", row.draft_json);
-    console.log("PASS live Gemini example: TA 2027, correct pagu, 8 items, template slots, DOCX/RKA persistence and authenticated re-download");
+    console.log("PASS live Gemini example: TA 2027, correct pagu, 8 items, automatic cover number 26 and source, archive history, DOCX/RKA persistence and authenticated re-download");
   }
 } finally {
   for (const row of db.prepare("SELECT storage_name,source_storage_name FROM kak_documents WHERE user_id=?").all(id)) {

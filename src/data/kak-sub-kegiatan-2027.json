@@ -1,0 +1,425 @@
+{
+  "id": "kak-sub-kegiatan-dkpp-2027",
+  "title": "Daftar nomor urut sub kegiatan DKPP TA 2027",
+  "year": 2027,
+  "fileName": "daftar_sub_kegiatan_rka_2027.xlsx",
+  "sheet": "Sub Kegiatan",
+  "source": "Sumber: Rekapitulasi RKA-BELANJA SKPD, Kab. Indramayu, Tahun Anggaran 2027.",
+  "sha256": "ff2d7969ff09daba686a563b17c829ec78ccff6348a6af4bd6e9bd9b828c01e2",
+  "entries": [
+    {
+      "number": 1,
+      "code": "2.09.03.2.01.0007",
+      "name": "Peningkatan Ketahanan Pangan Keluarga",
+      "row": 6
+    },
+    {
+      "number": 2,
+      "code": "2.09.03.2.01.0008",
+      "name": "Stabilisasi Pasokan dan Harga Pangan Tingkat Produsen dan Konsumen di Kabupaten/Kota",
+      "row": 7
+    },
+    {
+      "number": 3,
+      "code": "2.09.03.2.01.0014",
+      "name": "Koordinasi dan Sinkronisasi Pemantauan Stok, Pasokan dan Harga Pangan Pokok Strategis",
+      "row": 8
+    },
+    {
+      "number": 4,
+      "code": "2.09.03.2.01.0016",
+      "name": "Penyusunan Neraca Bahan Makanan (NBM)",
+      "row": 9
+    },
+    {
+      "number": 5,
+      "code": "2.09.03.2.01.0020",
+      "name": "Penyusunan Proyeksi Neraca Pangan Wilayah Kabupaten/Kota",
+      "row": 10
+    },
+    {
+      "number": 6,
+      "code": "2.09.03.2.02.0003",
+      "name": "Pengadaan Cadangan Pangan Pemerintah Kabupaten/Kota",
+      "row": 11
+    },
+    {
+      "number": 7,
+      "code": "2.09.03.2.02.0005",
+      "name": "Penyaluran Cadangan Pangan Pemerintah Kab/Kota",
+      "row": 12
+    },
+    {
+      "number": 8,
+      "code": "2.09.03.2.04.0001",
+      "name": "Penyusunan dan Penetapan Target Konsumsi Pangan Per Kapita Per Tahun",
+      "row": 13
+    },
+    {
+      "number": 9,
+      "code": "2.09.03.2.04.0002",
+      "name": "Pemberdayaan Masyarakat dalam Penganekaragaman Konsumsi Pangan Berbasis Sumber Daya Lokal",
+      "row": 14
+    },
+    {
+      "number": 10,
+      "code": "2.09.04.2.01.0001",
+      "name": "Penyusunan, Pemutakhiran dan Analisis Peta Ketahanan dan Kerentanan Pangan",
+      "row": 15
+    },
+    {
+      "number": 11,
+      "code": "2.09.04.2.02.0002",
+      "name": "Pelaksanaan Pengadaan, Pengelolaan, dan Penyaluran Cadangan Pangan pada Kerawanan Pangan yang Mencakup dalam 1 (satu) Daerah Kabupaten/Kota",
+      "row": 16
+    },
+    {
+      "number": 12,
+      "code": "2.09.04.2.02.0003",
+      "name": "Koordinasi dan Sinkronisasi Penanganan Kerawanan Pangan dan Gizi Kabupaten/Kota",
+      "row": 17
+    },
+    {
+      "number": 13,
+      "code": "2.09.05.2.01.0004",
+      "name": "Rekomendasi Keamanan Pangan Segar Asal Tumbuhan Daerah Kabupaten/Kota",
+      "row": 18
+    },
+    {
+      "number": 14,
+      "code": "2.09.05.2.01.0007",
+      "name": "Penyediaan Sarana Pengujian keamanan dan mutu pangan segar asal tumbuhan Daerah Kabupaten/Kota",
+      "row": 19
+    },
+    {
+      "number": 15,
+      "code": "2.09.01.2.01.0001",
+      "name": "Penyusunan Dokumen Perencanaan Perangkat Daerah",
+      "row": 20
+    },
+    {
+      "number": 16,
+      "code": "2.09.01.2.01.0007",
+      "name": "Evaluasi Kinerja Perangkat Daerah",
+      "row": 21
+    },
+    {
+      "number": 17,
+      "code": "2.09.01.2.01.0008",
+      "name": "Penyelenggaraan Walidata Pendukung Statistik Sektoral Daerah",
+      "row": 22
+    },
+    {
+      "number": 18,
+      "code": "2.09.01.2.01.0009",
+      "name": "Pelaksanaan Pengumpulan Data Statistik Sektoral Daerah",
+      "row": 23
+    },
+    {
+      "number": 19,
+      "code": "2.09.01.2.02.0001",
+      "name": "Penyediaan Gaji dan Tunjangan ASN",
+      "row": 24
+    },
+    {
+      "number": 20,
+      "code": "2.09.01.2.02.0007",
+      "name": "Koordinasi dan Penyusunan Laporan Keuangan Bulanan/ Triwulanan/ Semesteran SKPD",
+      "row": 25
+    },
+    {
+      "number": 21,
+      "code": "2.09.01.2.05.0005",
+      "name": "Monitoring, Evaluasi, dan Penilaian Kinerja Pegawai",
+      "row": 26
+    },
+    {
+      "number": 22,
+      "code": "2.09.01.2.06.0001",
+      "name": "Penyediaan Komponen InstalasiListrik/Penerangan Bangunan Kantor",
+      "row": 27
+    },
+    {
+      "number": 23,
+      "code": "2.09.01.2.06.0002",
+      "name": "Penyediaan Peralatan dan Perlengkapan Kantor",
+      "row": 28
+    },
+    {
+      "number": 24,
+      "code": "2.09.01.2.06.0003",
+      "name": "Penyediaan Peralatan Rumah Tangga",
+      "row": 29
+    },
+    {
+      "number": 25,
+      "code": "2.09.01.2.06.0004",
+      "name": "Penyediaan Bahan Logistik Kantor",
+      "row": 30
+    },
+    {
+      "number": 26,
+      "code": "2.09.01.2.06.0005",
+      "name": "Penyediaan Barang Cetakan dan Penggandaan",
+      "row": 31
+    },
+    {
+      "number": 27,
+      "code": "2.09.01.2.06.0007",
+      "name": "Penyediaan Bahan/Material",
+      "row": 32
+    },
+    {
+      "number": 28,
+      "code": "2.09.01.2.06.0009",
+      "name": "Penyelenggaraan Rapat Koordinasi dan Konsultasi SKPD",
+      "row": 33
+    },
+    {
+      "number": 29,
+      "code": "2.09.01.2.07.0010",
+      "name": "Pengadaan Sarana dan Prasarana Gedung Kantor atau Bangunan Lainnya",
+      "row": 34
+    },
+    {
+      "number": 30,
+      "code": "2.09.01.2.08.0002",
+      "name": "Penyediaan Jasa Komunikasi, Sumber Daya Air dan Listrik",
+      "row": 35
+    },
+    {
+      "number": 31,
+      "code": "2.09.01.2.08.0004",
+      "name": "Penyediaan Jasa Pelayanan Umum Kantor",
+      "row": 36
+    },
+    {
+      "number": 32,
+      "code": "2.09.01.2.09.0001",
+      "name": "Penyediaan Jasa Pemeliharaan, Biaya Pemeliharaan, dan Pajak Kendaraan Perorangan Dinas atau Kendaraan Dinas Jabatan",
+      "row": 37
+    },
+    {
+      "number": 33,
+      "code": "2.09.01.2.09.0002",
+      "name": "Penyediaan Jasa Pemeliharaan, Biaya Pemeliharaan, Pajak dan Perizinan Kendaraan Dinas Operasional atau Lapangan",
+      "row": 38
+    },
+    {
+      "number": 34,
+      "code": "2.09.01.2.09.0006",
+      "name": "Pemeliharaan Peralatan dan Mesin Lainnya",
+      "row": 39
+    },
+    {
+      "number": 35,
+      "code": "2.09.01.2.09.0007",
+      "name": "Pemeliharaan Aset Tetap Lainnya",
+      "row": 40
+    },
+    {
+      "number": 36,
+      "code": "2.09.01.2.09.0010",
+      "name": "Pemeliharaan/Rehabilitasi Sarana dan Prasarana Gedung Kantor atau Bangunan Lainnya",
+      "row": 41
+    },
+    {
+      "number": 37,
+      "code": "3.27.02.2.01.0001",
+      "name": "Pengawasan Penggunaan Sarana Pendukung Pertanian Sesuai dengan Komoditas, Teknologi dan Spesifik Lokasi",
+      "row": 42
+    },
+    {
+      "number": 38,
+      "code": "3.27.02.2.01.0002",
+      "name": "Pendampingan Penggunaan Sarana Pendukung Pertanian",
+      "row": 43
+    },
+    {
+      "number": 39,
+      "code": "3.27.02.2.01.0003",
+      "name": "Perbanyakan Benih Bersertifikat Tanaman Pangan Berbentuk Biji/Benih",
+      "row": 44
+    },
+    {
+      "number": 40,
+      "code": "3.27.02.2.01.0008",
+      "name": "Perbanyakan Benih Bersertifikat Perkebunan Berbentuk Batang",
+      "row": 45
+    },
+    {
+      "number": 41,
+      "code": "3.27.02.2.01.0009",
+      "name": "Perbanyakan Benih Bersertifikat Hortikultura Berbentuk Batang",
+      "row": 46
+    },
+    {
+      "number": 42,
+      "code": "3.27.02.2.02.0002",
+      "name": "Peningkatan Kualitas SDG Hewan/Tanaman",
+      "row": 47
+    },
+    {
+      "number": 43,
+      "code": "3.27.02.2.02.0003",
+      "name": "Pemanfaatan SDG Hewan/Tanaman",
+      "row": 48
+    },
+    {
+      "number": 44,
+      "code": "3.27.02.2.02.0005",
+      "name": "Penjaminan Kemurnian dan Kelestarian SDG Hewan",
+      "row": 49
+    },
+    {
+      "number": 45,
+      "code": "3.27.02.2.03.0001",
+      "name": "Pengawasan Mutu Benih/Bibit Ternak, Bahan Pakan/Pakan/Tanaman Skala Kecil",
+      "row": 50
+    },
+    {
+      "number": 46,
+      "code": "3.27.02.2.04.0001",
+      "name": "Pemeriksaan Mutu, Khasiat dan Keamanan Peredaran Obat Hewan",
+      "row": 51
+    },
+    {
+      "number": 47,
+      "code": "3.27.02.2.05.0009",
+      "name": "Pengendalian Penyediaan Benih/Bibit Ternak dan Hijauan Pakan Ternak",
+      "row": 52
+    },
+    {
+      "number": 48,
+      "code": "3.27.03.2.01.0005",
+      "name": "Pengendalian dan Pemanfaatan Kawasan Pertanian",
+      "row": 53
+    },
+    {
+      "number": 49,
+      "code": "3.27.03.2.01.0006",
+      "name": "Pengendalian dan Pemanfaatan Prasarana Pascapanen Tanaman Pangan",
+      "row": 54
+    },
+    {
+      "number": 50,
+      "code": "3.27.03.2.01.0014",
+      "name": "Penetapan Kawasan, Lahan dan Lahan Cadangan Pertanian Pangan Berkelanjutan secara numerik dan spasial di Kabupaten/Kota",
+      "row": 55
+    },
+    {
+      "number": 51,
+      "code": "3.27.03.2.01.0015",
+      "name": "Pengelolaan Lahan Pertanian Pangan Berkelanjutan/LP2B, Kawasan Pertanian Pangan Berkelanjutan/KP2B dan Lahan Cadangan Pertanian Pangan Berkelanjutan/LCP2B di Kabupaten/Kota",
+      "row": 56
+    },
+    {
+      "number": 52,
+      "code": "3.27.03.2.02.0003",
+      "name": "Pembangunan, Rehabilitasi dan Pemeliharaan Jalan Usaha Tani",
+      "row": 57
+    },
+    {
+      "number": 53,
+      "code": "3.27.03.2.02.0010",
+      "name": "Rehabilitasi dan Pemeliharaan Jaringan Irigasi Usaha Tani",
+      "row": 58
+    },
+    {
+      "number": 54,
+      "code": "3.27.03.2.02.0014",
+      "name": "Pembangunan, Rehabilitasi, Pemeliharaan dan operasionalisasi Puskeswan",
+      "row": 59
+    },
+    {
+      "number": 55,
+      "code": "3.27.03.2.02.0015",
+      "name": "Pembangunan, Rehabilitasi, Pemeliharaan dan operasionalisasi Rumah Potong Hewan",
+      "row": 60
+    },
+    {
+      "number": 56,
+      "code": "3.27.04.2.01.0004",
+      "name": "Pemberdayaan Masyarakat dalam Pengendalian Zoonosis",
+      "row": 61
+    },
+    {
+      "number": 57,
+      "code": "3.27.04.2.01.0005",
+      "name": "Pelaksanaan Surveilans Penyakit Hewan dan Zoonosis pada Hewan",
+      "row": 62
+    },
+    {
+      "number": 58,
+      "code": "3.27.04.2.03.0002",
+      "name": "Penyediaan Pelayanan Jasa Medik Veteriner",
+      "row": 63
+    },
+    {
+      "number": 59,
+      "code": "3.27.04.2.04.0002",
+      "name": "Pengawasan Peredaran Hewan dan Produk Hewan",
+      "row": 64
+    },
+    {
+      "number": 60,
+      "code": "3.27.04.2.04.0004",
+      "name": "Pengujian Laboratorium Kesehatan Masyarakat Veteriner",
+      "row": 65
+    },
+    {
+      "number": 61,
+      "code": "3.27.04.2.04.0005",
+      "name": "Pembinaan Penerapan persyaratan higiene sanitasi pada unit usaha produk hewan",
+      "row": 66
+    },
+    {
+      "number": 62,
+      "code": "3.27.04.2.04.0006",
+      "name": "Pengelolaan Penerbitan Rekomendasi Pemasukan dan Pengeluaran, Sertifikat Veteriner, dan SKKH/SKPH Hewan, Produk Hewan, dan Media Pembawa Penyakit Hewan Lainnya (HPM)",
+      "row": 67
+    },
+    {
+      "number": 63,
+      "code": "3.27.04.2.05.0003",
+      "name": "Pembinaan Penerapan Kesejahteraan Hewan pada Unit Usaha",
+      "row": 68
+    },
+    {
+      "number": 64,
+      "code": "3.27.05.2.01.0001",
+      "name": "Pengendalian Organisme Pengganggu Tumbuhan (OPT) Tanaman Pangan, Hortikultura, dan Perkebunan",
+      "row": 69
+    },
+    {
+      "number": 65,
+      "code": "3.27.06.2.01.0002",
+      "name": "Penilaian Kelayakan dan Pemberian Pertimbangan Teknis Izin Usaha Pertanian",
+      "row": 70
+    },
+    {
+      "number": 66,
+      "code": "3.27.06.2.01.0005",
+      "name": "Pembinaan dan Pengawasan Penerapan standar dan Izin Usaha Pertanian",
+      "row": 71
+    },
+    {
+      "number": 67,
+      "code": "3.27.07.2.01.0007",
+      "name": "Penguatan Kelembagaan penyuluhan pertanian di Tingkat Kabupaten/Kota",
+      "row": 72
+    },
+    {
+      "number": 68,
+      "code": "3.27.07.2.01.0010",
+      "name": "Peningkatan Kapasitas dan Fungsi Kelembagaan Penyuluhan Pertanian di Kecamatan dan Desa",
+      "row": 73
+    },
+    {
+      "number": 69,
+      "code": "3.27.07.2.01.0016",
+      "name": "Penyediaan dan pemeliharaan Sarana dan Prasarana Penyuluhan Pertanian Kecamatan/BPP dan Desa",
+      "row": 74
+    }
+  ]
+}

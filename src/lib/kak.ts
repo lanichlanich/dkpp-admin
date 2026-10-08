@@ -36,8 +36,8 @@ export async function saveKak(input: { userId: string; draft: KakDraft; options:
 export async function getKakHistory(): Promise<KakHistory[]> {
   const rows = await db.prepare(`SELECT d.*, u.name AS created_by FROM kak_documents d JOIN users u ON u.id=d.user_id ORDER BY d.created_at DESC LIMIT 100`).all() as Array<Record<string, string | number>>;
   return rows.map((r) => {
-    const draft = JSON.parse(String(r.draft_json)) as Partial<ReferencedKakDraft>;
-    return { id: String(r.id), tahunAnggaran: Number(r.tahun_anggaran), subKegiatan: String(r.sub_kegiatan), kodeSubKegiatan: String(r.kode_sub_kegiatan), paguAnggaran: String(r.pagu_anggaran), fileName: String(r.file_name), sourceName: String(r.source_name), createdAt: String(r.created_at), createdBy: String(r.created_by), warnings: draft.warnings || [], references: draft.references || [] };
+    const draft = JSON.parse(String(r.draft_json)) as Partial<ReferencedKakDraft> & { options?: KakOptions };
+    return { id: String(r.id), tahunAnggaran: Number(r.tahun_anggaran), subKegiatan: String(r.sub_kegiatan), kodeSubKegiatan: String(r.kode_sub_kegiatan), paguAnggaran: String(r.pagu_anggaran), fileName: String(r.file_name), sourceName: String(r.source_name), createdAt: String(r.created_at), createdBy: String(r.created_by), warnings: draft.warnings || [], references: draft.references || [], nomorUrutSubKegiatan: draft.options?.nomorUrutSubKegiatan, nomorUrutReference: draft.options?.nomorUrutReference };
   });
 }
 export async function getKakDownload(id: string, source: boolean) {

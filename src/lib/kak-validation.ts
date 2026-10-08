@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { signatorySchema } from "@/lib/signatory";
+import type { KakReference } from "@/lib/kak-types";
 
 export const kakOptionsSchema = z.object({
   tanggalDokumen: z.iso.date(),
@@ -9,4 +10,4 @@ export const kakOptionsSchema = z.object({
   signatory: signatorySchema.optional(),
 }).refine((value) => !value.pptkNip || value.pptkNama, { path: ["pptkNama"], message: "Isi nama PPTK jika mengisi NIP." });
 
-export type KakOptions = z.infer<typeof kakOptionsSchema>;
+export type KakOptions = z.infer<typeof kakOptionsSchema> & { nomorUrutReference?: KakReference };

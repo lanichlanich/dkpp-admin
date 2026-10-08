@@ -4,6 +4,7 @@ import { generateKakDraft } from "@/lib/gemini-kak";
 import { GeminiApiError } from "@/lib/gemini-client";
 import { generateKakDocument } from "@/lib/kak-document";
 import { kakOptionsSchema } from "@/lib/kak-validation";
+import { resolveKakSequence } from "@/lib/kak-sequence";
 import { saveKak } from "@/lib/kak";
 import { getPptkEmployeeOptions } from "@/lib/employees";
 import { MAX_MULTIPART_REQUEST_SIZE_BYTES } from "@/lib/upload-limits";
@@ -31,9 +32,12 @@ export async function POST(request: Request) {
     }
     const result = await generateKakDraft(file);
     if (!options.data.pptkNama) result.draft.warnings.push("Nama dan NIP PPTK belum diisi; lengkapi pada draft sebelum digunakan.");
-    const document = await generateKakDocument(result.draft, options.data);
-    const saved = await saveKak({ userId: user.id, ...result, document, options: options.data, sourceName: file.name });
-    return NextResponse.json({ ...saved, metadata: result.draft.metadata, warnings: result.draft.warnings, references: result.draft.references }, { headers: { "cache-control": "no-store" } });
+    const sequence = await resolveKakSequence(result.draft.metadata, options.data.nomorUrutSubKegiatan);
+    if (sequence.warning) result.draft.warnings.push(sequence.warning);
+    const resolvedOptions = { ...options.data, nomorUrutSubKegiatan: sequence.number, nomorUrutReference: sequence.reference };
+    const document = await generateKakDocument(result.draft, resolvedOptions);
+    const saved = await saveKak({ userId: user.id, ...result, document, options: resolvedOptions, sourceName: file.name });
+    return NextResponse.json({ ...saved, metadata: result.draft.metadata, warnings: result.draft.warnings, references: result.draft.references, nomorUrutSubKegiatan: sequence.number, nomorUrutReference: sequence.reference }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     if (error instanceof GeminiApiError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error("KAK generation failed", error);

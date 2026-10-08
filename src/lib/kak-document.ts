@@ -4,6 +4,7 @@ import path from "node:path";
 import PizZip from "pizzip";
 import { formatKakRupiah, KAK_SECTIONS, type KakDraft, type KakSectionKey } from "@/lib/kak-types";
 import type { KakOptions } from "@/lib/kak-validation";
+import { resolveKakSequence } from "@/lib/kak-sequence";
 
 const escapeXml = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
 const paragraphsOf = (xml: string) => xml.match(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g) || [];
@@ -108,6 +109,7 @@ export async function generateKakDocument(draft: KakDraft, options: KakOptions) 
   zip.file("word/document.xml", xml);
   const header = zip.file("word/header-kak-cover.xml")?.asText();
   if (!header || visibleText(header) !== "${kak.cover.sequence}") throw new Error("Header cover KAK tidak sesuai.");
-  zip.file("word/header-kak-cover.xml", header.replace(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/, (p) => paragraph(p, options.nomorUrutSubKegiatan || "")));
+  const sequence = await resolveKakSequence(m, options.nomorUrutSubKegiatan);
+  zip.file("word/header-kak-cover.xml", header.replace(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/, (p) => paragraph(p, sequence.number)));
   return zip.generate({ type: "nodebuffer", compression: "DEFLATE" });
 }

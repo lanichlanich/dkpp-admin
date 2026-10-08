@@ -19,6 +19,7 @@ const TABLE_NAMES = [
   "surat_pengantar_documents",
   "surat_lupa_absen_documents",
   "kerjaku_request_documents",
+  "kak_documents",
   "official_statement_documents",
   "service_archive_documents",
   "employee_documents",

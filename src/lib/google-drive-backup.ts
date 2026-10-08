@@ -9,7 +9,7 @@ const ROOT_FOLDER_ID = "18c2-AWmf2K0GKDRgv_g3AQUCicv7J1j4";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const UPLOAD_API = "https://www.googleapis.com/upload/drive/v3";
 
-type Category = "Kepegawaian" | "Persuratan" | "Umum" | "Sistem";
+type Category = "Kepegawaian" | "Persuratan" | "Umum" | "Perencanaan" | "Sistem";
 type ArchiveFile = { path: string; bytes: Buffer };
 
 const TABLE_CATEGORY: Record<string, Category> = {
@@ -22,6 +22,7 @@ const TABLE_CATEGORY: Record<string, Category> = {
   dpcp_documents: "Kepegawaian",
   pak_documents: "Kepegawaian",
   kerjaku_request_documents: "Kepegawaian",
+  kak_documents: "Perencanaan",
   official_statement_documents: "Kepegawaian",
   wfh_documents: "Umum",
   wfh_reports: "Umum",
@@ -36,6 +37,7 @@ const TABLE_CATEGORY: Record<string, Category> = {
 };
 
 const DOCUMENT_TABLES = new Set([
+  "kak_documents",
   "employee_documents",
   "kgb_documents",
   "dpcp_documents",
@@ -50,6 +52,7 @@ const DOCUMENT_TABLES = new Set([
 ]);
 
 const LOCAL_DOCUMENT_DIRECTORIES: Record<string, string> = {
+  kak_documents: "kak-documents",
   employee_documents: "employee-documents",
   kgb_documents: "kgb-documents",
   dpcp_documents: "dpcp-documents",
@@ -261,7 +264,7 @@ export async function createGoogleDriveBackup() {
   const key = encryptionKey();
   const { tables: snapshot, storageObjects } = await createBackupSnapshot();
   const filesByCategory = new Map<Category, ArchiveFile[]>([
-    ["Kepegawaian", []], ["Persuratan", []], ["Umum", []], ["Sistem", []],
+    ["Kepegawaian", []], ["Persuratan", []], ["Umum", []], ["Perencanaan", []], ["Sistem", []],
   ]);
 
   for (const [table, rows] of Object.entries(snapshot)) {
@@ -274,7 +277,9 @@ export async function createGoogleDriveBackup() {
   }
 
   const documents = Object.entries(snapshot).flatMap(([table, rows]) => DOCUMENT_TABLES.has(table)
-    ? rows.map((row, index) => ({ table, row, index }))
+    ? rows.flatMap((row, index) => table === "kak_documents"
+      ? [{ table, row, index }, { table, index, row: { ...row, id: `${row.id}-rka`, storage_name: row.source_storage_name, file_name: row.source_name } }]
+      : [{ table, row, index }])
     : []);
   const referencedStorageNames = new Set(documents.map(({ table, row }) =>
     table === "wfh_reports" ? `${String(row.id)}.docx` : String(row.storage_name ?? ""),

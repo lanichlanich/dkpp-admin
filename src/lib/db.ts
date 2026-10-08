@@ -23,6 +23,14 @@ db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS kak_documents (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    tahun_anggaran INTEGER NOT NULL, sub_kegiatan TEXT NOT NULL, kode_sub_kegiatan TEXT NOT NULL,
+    pagu_anggaran TEXT NOT NULL, source_name TEXT NOT NULL, source_storage_name TEXT NOT NULL UNIQUE,
+    source_file_size INTEGER NOT NULL, file_name TEXT NOT NULL, storage_name TEXT NOT NULL UNIQUE,
+    file_size INTEGER NOT NULL, draft_json TEXT NOT NULL, model TEXT NOT NULL, created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS kak_documents_created_idx ON kak_documents(created_at DESC);
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,

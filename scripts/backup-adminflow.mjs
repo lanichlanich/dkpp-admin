@@ -34,6 +34,8 @@ const documentStores = [
   { table: "wfh_documents", directory: "wfh-documents", storedName: (row) => row.storage_name },
   { table: "surat_pengantar_documents", directory: "surat-pengantar-documents", storedName: (row) => row.storage_name },
   { table: "kerjaku_request_documents", directory: "kerjaku-request-documents", storedName: (row) => row.storage_name },
+  { table: "kak_documents", directory: "kak-documents", storedName: (row) => row.storage_name },
+  { table: "kak_documents", directory: "kak-documents", storedName: (row) => row.source_storage_name, recordedSize: (row) => row.source_file_size, originalName: (row) => row.source_name },
   { table: "official_statement_documents", directory: "official-statement-documents", storedName: (row) => row.storage_name },
   { table: "wfh_reports", directory: "wfh-reports", storedName: (row) => `${row.id}.docx` },
 ];
@@ -129,8 +131,8 @@ for (const store of documentStores) {
       id: row.id,
       path: `data/${store.directory}/${storedName}`,
       storedName,
-      originalName: row.original_file_name ?? row.file_name ?? null,
-      recordedSize: row.file_size ?? null,
+      originalName: store.originalName ? store.originalName(row) : row.original_file_name ?? row.file_name ?? null,
+      recordedSize: store.recordedSize ? store.recordedSize(row) : row.file_size ?? null,
     });
   }
 }

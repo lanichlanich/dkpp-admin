@@ -40,7 +40,7 @@ export function GoogleDriveBackupPanel({ configured }: { configured: boolean }) 
     <section className="grid gap-4 md:grid-cols-2">
       <div className="rounded-2xl border border-zinc-200 bg-white p-5">
         <div className="flex items-center gap-2 font-semibold text-zinc-900"><ShieldCheck className="size-5 text-emerald-700" />Isi backup dilindungi</div>
-        <p className="mt-2 text-sm leading-6 text-zinc-600">Empat arsip fitur dienkripsi dengan AES-256-GCM sebelum diunggah: Kepegawaian, Persuratan, Umum, dan Sistem. Kunci hanya berada di environment server.</p>
+        <p className="mt-2 text-sm leading-6 text-zinc-600">Lima arsip fitur dienkripsi dengan AES-256-GCM sebelum diunggah: Kepegawaian, Persuratan, Umum, Perencanaan, dan Sistem. Kunci hanya berada di environment server.</p>
       </div>
       <div className="rounded-2xl border border-zinc-200 bg-white p-5">
         <div className="flex items-center gap-2 font-semibold text-zinc-900"><Info className="size-5 text-sky-700" />Data yang dicadangkan</div>

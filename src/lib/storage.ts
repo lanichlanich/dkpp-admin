@@ -61,3 +61,14 @@ export async function uploadStorageObject(storageName: string, file: Buffer, con
   });
   if (!response.ok) throw new Error(`Storage upload failed: ${response.status}`);
 }
+
+export async function deleteStorageObject(storageName: string) {
+  if (!supabaseUrl || !secretKey) return;
+  const response = await fetch(`${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}`, {
+    method: "DELETE",
+    headers: { apikey: secretKey, authorization: `Bearer ${secretKey}`, "content-type": "application/json" },
+    body: JSON.stringify({ prefixes: [storageName] }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) throw new Error(`Storage cleanup failed: ${response.status}`);
+}

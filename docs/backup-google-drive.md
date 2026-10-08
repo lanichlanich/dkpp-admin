@@ -1,6 +1,6 @@
 # Backup Google Drive
 
-The dashboard backup creates a new `Backup YYYY-MM-DD_HH-mm-ss` folder (Jakarta time) inside the configured Drive folder. It contains feature folders for `Kepegawaian`, `Persuratan`, `Umum`, and `Sistem`. Each feature folder has one encrypted `.tar.gz.enc` archive with that feature's database tables and files from Supabase Storage. Objects without a matching application document row are preserved in the `Sistem` archive and indexed there. Login sessions are omitted because they expire and cannot be restored as valid sessions.
+The dashboard backup creates a new `Backup YYYY-MM-DD_HH-mm-ss` folder (Jakarta time) inside the configured Drive folder. It contains feature folders for `Kepegawaian`, `Persuratan`, `Umum`, `Perencanaan`, and `Sistem`. Each feature folder has one encrypted `.tar.gz.enc` archive with that feature's database tables and files from Supabase Storage. `Perencanaan` includes both KAK DOCX files and their source RKA PDFs. Objects without a matching application document row are preserved in the `Sistem` archive and indexed there. Login sessions are omitted because they expire and cannot be restored as valid sessions.
 
 Each archive is encrypted on the server with AES-256-GCM before upload. Filenames inside archives use record IDs; employee and document names remain in the encrypted database snapshots. Keep the encryption key in a secure password manager and never commit it or send it in chat. Losing this key makes the backups unreadable.
 

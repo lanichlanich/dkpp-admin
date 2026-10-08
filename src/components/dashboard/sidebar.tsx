@@ -56,6 +56,8 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const [personnelOpen, setPersonnelOpen] = useState(personnelActive);
   const [generalOpen, setGeneralOpen] = useState(generalActive);
   const [correspondenceOpen, setCorrespondenceOpen] = useState(correspondenceActive);
+  const planningActive = pathname.startsWith("/dashboard/pembuatan-kak");
+  const [planningOpen, setPlanningOpen] = useState(planningActive);
   return (
     <div className="flex h-full flex-col bg-gradient-to-b from-emerald-600 via-green-700 to-sky-700 text-emerald-50">
       <div className="flex h-20 shrink-0 items-center gap-3 border-b border-white/20 bg-white/[0.08] px-3.5">
@@ -99,6 +101,10 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             return <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={Icon} className="size-4 shrink-0" /><span className="min-w-0 leading-5">{item.label}</span></Link>;
           })}
         </div>}
+        <button type="button" aria-expanded={planningOpen} onClick={() => setPlanningOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", planningActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
+          <ClipboardList aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Perencanaan</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", planningOpen && "rotate-180")} />
+        </button>
+        {planningOpen && <div className="ml-3 border-l border-amber-200/45 pl-3"><Link href="/dashboard/pembuatan-kak" onClick={onNavigate} aria-current={planningActive ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", planningActive ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={FileSignature} className="size-4 shrink-0" /><span>Pembuatan KAK</span></Link></div>}
         {navigation.map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;

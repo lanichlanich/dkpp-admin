@@ -7,6 +7,7 @@ import { formatKakRupiah, type KakDraft } from "@/lib/kak-types";
 import type { KakOptions } from "@/lib/kak-validation";
 import { terbilangRupiah } from "@/lib/kgb";
 import { signatoryTitle } from "@/lib/signatory";
+import { resolveKakSequence } from "@/lib/kak-sequence";
 
 const text = (xml: string) => [...xml.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map((m) => m[1]).join("");
 const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
@@ -89,6 +90,20 @@ export async function generatePoDocument(draft: KakDraft, options: KakOptions) {
     return paragraph(p, values[key]);
   });
   if (Object.keys(values).some((key) => !filled.has(key)) || /\$\{po\./.test(text(xml))) throw new Error("Isian template PO tidak lengkap.");
+  const sequence = await resolveKakSequence(m, options.nomorUrutSubKegiatan);
+  const relationships = zip.file("word/_rels/document.xml.rels")?.asText();
+  const contentTypes = zip.file("[Content_Types].xml")?.asText();
+  if ((xml.match(/<w:sectPr\b/g) || []).length !== 1 || /<w:headerReference\b|<w:titlePg\b/.test(xml) || !relationships?.includes("</Relationships>") || relationships.includes('Id="rIdPoCoverSequence"') || !contentTypes?.includes("</Types>")) {
+    throw new Error("Struktur header cover PO berubah.");
+  }
+  // A first-page header keeps the sequence on the cover without moving the body.
+  xml = xml.replace(/<w:sectPr\b[^>]*>[\s\S]*?<\/w:sectPr>/, (section) => section
+    .replace(/(<w:sectPr\b[^>]*>)/, '$1<w:headerReference w:type="first" r:id="rIdPoCoverSequence"/>')
+    .replace(/<w:docGrid\b|<\/w:sectPr>/, (tag) => `<w:titlePg/>${tag}`));
+  const header = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="right"/><w:spacing w:before="0" w:after="0"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">${escape(sequence.number)}</w:t></w:r></w:p></w:hdr>`;
+  zip.file("word/header-po-cover.xml", header);
+  zip.file("word/_rels/document.xml.rels", relationships.replace("</Relationships>", '<Relationship Id="rIdPoCoverSequence" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header-po-cover.xml"/></Relationships>'));
+  zip.file("[Content_Types].xml", contentTypes.replace("</Types>", '<Override PartName="/word/header-po-cover.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/></Types>'));
   zip.file("word/document.xml", xml);
   return { document: zip.generate({ type: "nodebuffer", compression: "DEFLATE" }), templateSha256: createHash("sha256").update(source).digest("hex") };
 }

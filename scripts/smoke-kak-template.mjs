@@ -129,10 +129,22 @@ const poDraft = kakDraftSchema.parse({ ...draft, metadata: { ...metadata, hasil:
 const poResult = await generatePoDocument(poDraft, { ...options, poSistemPengadaan: "Penyedia" });
 const poOutput = new PizZip(poResult.document), poSource = new PizZip(readFileSync("src/templates/template-po.docx"));
 const poXml = poOutput.file("word/document.xml").asText();
-for (const name of Object.keys(poSource.files)) if (!poSource.files[name].dir && name !== "word/document.xml") assert(poSource.files[name].asNodeBuffer().equals(poOutput.file(name).asNodeBuffer()), `PO changed ZIP part: ${name}`);
+for (const name of Object.keys(poSource.files)) if (!poSource.files[name].dir && !["word/document.xml", "word/_rels/document.xml.rels", "[Content_Types].xml"].includes(name)) assert(poSource.files[name].asNodeBuffer().equals(poOutput.file(name).asNodeBuffer()), `PO changed ZIP part: ${name}`);
 for (const value of ["PETUNJUK OPERASIONAL", "2028", "29.359.021,00", "Dua Puluh Sembilan Juta Tiga Ratus Lima Puluh Sembilan Ribu Dua Puluh Satu Rupiah", "Hasil kegiatan uji (100 Persen)", "5.1.02.01.01.0026", "Penyedia", "Plt. KEPALA DINAS", "PEJABAT UJI", "8 Oktober 2026"]) assert(poXml.includes(value), `PO field ${value}`);
 assert(!poXml.includes("${po.") && !poXml.includes("299.622.100") && !poXml.includes("400 Keluarga") && !poXml.includes("RORY FIRMANSYAH") && !poXml.includes(">Swakelola<"));
-assert.deepEqual(sections(poXml), sections(poSource.file("word/document.xml").asText()));
+assert.deepEqual(sections(poXml.replace(/<w:headerReference\b[^>]*\/>|<w:titlePg\/>/g, "")), sections(poSource.file("word/document.xml").asText()));
+const poHeader = poOutput.file("word/header-po-cover.xml").asText();
+const headerText = (header) => [...header.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(match => match[1]).join("");
+assert.equal(headerText(poHeader), headerText(output.file("word/header-kak-cover.xml").asText()), "PO and KAK must share the manual cover number");
+assert(poHeader.includes('<w:jc w:val="right"/>') && poHeader.includes('<w:sz w:val="20"/>'));
+assert.equal((poXml.match(/<w:headerReference w:type="first"/g) || []).length, 1); assert(poXml.includes("<w:titlePg/>"));
+assert.equal(poOutput.file("word/_rels/document.xml.rels").asText().replace(/<Relationship Id="rIdPoCoverSequence"[^>]*\/>/, ""), poSource.file("word/_rels/document.xml.rels").asText());
+assert.equal(poOutput.file("[Content_Types].xml").asText().replace(/<Override PartName="\/word\/header-po-cover.xml"[^>]*\/>/, ""), poSource.file("[Content_Types].xml").asText());
+const automaticPo = new PizZip((await generatePoDocument({ ...draft, metadata: dkpp }, { tanggalDokumen: "2026-10-08", pptkNama: "", pptkNip: "" })).document);
+assert.equal(headerText(automaticPo.file("word/header-po-cover.xml").asText()), headerText(automaticDoc.file("word/header-kak-cover.xml").asText()));
+assert.equal(headerText(automaticPo.file("word/header-po-cover.xml").asText()), "26");
+const blankPo = new PizZip((await generatePoDocument(draft, { tanggalDokumen: "2026-10-08", pptkNama: "", pptkNip: "" })).document);
+assert.equal(headerText(blankPo.file("word/header-po-cover.xml").asText()), "");
 const poTables = poXml.match(/<w:tbl(?:\s[^>]*)?>[\s\S]*?<\/w:tbl>/g);
 assert.equal((poTables[3].match(/<w:tr(?:\s[^>]*)?>/g) || []).length, 3, "Exact account rows plus header/total");
 const fallbackPo = new PizZip((await generatePoDocument(draft, { tanggalDokumen: "2026-10-08", pptkNama: "", pptkNip: "" })).document).file("word/document.xml").asText();
@@ -145,7 +157,7 @@ assert.equal(readKakPoFile("{}"), undefined); assert.equal(readKakPoFile('{"poDo
 const backupRows = kakDocumentRows({ id: "uji", storage_name: "kak.docx", source_storage_name: "rka.pdf", draft_json: JSON.stringify({ poDocument: poFile }) });
 assert.equal(backupRows.length, 3); assert.equal(backupRows[2].storage_name, poFile.storageName); assert.equal(backupRows[2].file_size, poFile.fileSize);
 assert.equal(kakDocumentRows({ id: "legacy", draft_json: "{}" }).length, 2);
-console.log("PASS PO template: exact source layout/parts, dynamic account table, rupiah words, date/signatory, missing-data markers, procurement override and PO backup metadata");
+console.log("PASS PO template: shared automatic/manual cover number, first-page header, preserved body geometry/parts, account table, rupiah words, date/signatory, missing-data markers, procurement override and backup metadata");
 const client = load("src/lib/gemini-client.ts");
 const requests = [];
 client.requestGeminiJson = async (...args) => {

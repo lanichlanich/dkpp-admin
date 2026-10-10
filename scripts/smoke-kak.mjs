@@ -71,6 +71,8 @@ try {
     assert.deepEqual(archived.options.nomorUrutReference, result.nomorUrutReference);
     const header = zip.file("word/header-kak-cover.xml").asText();
     assert.equal([...header.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(match => match[1]).join(""), "26");
+    const poHeader = new PizZip(poBytes).file("word/header-po-cover.xml").asText();
+    assert.equal([...poHeader.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(match => match[1]).join(""), "26");
     const historyPage = await fetch(`${base}/dashboard/pembuatan-kak`, { headers });
     assert.equal(historyPage.status, 200);
     const historyHtml = await historyPage.text();

@@ -7,6 +7,7 @@ import { formatKakRupiah, type KakDraft } from "@/lib/kak-types";
 import type { KakOptions } from "@/lib/kak-validation";
 import { terbilangRupiah } from "@/lib/kgb";
 import { signatoryTitle } from "@/lib/signatory";
+import { resolvePoSignatory } from "@/lib/po-signatory";
 import { resolveKakSequence } from "@/lib/kak-sequence";
 
 const text = (xml: string) => [...xml.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map((m) => m[1]).join("");
@@ -43,7 +44,7 @@ export function getPoWarnings(draft: KakDraft, options: KakOptions) {
   if (!m.hasil) warnings.push("Indikator hasil PO tidak tercantum atau belum terbaca pada RKA; lengkapi pada dokumen sebelum digunakan.");
   if (!options.poSistemPengadaan && !m.sistemPengadaan) warnings.push("Sistem pengadaan PO belum ditetapkan; pilih pada form atau lengkapi pada dokumen.");
   if (!m.rincianRekening?.length) warnings.push("Rekening belanja PO belum terbaca; tabel biaya memakai rincian item RKA. Cocokkan dengan kode rekening sumber.");
-  if (!options.signatory?.rank && !m.penandatanganPangkat) warnings.push("Pangkat penandatangan PO belum terisi; pilih pejabat pada form atau lengkapi pada dokumen.");
+  if (!(options.poSignatory ?? resolvePoSignatory(m, options, [])).rank) warnings.push("Pangkat penandatangan PO belum terisi; pilih pejabat pada form atau lengkapi pada dokumen.");
   return warnings;
 }
 
@@ -53,6 +54,7 @@ export async function generatePoDocument(draft: KakDraft, options: KakOptions) {
   let xml = zip.file("word/document.xml")!.asText();
   if ((xml.match(/<w:tbl(?:\s[^>]*)?>/g) || []).length !== 4) throw new Error("Struktur template PO berubah.");
   const m = draft.metadata;
+  const signer = options.poSignatory ?? resolvePoSignatory(m, options, []);
   const date = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(new Date(`${options.tanggalDokumen}T00:00:00+07:00`));
   const values: Record<string, string> = {
     program: withoutCode(m.program), activity: withoutCode(m.kegiatan), subActivity: [m.kodeSubKegiatan, withoutCode(m.subKegiatan)].filter(Boolean).join("  "),
@@ -62,9 +64,9 @@ export async function generatePoDocument(draft: KakDraft, options: KakOptions) {
     funding: m.sumberDana || "[Sumber dana perlu dilengkapi]", output: `${m.keluaran || "[Keluaran perlu dilengkapi]"}${m.targetKeluaran ? ` (${m.targetKeluaran})` : ""}`,
     outcome: `${m.hasil || "[Indikator hasil perlu dilengkapi]"}${m.targetHasil ? ` (${m.targetHasil})` : ""}`,
     procurement: options.poSistemPengadaan || m.sistemPengadaan || "[Sistem pengadaan perlu ditetapkan]", date: `Indramayu, ${date}`,
-    signerTitle: options.signatory ? signatoryTitle(options.signatory) : m.penandatanganJabatan || "[Jabatan penandatangan perlu dilengkapi]",
-    signerName: options.signatory?.name || m.penandatanganNama || "[Nama penandatangan perlu dilengkapi]",
-    signerRank: options.signatory?.rank || m.penandatanganPangkat || "[Pangkat perlu dilengkapi]", signerNip: `NIP. ${options.signatory?.nip ?? (m.penandatanganNip || "[Perlu dilengkapi]")}`,
+    signerTitle: signer.title ? signatoryTitle(signer) : "[Jabatan penandatangan perlu dilengkapi]",
+    signerName: signer.name || "[Nama penandatangan perlu dilengkapi]",
+    signerRank: signer.rank || "[Pangkat perlu dilengkapi]", signerNip: `NIP. ${signer.nip || "[Perlu dilengkapi]"}`,
   };
   const costs = m.rincianRekening?.length ? m.rincianRekening.map((item) => ({ label: `${item.kode} ${item.uraian}`.trim(), amount: formatKakRupiah(item.jumlah) }))
     : m.rincianAnggaran.map((item) => ({ label: `${item.uraian}${item.volume ? ` (${item.volume})` : ""}`, amount: formatKakRupiah(item.jumlah) }));

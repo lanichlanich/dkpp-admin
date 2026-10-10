@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { signatorySchema } from "@/lib/signatory";
+import { signatorySchema, type Signatory } from "@/lib/signatory";
 import type { KakReference } from "@/lib/kak-types";
 
 export const kakOptionsSchema = z.object({
@@ -11,4 +11,5 @@ export const kakOptionsSchema = z.object({
   poSistemPengadaan: z.enum(["", "Penyedia", "Swakelola", "Kombinasi"]).optional(),
 }).refine((value) => !value.pptkNip || value.pptkNama, { path: ["pptkNama"], message: "Isi nama PPTK jika mengisi NIP." });
 
-export type KakOptions = z.infer<typeof kakOptionsSchema> & { nomorUrutReference?: KakReference };
+// Resolved PO identity is added by the server and archived with the generated files.
+export type KakOptions = z.infer<typeof kakOptionsSchema> & { nomorUrutReference?: KakReference; poSignatory?: Signatory };

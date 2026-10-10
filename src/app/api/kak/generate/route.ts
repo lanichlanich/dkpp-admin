@@ -8,6 +8,8 @@ import { kakOptionsSchema } from "@/lib/kak-validation";
 import { resolveKakSequence } from "@/lib/kak-sequence";
 import { saveKak } from "@/lib/kak";
 import { getPptkEmployeeOptions } from "@/lib/employees";
+import { getSignatoryOptions } from "@/lib/signatory-options";
+import { resolvePoSignatory } from "@/lib/po-signatory";
 import { MAX_MULTIPART_REQUEST_SIZE_BYTES } from "@/lib/upload-limits";
 
 export const runtime = "nodejs";
@@ -35,7 +37,8 @@ export async function POST(request: Request) {
     if (!options.data.pptkNama) result.draft.warnings.push("Nama dan NIP PPTK belum diisi; lengkapi pada draft sebelum digunakan.");
     const sequence = await resolveKakSequence(result.draft.metadata, options.data.nomorUrutSubKegiatan);
     if (sequence.warning) result.draft.warnings.push(sequence.warning);
-    const resolvedOptions = { ...options.data, nomorUrutSubKegiatan: sequence.number, nomorUrutReference: sequence.reference };
+    const poSignatory = resolvePoSignatory(result.draft.metadata, options.data, await getSignatoryOptions());
+    const resolvedOptions = { ...options.data, poSignatory, nomorUrutSubKegiatan: sequence.number, nomorUrutReference: sequence.reference };
     result.draft.warnings.push(...getPoWarnings(result.draft, resolvedOptions));
     const [document, po] = await Promise.all([generateKakDocument(result.draft, resolvedOptions), generatePoDocument(result.draft, resolvedOptions)]);
     const saved = await saveKak({ userId: user.id, ...result, document, poDocument: po.document, poTemplateSha256: po.templateSha256, options: resolvedOptions, sourceName: file.name });

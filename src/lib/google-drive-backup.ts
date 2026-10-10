@@ -4,6 +4,7 @@ import { createCipheriv, randomBytes } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { createBackupSnapshot } from "@/lib/database";
 import { downloadStorageObject } from "@/lib/storage";
+import { kakDocumentRows } from "@/lib/kak-file-metadata";
 
 const ROOT_FOLDER_ID = "18c2-AWmf2K0GKDRgv_g3AQUCicv7J1j4";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
@@ -278,7 +279,7 @@ export async function createGoogleDriveBackup() {
 
   const documents = Object.entries(snapshot).flatMap(([table, rows]) => DOCUMENT_TABLES.has(table)
     ? rows.flatMap((row, index) => table === "kak_documents"
-      ? [{ table, row, index }, { table, index, row: { ...row, id: `${row.id}-rka`, storage_name: row.source_storage_name, file_name: row.source_name } }]
+      ? kakDocumentRows(row).map((documentRow) => ({ table, index, row: documentRow }))
       : [{ table, row, index }])
     : []);
   const referencedStorageNames = new Set(documents.map(({ table, row }) =>

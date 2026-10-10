@@ -4,6 +4,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import PizZip from "pizzip";
+import { readKakPoFile } from "../src/lib/kak-file-metadata.ts";
 
 const base = process.env.SMOKE_BASE_URL || "http://localhost:3100";
 await fetch(`${base}/login`);
@@ -23,9 +24,11 @@ try {
   for (const file of [new File(["not pdf"], "rka.pdf"), new File(["%PDF-"], "rka.txt"), new File([], "rka.pdf")]) assert.equal((await generate(body(file))).status, 422);
   assert.equal((await generate(body(new File([Buffer.alloc(2097153)], "rka.pdf")))).status, 413);
   assert.equal((await fetch(`${base}/api/kak/${randomUUID()}/download`, { headers })).status, 404);
+  assert.equal((await fetch(`${base}/api/kak/${randomUUID()}/download?format=exe`, { headers })).status, 400);
+  assert.equal((await fetch(`${base}/api/kak/${randomUUID()}/download?source=po&format=zip`, { headers })).status, 400);
   const page = await fetch(`${base}/dashboard/pembuatan-kak`, { headers });
-  assert.equal(page.status, 200); const html = await page.text(); assert(html.includes("Pembuatan KAK") && html.includes("Perencanaan") && html.includes("Nomor urut sub kegiatan pada cover") && html.includes("Otomatis dari RKA TA 2027"));
-  console.log("PASS HTTP authentication, input validation, 2 MB cap, missing-document response and KAK page");
+  assert.equal(page.status, 200); const html = await page.text(); assert(html.includes("Pembuatan PO dan KAK") && html.includes("Perencanaan") && html.includes("Nomor urut sub kegiatan pada cover") && html.includes("Otomatis dari RKA TA 2027") && html.includes("Sistem pengadaan barang/jasa pada PO"));
+  console.log("PASS HTTP authentication, input validation, 2 MB cap, missing-document response and PO/KAK page");
   const sourcePath = process.argv[2];
   if (sourcePath) {
     const source = readFileSync(sourcePath);
@@ -50,6 +53,20 @@ try {
     assert(!xml.includes("Acuan perencanaan:"), "Keterangan acuan perencanaan tidak boleh dicetak pada dasar hukum.");
     assert(xml.includes("160 Tahun 2024"), "Dasar hukum tugas/fungsi DKPP tidak diisi.");
     const archived = JSON.parse(row.draft_json);
+    const poMetadata = readKakPoFile(archived);
+    assert(poMetadata); assert.equal(poMetadata.fileName, result.poFileName);
+    const poDownload = await fetch(`${base}/api/kak/${result.id}/download?source=po`, { headers });
+    assert.equal(poDownload.status, 200); const poBytes = Buffer.from(await poDownload.arrayBuffer());
+    assert.equal(poBytes.length, poMetadata.fileSize);
+    const poXml = new PizZip(poBytes).file("word/document.xml").asText();
+    assert(poXml.includes("PETUNJUK OPERASIONAL") && poXml.includes("29.359.021,00") && poXml.includes("Penyediaan Barang Cetakan dan Penggandaan"));
+    assert(!poXml.includes("${po.") && !poXml.includes("299.976.400"));
+    const bundle = await fetch(`${base}/api/kak/${result.id}/download?format=zip`, { headers });
+    assert.equal(bundle.status, 200); assert.equal(bundle.headers.get("content-type"), "application/zip");
+    const documents = new PizZip(Buffer.from(await bundle.arrayBuffer()));
+    assert.deepEqual(Object.keys(documents.files).sort(), [result.fileName, result.poFileName].sort());
+    assert(documents.file(result.fileName).asNodeBuffer().equals(bytes));
+    assert(documents.file(result.poFileName).asNodeBuffer().equals(poBytes));
     assert.equal(archived.options.nomorUrutSubKegiatan, "26");
     assert.deepEqual(archived.options.nomorUrutReference, result.nomorUrutReference);
     const header = zip.file("word/header-kak-cover.xml").asText();
@@ -66,13 +83,23 @@ try {
     assert.equal(rka.status, 200); assert(Buffer.from(await rka.arrayBuffer()).equals(source));
     assert.equal((await fetch(`${base}/api/kak/${result.id}/download`)).status, 401);
     assert.equal((await fetch(`${base}/api/kak/${result.id}/download?source=rka`)).status, 401);
+    assert.equal((await fetch(`${base}/api/kak/${result.id}/download?source=po`)).status, 401);
+    assert.equal((await fetch(`${base}/api/kak/${result.id}/download?format=zip`)).status, 401);
+    const legacyId = randomUUID(); const legacyDraft = { ...archived }; delete legacyDraft.poDocument;
+    writeFileSync(path.join("data/kak-documents", `${legacyId}.docx`), bytes);
+    writeFileSync(path.join("data/kak-documents", `${legacyId}.pdf`), source);
+    db.prepare("INSERT INTO kak_documents (id,user_id,tahun_anggaran,sub_kegiatan,kode_sub_kegiatan,pagu_anggaran,source_name,source_storage_name,source_file_size,file_name,storage_name,file_size,draft_json,model,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(legacyId, id, row.tahun_anggaran, row.sub_kegiatan, row.kode_sub_kegiatan, row.pagu_anggaran, row.source_name, `${legacyId}.pdf`, row.source_file_size, row.file_name, `${legacyId}.docx`, row.file_size, JSON.stringify(legacyDraft), row.model, row.created_at);
+    assert.equal((await fetch(`${base}/api/kak/${legacyId}/download`, { headers })).status, 200);
+    assert.equal((await fetch(`${base}/api/kak/${legacyId}/download?source=po`, { headers })).status, 404);
+    assert.equal((await fetch(`${base}/api/kak/${legacyId}/download?format=zip`, { headers })).status, 404);
     mkdirSync(".tmp/kak", { recursive: true }); writeFileSync(".tmp/kak/http-sample.docx", bytes);
+    mkdirSync(".tmp/po-kak", { recursive: true }); writeFileSync(".tmp/po-kak/http-po.docx", poBytes);
     writeFileSync(".tmp/kak/http-draft.json", row.draft_json);
-    console.log("PASS live Gemini example: TA 2027, correct pagu, 8 items, automatic cover number 26 and source, archive history, DOCX/RKA persistence and authenticated re-download");
+    console.log("PASS one live RKA upload: PO and KAK, exact ZIP contents, archive, authenticated downloads, legacy compatibility, TA 2027, correct pagu, 8 items and cover number 26");
   }
 } finally {
-  for (const row of db.prepare("SELECT storage_name,source_storage_name FROM kak_documents WHERE user_id=?").all(id)) {
-    for (const name of [row.storage_name, row.source_storage_name]) rmSync(path.join("data/kak-documents", name), { force: true });
+  for (const row of db.prepare("SELECT storage_name,source_storage_name,draft_json FROM kak_documents WHERE user_id=?").all(id)) {
+    for (const name of [row.storage_name, row.source_storage_name, readKakPoFile(row.draft_json)?.storageName].filter(Boolean)) rmSync(path.join("data/kak-documents", name), { force: true });
   }
   db.prepare("DELETE FROM kak_documents WHERE user_id=?").run(id);
   db.prepare("DELETE FROM sessions WHERE user_id=?").run(id);

@@ -3,6 +3,7 @@ import { copyFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/pro
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
+import { readKakPoFile } from "../src/lib/kak-file-metadata.ts";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDirectory, "..");
@@ -36,6 +37,7 @@ const documentStores = [
   { table: "kerjaku_request_documents", directory: "kerjaku-request-documents", storedName: (row) => row.storage_name },
   { table: "kak_documents", directory: "kak-documents", storedName: (row) => row.storage_name },
   { table: "kak_documents", directory: "kak-documents", storedName: (row) => row.source_storage_name, recordedSize: (row) => row.source_file_size, originalName: (row) => row.source_name },
+  { table: "kak_documents", directory: "kak-documents", storedName: (row) => readKakPoFile(row.draft_json)?.storageName, recordedSize: (row) => readKakPoFile(row.draft_json)?.fileSize, originalName: (row) => readKakPoFile(row.draft_json)?.fileName },
   { table: "official_statement_documents", directory: "official-statement-documents", storedName: (row) => row.storage_name },
   { table: "wfh_reports", directory: "wfh-reports", storedName: (row) => `${row.id}.docx` },
 ];
@@ -126,6 +128,7 @@ for (const store of documentStores) {
   const rows = backupDatabase.prepare(`SELECT * FROM ${quoteIdentifier(store.table)} ORDER BY id`).all();
   for (const row of rows) {
     const storedName = store.storedName(row);
+    if (!storedName) continue;
     references.push({
       table: store.table,
       id: row.id,

@@ -34,6 +34,8 @@ export const kakDraftSchema = z.object({
     sumberDana: text(300), lokasi: text(500), waktuPelaksanaan: text(200), kelompokSasaran: text(500),
     keluaran: text(500), targetKeluaran: text(200), paguAnggaran: money,
     penandatanganNama: text(160), penandatanganNip: z.string().regex(/^(?:\d{18})?$/), penandatanganJabatan: text(300),
+    penandatanganPangkat: text(150).optional(), hasil: text(500).optional(), targetHasil: text(200).optional(), sistemPengadaan: text(200).optional(),
+    rincianRekening: z.array(z.object({ kode: text(80), uraian: text(300).min(1), jumlah: money })).max(100).optional(),
     rincianAnggaran: z.array(z.object({ uraian: text(300).min(1), volume: text(100), jumlah: money })).max(100),
   }),
   sections: z.object(Object.fromEntries(KAK_SECTIONS.map(([key]) => [key, text(3500).min(1)])) as Record<KakSectionKey, ReturnType<typeof text>>),
@@ -55,4 +57,6 @@ export type KakHistory = {
   references?: KakReference[];
   nomorUrutSubKegiatan?: string;
   nomorUrutReference?: KakReference;
+  poFileName?: string;
+  bundleFileName?: string;
 };

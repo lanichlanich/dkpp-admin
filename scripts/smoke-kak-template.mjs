@@ -11,7 +11,7 @@ function load(file) {
   if (cache.has(filename)) return cache.get(filename).exports;
   const mod = new Module(filename); cache.set(filename, mod); mod.filename = filename;
   mod.paths = Module._nodeModulePaths(path.dirname(filename));
-  mod.require = (specifier) => specifier === "server-only" ? {} : specifier.startsWith("@/") ? load(`src/${specifier.slice(2)}.ts`) : require(specifier);
+  mod.require = (specifier) => specifier === "server-only" ? {} : specifier.startsWith("@/") ? specifier.endsWith(".json") ? require(path.resolve(`src/${specifier.slice(2)}`)) : load(`src/${specifier.slice(2)}.ts`) : require(specifier);
   mod._compile(ts.transpileModule(readFileSync(filename, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, filename);
   return mod.exports;
 }
@@ -21,6 +21,8 @@ const { generateKakDocument } = load("src/lib/kak-document.ts");
 const { generateKakDraft } = load("src/lib/gemini-kak.ts");
 const { getKakReferenceContext, formatKakLegalBasis } = load("src/lib/kak-references.ts");
 const { resolveKakSequence } = load("src/lib/kak-sequence.ts");
+const { generatePoDocument, getPoWarnings } = load("src/lib/po-document.ts");
+const { readKakPoFile, kakDocumentRows } = load("src/lib/kak-file-metadata.ts");
 const metadata = { tahunAnggaran: 2028, perangkatDaerah: "DINAS UJI & PERENCANAAN", urusanPemerintahan: "Urusan Uji", bidangUrusan: "Bidang Uji", program: "Program Uji", kegiatan: "Kegiatan Uji", subKegiatan: "Cetakan & Penggandaan", kodeSubKegiatan: "01.2.06.0005", sumberDana: "DAU", lokasi: "Indramayu", waktuPelaksanaan: "Januari s.d Desember", kelompokSasaran: "Perangkat Daerah", keluaran: "Paket", targetKeluaran: "1 Paket", paguAnggaran: "29359021.00", penandatanganNama: "", penandatanganNip: "", penandatanganJabatan: "", rincianAnggaran: [] };
 const draft = kakDraftSchema.parse({ metadata, sections: Object.fromEntries(KAK_SECTIONS.map(([key]) => [key, `ISIAN ${key} & pemeriksaan.\nParagraf kedua.`])), risks: Array.from({ length: 3 }, (_, i) => ({ risiko: `RISIKO ${i}`, penyebab: `SEBAB ${i}`, mitigasi: `MITIGASI ${i}` })), warnings: [] });
 assert.equal(kakDraftSchema.safeParse({ ...draft, metadata: { ...metadata, paguAnggaran: "Rp 29.359.021" } }).success, false);
@@ -123,3 +125,55 @@ assert.equal(later.references.length, 1); assert(later.references[0].id.startsWi
 assert.equal((await getKakReferenceContext({ ...dkpp, tahunAnggaran: 2030 })).references.length, 0);
 assert.equal((await getKakReferenceContext(metadata)).references.length, 0);
 console.log("PASS planning references: exact activity matching, year/organization scope, budget/target conflict warnings, source provenance and legal allowlist");
+const poDraft = kakDraftSchema.parse({ ...draft, metadata: { ...metadata, hasil: "Hasil kegiatan uji", targetHasil: "100 Persen", penandatanganPangkat: "Pembina", sistemPengadaan: "Swakelola", rincianRekening: [{ kode: "5.1.02.01.01.0026", uraian: "Belanja cetakan & penggandaan", jumlah: "29359021.00" }] } });
+const poResult = await generatePoDocument(poDraft, { ...options, poSistemPengadaan: "Penyedia" });
+const poOutput = new PizZip(poResult.document), poSource = new PizZip(readFileSync("src/templates/template-po.docx"));
+const poXml = poOutput.file("word/document.xml").asText();
+for (const name of Object.keys(poSource.files)) if (!poSource.files[name].dir && name !== "word/document.xml") assert(poSource.files[name].asNodeBuffer().equals(poOutput.file(name).asNodeBuffer()), `PO changed ZIP part: ${name}`);
+for (const value of ["PETUNJUK OPERASIONAL", "2028", "29.359.021,00", "Dua Puluh Sembilan Juta Tiga Ratus Lima Puluh Sembilan Ribu Dua Puluh Satu Rupiah", "Hasil kegiatan uji (100 Persen)", "5.1.02.01.01.0026", "Penyedia", "Plt. KEPALA DINAS", "PEJABAT UJI", "8 Oktober 2026"]) assert(poXml.includes(value), `PO field ${value}`);
+assert(!poXml.includes("${po.") && !poXml.includes("299.622.100") && !poXml.includes("400 Keluarga") && !poXml.includes("RORY FIRMANSYAH") && !poXml.includes(">Swakelola<"));
+assert.deepEqual(sections(poXml), sections(poSource.file("word/document.xml").asText()));
+const poTables = poXml.match(/<w:tbl(?:\s[^>]*)?>[\s\S]*?<\/w:tbl>/g);
+assert.equal((poTables[3].match(/<w:tr(?:\s[^>]*)?>/g) || []).length, 3, "Exact account rows plus header/total");
+const fallbackPo = new PizZip((await generatePoDocument(draft, { tanggalDokumen: "2026-10-08", pptkNama: "", pptkNip: "" })).document).file("word/document.xml").asText();
+assert(fallbackPo.includes("[Sistem pengadaan perlu ditetapkan]") && fallbackPo.includes("[Indikator hasil perlu dilengkapi]") && !fallbackPo.includes(">Swakelola<"));
+assert.equal(getPoWarnings(draft, options).length, 3);
+assert.equal(getPoWarnings(poDraft, options).length, 0);
+const poFile = { storageName: "12345678-1234-1234-1234-123456789abc.docx", fileName: "Draft-PO-Uji-2028.docx", fileSize: poResult.document.length, templateSha256: poResult.templateSha256 };
+assert.deepEqual(readKakPoFile(JSON.stringify({ poDocument: poFile })), poFile);
+assert.equal(readKakPoFile("{}"), undefined); assert.equal(readKakPoFile('{"poDocument":{"storageName":"../../etc.docx"}}'), undefined);
+const backupRows = kakDocumentRows({ id: "uji", storage_name: "kak.docx", source_storage_name: "rka.pdf", draft_json: JSON.stringify({ poDocument: poFile }) });
+assert.equal(backupRows.length, 3); assert.equal(backupRows[2].storage_name, poFile.storageName); assert.equal(backupRows[2].file_size, poFile.fileSize);
+assert.equal(kakDocumentRows({ id: "legacy", draft_json: "{}" }).length, 2);
+console.log("PASS PO template: exact source layout/parts, dynamic account table, rupiah words, date/signatory, missing-data markers, procurement override and PO backup metadata");
+const client = load("src/lib/gemini-client.ts");
+const requests = [];
+client.requestGeminiJson = async (...args) => {
+  requests.push(args);
+  return { model: "test", value: requests.length === 1 ? { isRka: true, reason: "", metadata } : { sections: draft.sections, risks: draft.risks, warnings: [], legalBasisIds: [] } };
+};
+const chosen = await generateKakDraft(new File(["%PDF-test"], "rka.pdf"), { poSistemPengadaan: "Swakelola" });
+assert.equal(requests.length, 2); assert(requests[1][1][0].text.includes("Pengguna memilih Swakelola"));
+assert.equal(chosen.draft.metadata.sistemPengadaan, undefined, "Manual preference must not overwrite RKA facts");
+const uploaded = [], deleted = [], inserted = [];
+let failUpload = false, failDatabase = false;
+cache.set(path.resolve("src/lib/storage.ts"), { exports: { isStorageConfigured: () => true,
+  uploadStorageObject: async (name, bytes) => { if (failUpload && uploaded.length === 1) throw new Error("storage failure"); uploaded.push({ name, bytes }); },
+  deleteStorageObject: async (name) => { deleted.push(name); },
+} });
+cache.set(path.resolve("src/lib/database.ts"), { exports: { database: { prepare: () => ({ run: async (...args) => { if (failDatabase) throw new Error("database failure"); inserted.push(args); } }) } } });
+const { saveKak } = load("src/lib/kak.ts");
+const saveInput = { userId: "test", draft: poDraft, options, model: "test", document: Buffer.from("kak"), poDocument: poResult.document, poTemplateSha256: poResult.templateSha256, source: Buffer.from("%PDF-test"), sourceName: "rka.pdf" };
+failUpload = true;
+await assert.rejects(saveKak(saveInput), /storage failure/);
+assert.deepEqual(deleted, uploaded.map((file) => file.name)); assert.equal(inserted.length, 0);
+uploaded.length = deleted.length = 0; failUpload = false; failDatabase = true;
+await assert.rejects(saveKak(saveInput), /database failure/);
+assert.equal(uploaded.length, 3); assert.deepEqual([...deleted].sort(), uploaded.map((file) => file.name).sort());
+uploaded.length = deleted.length = 0; failDatabase = false;
+const saved = await saveKak(saveInput);
+assert.equal(uploaded.length, 3); assert.equal(deleted.length, 0); assert.equal(inserted.length, 1);
+const savedPo = readKakPoFile(inserted[0][12]);
+assert.equal(savedPo.fileName, saved.poFileName); assert(uploaded[1].bytes.equals(saveInput.poDocument));
+assert(saved.bundleFileName.endsWith(".zip"));
+console.log("PASS shared procurement preference, single extraction/narrative workflow and rollback on partial storage/database failures");

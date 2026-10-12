@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronsUpDown, Download, LoaderCircle, Sparkles } from "lucide-react";
+import { Check, ChevronsUpDown, LoaderCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,25 +11,20 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SignatoryField } from "@/components/letters/signatory-field";
 import { DEFAULT_SIGNATORY, type Signatory, type SignatoryOption } from "@/lib/signatory";
-import { formatKakRupiah, type KakDraft, type KakHistory, type KakReference } from "@/lib/kak-types";
+import { formatKakRupiah, type KakDraft, type KakReference } from "@/lib/kak-types";
 import type { PptkEmployeeOption } from "@/lib/employees";
+import { KakArchive } from "@/components/kak/archive";
+import { DownloadLinks, ReferenceList } from "@/components/kak/document-links";
+import type { KakArchivePage } from "@/lib/kak-archive";
 import { cn } from "@/lib/utils";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 
 type Result = { id: string; fileName: string; poFileName: string; bundleFileName: string; metadata: KakDraft["metadata"]; warnings: string[]; references: KakReference[]; nomorUrutSubKegiatan: string; nomorUrutReference?: KakReference };
-function DownloadLinks({ id, hasPo }: { id: string; hasPo: boolean }) {
-  const linkClass = "inline-flex items-center gap-2 font-medium text-emerald-700 underline";
-  return <div className="flex flex-col items-start gap-2">{hasPo && <><a href={`/api/kak/${id}/download?format=zip`} className={linkClass}><Download className="size-4" />PO dan KAK (ZIP)</a><a href={`/api/kak/${id}/download?source=po`} className={linkClass}>PO (DOCX)</a></>}<a href={`/api/kak/${id}/download`} className={linkClass}>KAK (DOCX)</a><a href={`/api/kak/${id}/download?source=rka`} className={linkClass}>RKA sumber (PDF)</a></div>;
-}
-function ReferenceList({ references }: { references: KakReference[] }) {
-  if (!references.length) return null;
-  return <details className="text-sm text-emerald-800"><summary className="cursor-pointer font-medium">Sumber referensi yang digunakan</summary><ul className="mt-2 space-y-2">{references.map((r) => <li key={r.id}><p className="font-medium">{r.title}</p><p className="mt-1 text-xs text-zinc-500">{r.locators.join("; ")}</p></li>)}</ul></details>;
-}
 function findDefaultPptk(employees: PptkEmployeeOption[]) {
   return employees.find((employee) => employee.name.toLocaleUpperCase("id-ID").replace(/[^A-Z]/g, "").replace("MUHAMMAD", "MUHAMAD").startsWith("MUHAMADIQBAL"));
 }
 
-export function KakForm({ history, today, signatories, employees }: { history: KakHistory[]; today: string; signatories: SignatoryOption[]; employees: PptkEmployeeOption[] }) {
+export function KakForm({ history, today, signatories, employees }: { history: KakArchivePage; today: string; signatories: SignatoryOption[]; employees: PptkEmployeeOption[] }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const defaultPptk = findDefaultPptk(employees);
@@ -82,6 +77,6 @@ export function KakForm({ history, today, signatories, employees }: { history: K
         </CardContent></Card>
     </form>
     {result && <Card><CardHeader><CardTitle>Draft PO dan KAK siap</CardTitle><CardDescription>{result.metadata.subKegiatan} · TA {result.metadata.tahunAnggaran} · {formatKakRupiah(result.metadata.paguAnggaran)}</CardDescription></CardHeader><CardContent className="space-y-4"><p className="text-sm">Nomor urut cover: <span className="font-semibold">{result.nomorUrutSubKegiatan || "Belum diisi"}</span>{result.nomorUrutSubKegiatan && <span className="text-zinc-500"> · {result.nomorUrutReference ? "Daftar DKPP 2027" : "Diisi manual"}</span>}</p><DownloadLinks id={result.id} hasPo={Boolean(result.poFileName)} /><ReferenceList references={[...(result.references || []), ...(result.nomorUrutReference ? [result.nomorUrutReference] : [])]} /><ul className="list-disc space-y-1 pl-5 text-sm text-amber-800">{result.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></CardContent></Card>}
-    <Card><CardHeader><CardTitle>Arsip PO dan KAK</CardTitle><CardDescription>Unduh kembali PO, KAK, dan RKA sumber. Periksa isian sebelum dokumen ditetapkan.</CardDescription></CardHeader><CardContent><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b text-zinc-500"><th className="p-3">Sub kegiatan</th><th className="p-3">TA / Pagu</th><th className="p-3">Dibuat</th><th className="p-3">Unduh</th></tr></thead><tbody>{history.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-zinc-500">Belum ada arsip PO dan KAK.</td></tr>}{history.map((h) => <tr key={h.id} className="border-b align-top"><td className="min-w-64 p-3"><p className="font-medium">{h.subKegiatan}</p><p className="text-xs text-zinc-500">{h.kodeSubKegiatan}</p>{h.nomorUrutSubKegiatan && <p className="mt-1 text-xs text-zinc-500">Nomor urut cover: {h.nomorUrutSubKegiatan}</p>}<ReferenceList references={[...(h.references || []), ...(h.nomorUrutReference ? [h.nomorUrutReference] : [])]} />{h.warnings.length > 0 && <details className="mt-2 text-xs text-amber-800"><summary className="cursor-pointer">Catatan pemeriksaan</summary><ul className="mt-2 list-disc space-y-1 pl-4">{h.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></details>}</td><td className="whitespace-nowrap p-3">{h.tahunAnggaran}<p>{formatKakRupiah(h.paguAnggaran)}</p></td><td className="whitespace-nowrap p-3">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(h.createdAt))}<p className="text-xs text-zinc-500">{h.createdBy}</p></td><td className="space-y-2 whitespace-nowrap p-3"><DownloadLinks id={h.id} hasPo={Boolean(h.poFileName)} />{!h.poFileName && <p className="text-xs text-zinc-500">Arsip KAK lama; PO belum tersedia.</p>}</td></tr>)}</tbody></table></div></CardContent></Card>
+    <KakArchive key={JSON.stringify(history.query)} archive={history} />
   </div>;
 }

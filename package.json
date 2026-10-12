@@ -11,6 +11,7 @@
     "smoke:letter-classification": "node scripts/smoke-letter-classification.mjs",
     "smoke:signatory": "node scripts/smoke-signatory.mjs",
     "smoke:kak-template": "node scripts/smoke-kak-template.mjs",
+    "smoke:kak-archive": "node scripts/smoke-kak-archive.mjs",
     "smoke:kak": "node scripts/smoke-kak.mjs",
     "smoke:pak": "node scripts/smoke-pak.mjs",
     "smoke:dpcp": "node scripts/smoke-dpcp.mjs",

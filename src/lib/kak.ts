@@ -7,6 +7,7 @@ import { isStorageConfigured, uploadStorageObject, deleteStorageObject } from "@
 import type { KakDraft, KakHistory, ReferencedKakDraft } from "@/lib/kak-types";
 import type { KakOptions } from "@/lib/kak-validation";
 import { readKakPoFile, kakBundleFileName } from "@/lib/kak-file-metadata";
+import type { KakArchivePage, KakArchiveQuery } from "@/lib/kak-archive";
 
 const directory = path.join(process.cwd(), "data", "kak-documents");
 export async function saveKak(input: { userId: string; draft: KakDraft; options: KakOptions; model: string; document: Buffer; poDocument: Buffer; poTemplateSha256: string; source: Buffer; sourceName: string }) {
@@ -36,13 +37,34 @@ export async function saveKak(input: { userId: string; draft: KakDraft; options:
   }
   return { id, fileName, poFileName, bundleFileName: kakBundleFileName(fileName) };
 }
-export async function getKakHistory(): Promise<KakHistory[]> {
-  const rows = await db.prepare(`SELECT d.*, u.name AS created_by FROM kak_documents d JOIN users u ON u.id=d.user_id ORDER BY d.created_at DESC LIMIT 100`).all() as Array<Record<string, string | number>>;
-  return rows.map((r) => {
+function mapKakHistory(r: Record<string, string | number>): KakHistory {
     const draft = JSON.parse(String(r.draft_json)) as Partial<ReferencedKakDraft> & { options?: KakOptions };
     const po = readKakPoFile(draft);
     return { id: String(r.id), tahunAnggaran: Number(r.tahun_anggaran), subKegiatan: String(r.sub_kegiatan), kodeSubKegiatan: String(r.kode_sub_kegiatan), paguAnggaran: String(r.pagu_anggaran), fileName: String(r.file_name), sourceName: String(r.source_name), createdAt: String(r.created_at), createdBy: String(r.created_by), warnings: draft.warnings || [], references: draft.references || [], nomorUrutSubKegiatan: draft.options?.nomorUrutSubKegiatan, nomorUrutReference: draft.options?.nomorUrutReference, poFileName: po?.fileName, bundleFileName: po ? kakBundleFileName(String(r.file_name)) : undefined };
-  });
+}
+export async function getKakHistory(query: KakArchiveQuery): Promise<KakArchivePage> {
+  const clauses: string[] = [];
+  const values: (string | number)[] = [];
+  if (query.q) {
+    const term = `%${query.q.toLocaleLowerCase("id-ID").replace(/[\\%_]/g, "\\$&")}%`;
+    clauses.push("(LOWER(d.sub_kegiatan) LIKE ? ESCAPE '\\' OR LOWER(d.kode_sub_kegiatan) LIKE ? ESCAPE '\\' OR LOWER(d.source_name) LIKE ? ESCAPE '\\' OR LOWER(u.name) LIKE ? ESCAPE '\\')");
+    values.push(term, term, term, term);
+  }
+  if (query.year) { clauses.push("d.tahun_anggaran = ?"); values.push(Number(query.year)); }
+  if (query.from) { clauses.push("d.created_at >= ?"); values.push(new Date(`${query.from}T00:00:00+07:00`).toISOString()); }
+  if (query.to) { clauses.push("d.created_at < ?"); values.push(new Date(new Date(`${query.to}T00:00:00+07:00`).getTime() + 86400000).toISOString()); }
+  const tables = "FROM kak_documents d JOIN users u ON u.id=d.user_id";
+  const where = clauses.length ? ` WHERE ${clauses.join(" AND ")}` : "";
+  const [count, yearRows] = await Promise.all([
+    db.prepare(`SELECT COUNT(*) AS total ${tables}${where}`).get<{ total: number }>(...values),
+    db.prepare("SELECT DISTINCT tahun_anggaran FROM kak_documents ORDER BY tahun_anggaran DESC").all<{ tahun_anggaran: number }>(),
+  ]);
+  const total = Number(count?.total || 0);
+  const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+  const page = Math.min(query.page, totalPages);
+  const rows = await db.prepare(`SELECT d.*, u.name AS created_by ${tables}${where} ORDER BY d.created_at DESC, d.id DESC LIMIT ? OFFSET ?`)
+    .all<Record<string, string | number>>(...values, query.pageSize, (page - 1) * query.pageSize);
+  return { items: rows.map(mapKakHistory), total, totalPages, years: yearRows.map(row => Number(row.tahun_anggaran)), query: { ...query, page } };
 }
 export async function getKakDownload(id: string, source: boolean | "po") {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;

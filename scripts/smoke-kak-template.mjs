@@ -28,6 +28,11 @@ const metadata = { tahunAnggaran: 2028, perangkatDaerah: "DINAS UJI & PERENCANAA
 const draft = kakDraftSchema.parse({ metadata, sections: Object.fromEntries(KAK_SECTIONS.map(([key]) => [key, `ISIAN ${key} & pemeriksaan.\nParagraf kedua.`])), risks: Array.from({ length: 3 }, (_, i) => ({ risiko: `RISIKO ${i}`, penyebab: `SEBAB ${i}`, mitigasi: `MITIGASI ${i}` })), warnings: [] });
 assert.equal(kakDraftSchema.safeParse({ ...draft, metadata: { ...metadata, paguAnggaran: "Rp 29.359.021" } }).success, false);
 assert.equal(kakDraftSchema.safeParse({ ...draft, sections: { ...draft.sections, penutup: "<generate ai>" } }).success, false);
+const comparisonDraft = kakDraftSchema.parse({ ...draft, metadata: { ...metadata, rincianAnggaran: [{ uraian: "Iuran PPPK PW: Penerima Upah <= Gaji Pokok Golongan I/a; usia >= 18", volume: "5 x 12 Orang / Bulan", jumlah: "242760.00" }] } });
+assert.equal(comparisonDraft.metadata.rincianAnggaran[0].uraian, "Iuran PPPK PW: Penerima Upah <= Gaji Pokok Golongan I/a; usia >= 18");
+for (const value of ["<script>alert(1)</script>", "<generate ai>", "Gaji < batas", "Iuran\u0000"]) assert.equal(kakDraftSchema.safeParse({ ...comparisonDraft, metadata: { ...comparisonDraft.metadata, rincianAnggaran: [{ ...comparisonDraft.metadata.rincianAnggaran[0], uraian: value }] } }).success, false);
+const comparisonPo = new PizZip((await generatePoDocument(comparisonDraft, { tanggalDokumen: "2026-10-08", pptkNama: "", pptkNip: "" })).document).file("word/document.xml").asText();
+assert(comparisonPo.includes("Penerima Upah &lt;= Gaji Pokok Golongan I/a; usia &gt;= 18"));
 assert.equal(kakOptionsSchema.safeParse({ tanggalDokumen: "2026-02-30" }).success, false);
 for (const sequence of ["<5>", "5\n6", "1".repeat(33)]) assert.equal(kakOptionsSchema.safeParse({ tanggalDokumen: "2026-10-08", nomorUrutSubKegiatan: sequence }).success, false);
 assert.equal(kakOptionsSchema.safeParse({ tanggalDokumen: "2026-10-08", pptkNip: "197801011997031003" }).success, false);
@@ -180,11 +185,14 @@ const client = load("src/lib/gemini-client.ts");
 const requests = [];
 client.requestGeminiJson = async (...args) => {
   requests.push(args);
-  return { model: "test", value: requests.length === 1 ? { isRka: true, reason: "", metadata } : { sections: draft.sections, risks: draft.risks, warnings: [], legalBasisIds: [] } };
+  return { model: "test", value: requests.length === 1 ? { isRka: true, reason: "", metadata: comparisonDraft.metadata } : { sections: draft.sections, risks: draft.risks, warnings: [], legalBasisIds: [] } };
 };
 const chosen = await generateKakDraft(new File(["%PDF-test"], "rka.pdf"), { poSistemPengadaan: "Swakelola" });
 assert.equal(requests.length, 2); assert(requests[1][1][0].text.includes("Pengguna memilih Swakelola"));
 assert.equal(chosen.draft.metadata.sistemPengadaan, undefined, "Manual preference must not overwrite RKA facts");
+assert.equal(chosen.draft.metadata.rincianAnggaran[0].uraian, comparisonDraft.metadata.rincianAnggaran[0].uraian, "RKA comparisons must survive the extraction workflow");
+const comparisonKakXml = new PizZip(await generateKakDocument(chosen.draft, options)).file("word/document.xml").asText();
+assert(comparisonKakXml.includes("Penerima Upah &lt;= Gaji Pokok Golongan I/a; usia &gt;= 18"), "KAK must escape RKA comparisons in the financial section");
 const uploaded = [], deleted = [], inserted = [];
 let failUpload = false, failDatabase = false;
 cache.set(path.resolve("src/lib/storage.ts"), { exports: { isStorageConfigured: () => true,

@@ -23,7 +23,9 @@ export const KAK_SECTIONS = [
 ] as const;
 
 export type KakSectionKey = (typeof KAK_SECTIONS)[number][0];
-const text = (max = 1000) => z.string().trim().max(max).regex(/^[^<>\x00-\x08\x0b\x0c\x0e-\x1f]*$/, "Teks dokumen tidak valid.");
+// SIPD specifications legitimately contain comparisons such as "<= Gaji Pokok".
+// Keep rejecting tags/control characters; generators escape these operators as XML text.
+const text = (max = 1000) => z.string().trim().max(max).regex(/^(?:[^<>\x00-\x08\x0b\x0c\x0e-\x1f]|<=|>=)*$/, "Teks dokumen tidak valid.");
 const money = z.string().regex(/^\d{1,15}(?:\.\d{1,2})?$/, "Nilai anggaran harus berupa angka rupiah.");
 
 export const kakDraftSchema = z.object({

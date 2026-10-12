@@ -1,6 +1,5 @@
 import "server-only";
 
-import { createCipheriv, randomBytes } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { createBackupSnapshot } from "@/lib/database";
 import { downloadStorageObject } from "@/lib/storage";
@@ -77,8 +76,7 @@ export function googleDriveBackupReady() {
   return Boolean(
     process.env.GOOGLE_DRIVE_CLIENT_ID?.trim()
     && process.env.GOOGLE_DRIVE_CLIENT_SECRET?.trim()
-    && process.env.GOOGLE_DRIVE_REFRESH_TOKEN?.trim()
-    && process.env.GOOGLE_DRIVE_BACKUP_ENCRYPTION_KEY?.trim(),
+    && process.env.GOOGLE_DRIVE_REFRESH_TOKEN?.trim(),
   );
 }
 
@@ -98,16 +96,23 @@ export function googleDriveBackupAdminConfigured() {
   return Boolean(process.env.GOOGLE_DRIVE_BACKUP_ADMIN_USERNAMES?.trim());
 }
 
-function encryptionKey() {
-  const encoded = requiredEnvironment("GOOGLE_DRIVE_BACKUP_ENCRYPTION_KEY");
-  const key = Buffer.from(encoded, "base64");
-  if (key.length !== 32 || key.toString("base64") !== encoded) {
-    throw new Error("GOOGLE_DRIVE_BACKUP_ENCRYPTION_KEY harus berupa Base64 dari tepat 32 byte.");
-  }
-  return key;
-}
-
 let cachedToken: { accessToken: string; expiresAt: number } | null = null;
+
+async function tokenFailure(response: Response) {
+  const result: unknown = await response.json().catch(() => null);
+  const code = result && typeof result === "object" && "error" in result ? result.error : undefined;
+  // Only known error codes reach the UI. Never return Google's raw body or credentials.
+  if (code === "invalid_client") {
+    return "OAuth Google menolak Client ID atau Client Secret (invalid_client). Isi ulang GOOGLE_DRIVE_CLIENT_ID dan GOOGLE_DRIVE_CLIENT_SECRET dari client OAuth yang sama di Vercel Production, lalu redeploy.";
+  }
+  if (code === "invalid_grant") {
+    return "Google menolak refresh token (invalid_grant). Salin kolom Refresh token dari OAuth Playground dengan Client ID dan Client Secret yang sama, isi ulang GOOGLE_DRIVE_REFRESH_TOKEN di Vercel Production, lalu redeploy. Token mungkin tidak cocok, kedaluwarsa, atau telah dicabut.";
+  }
+  if (code === "deleted_client" || code === "unauthorized_client") {
+    return "Client OAuth Google tidak tersedia atau tidak diizinkan. Periksa client di Google Cloud, lalu perbarui kredensial dan refresh token di Vercel Production dan redeploy.";
+  }
+  return `Token Google Drive gagal diperbarui (HTTP ${response.status}). Periksa ketiga variabel OAuth di Vercel Production atau coba lagi jika layanan Google sedang bermasalah.`;
+}
 
 async function accessToken() {
   if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) return cachedToken.accessToken;
@@ -124,7 +129,7 @@ async function accessToken() {
     cache: "no-store",
     signal: AbortSignal.timeout(15_000),
   });
-  if (!response.ok) throw new Error("Token Google Drive gagal diperbarui. Periksa kredensial OAuth dan masa berlaku refresh token.");
+  if (!response.ok) throw new Error(await tokenFailure(response));
   const result = await response.json() as { access_token?: string; expires_in?: number };
   if (!result.access_token) throw new Error("Google tidak mengembalikan token akses Drive.");
   cachedToken = { accessToken: result.access_token, expiresAt: Date.now() + (result.expires_in ?? 3600) * 1000 };
@@ -160,22 +165,47 @@ async function createDriveFolder(name: string, parentId: string) {
   return folder;
 }
 
+async function validateDestinationFolder() {
+  const folderId = destinationFolderId();
+  const fields = "id,mimeType,capabilities(canAddChildren),permissions(type)";
+  const response = await driveRequest(`${DRIVE_API}/files/${encodeURIComponent(folderId)}?supportsAllDrives=true&fields=${encodeURIComponent(fields)}`);
+  const folder = await response.json() as {
+    mimeType?: string;
+    capabilities?: { canAddChildren?: boolean };
+    permissions?: Array<{ type?: string }>;
+  };
+  if (folder.mimeType !== "application/vnd.google-apps.folder" || !folder.capabilities?.canAddChildren) {
+    throw new Error("Akun OAuth tidak memiliki akses tulis ke folder backup Google Drive yang dikonfigurasi.");
+  }
+  if (!Array.isArray(folder.permissions)) {
+    throw new Error("Izin folder backup tidak dapat diperiksa. Gunakan folder milik akun OAuth agar akses backup tanpa enkripsi dapat diverifikasi.");
+  }
+  if (folder.permissions.some((permission) => permission.type === "anyone" || permission.type === "domain")) {
+    throw new Error("Backup tanpa enkripsi memerlukan folder privat. Ubah Akses umum folder Google Drive menjadi Dibatasi sebelum menjalankan backup.");
+  }
+  return folderId;
+}
+
+export async function checkGoogleDriveBackupConnection() {
+  await validateDestinationFolder();
+}
+
 async function uploadDriveFile(name: string, parentId: string, bytes: Buffer) {
   const session = await driveRequest(`${UPLOAD_API}/files?uploadType=resumable&supportsAllDrives=true&fields=id,name`, {
     method: "POST",
     headers: {
       "content-type": "application/json; charset=UTF-8",
-      "x-upload-content-type": "application/octet-stream",
+      "x-upload-content-type": "application/gzip",
       "x-upload-content-length": String(bytes.length),
     },
-    body: JSON.stringify({ name, parents: [parentId], mimeType: "application/octet-stream" }),
+    body: JSON.stringify({ name, parents: [parentId], mimeType: "application/gzip" }),
   });
   const uploadUrl = session.headers.get("location");
   if (!uploadUrl) throw new Error("Google Drive tidak mengembalikan URL upload resumable.");
   await driveRequest(uploadUrl, {
     method: "PUT",
     headers: {
-      "content-type": "application/octet-stream",
+      "content-type": "application/gzip",
       "content-length": String(bytes.length),
     },
     body: new Uint8Array(bytes),
@@ -233,13 +263,6 @@ function tarArchive(files: ArchiveFile[]) {
   return gzipSync(Buffer.concat(blocks), { level: 6 });
 }
 
-function encryptArchive(bytes: Buffer, key: Buffer) {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const ciphertext = Buffer.concat([cipher.update(bytes), cipher.final()]);
-  return Buffer.concat([Buffer.from("DKPPBK01"), iv, cipher.getAuthTag(), ciphertext]);
-}
-
 function safeId(value: unknown, index: number) {
   const id = String(value ?? index + 1).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80);
   return id || String(index + 1);
@@ -262,7 +285,8 @@ function jakartaBackupName(date: Date) {
 }
 
 export async function createGoogleDriveBackup() {
-  const key = encryptionKey();
+  // Check OAuth and folder access before reading the database or downloading files.
+  const folderId = await validateDestinationFolder();
   const { tables: snapshot, storageObjects } = await createBackupSnapshot();
   const filesByCategory = new Map<Category, ArchiveFile[]>([
     ["Kepegawaian", []], ["Persuratan", []], ["Umum", []], ["Perencanaan", []], ["Sistem", []],
@@ -317,17 +341,17 @@ export async function createGoogleDriveBackup() {
   const categoryArchives = [...filesByCategory.entries()].map(([category, files]) => ({
     category,
     fileCount: files.length,
-    bytes: encryptArchive(tarArchive(files), key),
+    bytes: tarArchive(files),
   }));
 
-  const timestampFolder = await createDriveFolder(`Backup ${backupId}`, destinationFolderId());
+  const timestampFolder = await createDriveFolder(`Backup ${backupId}`, folderId);
   const categoryFolders = await Promise.all(categoryArchives.map(async ({ category }) => ({
     category,
     folder: await createDriveFolder(category, timestampFolder.id!),
   })));
   await Promise.all(categoryArchives.map(({ category, bytes }) => {
     const folder = categoryFolders.find((item) => item.category === category)!.folder;
-    return uploadDriveFile(`backup-${category.toLowerCase()}.tar.gz.enc`, folder.id!, bytes);
+    return uploadDriveFile(`backup-${category.toLowerCase()}.tar.gz`, folder.id!, bytes);
   }));
 
   return {

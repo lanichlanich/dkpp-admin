@@ -1,18 +1,28 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CheckCircle2, CloudUpload, ExternalLink, Info, LoaderCircle, ShieldCheck } from "lucide-react";
-import { runGoogleDriveBackupAction, type BackupActionResult } from "@/actions/backups";
+import { Archive, CheckCircle2, CloudUpload, ExternalLink, Info, LoaderCircle } from "lucide-react";
+import { checkGoogleDriveBackupAction, runGoogleDriveBackupAction, type BackupActionResult } from "@/actions/backups";
 import { Button } from "@/components/ui/button";
 
 export function GoogleDriveBackupPanel({ configured }: { configured: boolean }) {
   const [pending, startTransition] = useTransition();
+  const [operation, setOperation] = useState<"backup" | "check">("backup");
   const [result, setResult] = useState<BackupActionResult | null>(null);
 
   function createBackup() {
     setResult(null);
+    setOperation("backup");
     startTransition(async () => {
       setResult(await runGoogleDriveBackupAction());
+    });
+  }
+
+  function checkConnection() {
+    setResult(null);
+    setOperation("check");
+    startTransition(async () => {
+      setResult(await checkGoogleDriveBackupAction());
     });
   }
 
@@ -26,21 +36,26 @@ export function GoogleDriveBackupPanel({ configured }: { configured: boolean }) 
             <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600">Salin snapshot database dan berkas Supabase Storage ke Google Drive. Setiap backup membuat folder baru dengan tanggal dan waktu WIB.</p>
           </div>
         </div>
-        <Button onClick={createBackup} disabled={pending || !configured} size="lg" className="shrink-0">
-          {pending ? <><LoaderCircle className="animate-spin" />Menyiapkan backup...</> : <><CloudUpload />Mulai backup</>}
-        </Button>
+        <div className="flex shrink-0 flex-col gap-2">
+          <Button onClick={createBackup} disabled={pending || !configured} size="lg">
+            {pending && operation === "backup" ? <><LoaderCircle className="animate-spin" />Menyiapkan backup...</> : <><CloudUpload />Mulai backup</>}
+          </Button>
+          <Button onClick={checkConnection} disabled={pending || !configured} size="lg" variant="outline">
+            {pending && operation === "check" ? <><LoaderCircle className="animate-spin" />Memeriksa koneksi...</> : <>Periksa koneksi</>}
+          </Button>
+        </div>
       </div>
       {!configured && <div role="status" className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
         <p className="font-semibold">Konfigurasi Google Drive belum lengkap.</p>
-      <p className="mt-1">Isi variabel OAuth Google Drive, daftar administrator yang diizinkan, dan kunci enkripsi pada environment Vercel. Panduan lengkap ada di <code className="rounded bg-amber-100 px-1">docs/backup-google-drive.md</code>.</p>
+      <p className="mt-1">Isi variabel OAuth Google Drive dan daftar administrator yang diizinkan pada environment Vercel. Panduan lengkap ada di <code className="rounded bg-amber-100 px-1">docs/backup-google-drive.md</code>.</p>
       </div>}
       {configured && <p className="mt-4 text-xs text-zinc-500">Backup memerlukan waktu sesuai jumlah dan ukuran berkas. Jangan tutup halaman sampai hasilnya muncul.</p>}
     </section>
 
     <section className="grid gap-4 md:grid-cols-2">
       <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-        <div className="flex items-center gap-2 font-semibold text-zinc-900"><ShieldCheck className="size-5 text-emerald-700" />Isi backup dilindungi</div>
-        <p className="mt-2 text-sm leading-6 text-zinc-600">Lima arsip fitur dienkripsi dengan AES-256-GCM sebelum diunggah: Kepegawaian, Persuratan, Umum, Perencanaan, dan Sistem. Kunci hanya berada di environment server.</p>
+        <div className="flex items-center gap-2 font-semibold text-zinc-900"><Archive className="size-5 text-emerald-700" />Arsip tanpa enkripsi</div>
+        <p className="mt-2 text-sm leading-6 text-zinc-600">Lima arsip .tar.gz dapat diekstrak langsung: Kepegawaian, Persuratan, Umum, Perencanaan, dan Sistem. Folder Drive harus memakai Akses umum Dibatasi karena arsip memuat data aplikasi dan berkas asli.</p>
       </div>
       <div className="rounded-2xl border border-zinc-200 bg-white p-5">
         <div className="flex items-center gap-2 font-semibold text-zinc-900"><Info className="size-5 text-sky-700" />Data yang dicadangkan</div>
@@ -53,7 +68,7 @@ export function GoogleDriveBackupPanel({ configured }: { configured: boolean }) 
         {result.status === "success" ? <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-700" /> : <Info className="mt-0.5 size-5 shrink-0 text-rose-700" />}
         <div className="min-w-0 flex-1">
           <p className={`font-semibold ${result.status === "success" ? "text-emerald-950" : "text-rose-950"}`}>{result.message}</p>
-          {result.status === "success" && <>
+          {result.status === "success" && result.backupId && <>
             <p className="mt-2 text-sm text-emerald-900">Folder <span className="font-mono">{result.backupId}</span> · {result.tableCount} tabel · {result.documentCount} berkas terhubung · {result.unlinkedStorageObjectCount} objek Storage tak terhubung · {result.archiveCount} arsip fitur</p>
             {result.folderUrl && <a href={result.folderUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-emerald-800 underline underline-offset-4">Buka backup di Google Drive<ExternalLink className="size-4" /></a>}
           </>}

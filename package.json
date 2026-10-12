@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "smoke:google-drive-backup": "node scripts/smoke-google-drive-backup.mjs",
     "smoke:auth": "node scripts/smoke-auth.mjs",
     "smoke:letter-classification": "node scripts/smoke-letter-classification.mjs",
     "smoke:signatory": "node scripts/smoke-signatory.mjs",

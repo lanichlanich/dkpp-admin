@@ -233,7 +233,7 @@ function writeTarString(header: Buffer, value: string, offset: number, length: n
   header.write(value.slice(0, length), offset, length, "utf8");
 }
 
-function tarArchive(files: ArchiveFile[]) {
+export function tarArchive(files: ArchiveFile[]) {
   const blocks: Buffer[] = [];
   for (const file of files) {
     const header = Buffer.alloc(512);
@@ -275,7 +275,7 @@ function extensionFor(row: Record<string, unknown>, table: string) {
   return extension ?? "bin";
 }
 
-function jakartaBackupName(date: Date) {
+export function jakartaBackupName(date: Date) {
   const values = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
@@ -284,9 +284,7 @@ function jakartaBackupName(date: Date) {
   return `${part("year")}-${part("month")}-${part("day")}_${part("hour")}-${part("minute")}-${part("second")}`;
 }
 
-export async function createGoogleDriveBackup() {
-  // Check OAuth and folder access before reading the database or downloading files.
-  const folderId = await validateDestinationFolder();
+export async function createBackupContent() {
   const { tables: snapshot, storageObjects } = await createBackupSnapshot();
   const filesByCategory = new Map<Category, ArchiveFile[]>([
     ["Kepegawaian", []], ["Persuratan", []], ["Umum", []], ["Perencanaan", []], ["Sistem", []],
@@ -318,6 +316,7 @@ export async function createGoogleDriveBackup() {
     const bytes = await downloadStorageObject(storageName, filePath);
     return {
       category: TABLE_CATEGORY[table]!,
+      storageName,
       archiveFile: { path: `files/${table}/record-${safeId(row.id, index)}.${extensionFor(row, table)}`, bytes },
     };
   });
@@ -336,6 +335,22 @@ export async function createGoogleDriveBackup() {
     })), null, 2)}\n`, "utf8"),
   });
 
+  return {
+    filesByCategory,
+    tableCount: Object.keys(snapshot).length,
+    documentCount: downloadedDocuments.length,
+    unlinkedStorageObjectCount: downloadedOrphans.length,
+    storageFiles: [
+      ...downloadedDocuments.map(item => ({ path: `${item.category}/${item.archiveFile.path}`, storageName: item.storageName })),
+      ...downloadedOrphans.map(item => ({ path: `Sistem/${item.archivePath}`, storageName: item.storageName })),
+    ],
+  };
+}
+
+export async function createGoogleDriveBackup() {
+  // Check OAuth and folder access before reading the database or downloading files.
+  const folderId = await validateDestinationFolder();
+  const { filesByCategory, tableCount, documentCount, unlinkedStorageObjectCount } = await createBackupContent();
   const backupTime = new Date();
   const backupId = jakartaBackupName(backupTime);
   const categoryArchives = [...filesByCategory.entries()].map(([category, files]) => ({
@@ -357,9 +372,9 @@ export async function createGoogleDriveBackup() {
   return {
     backupId,
     folderUrl: timestampFolder.webViewLink ?? `https://drive.google.com/drive/folders/${timestampFolder.id}`,
-    tableCount: Object.keys(snapshot).length,
-    documentCount: downloadedDocuments.length,
-    unlinkedStorageObjectCount: downloadedOrphans.length,
+    tableCount,
+    documentCount,
+    unlinkedStorageObjectCount,
     archiveCount: categoryArchives.length,
   };
 }

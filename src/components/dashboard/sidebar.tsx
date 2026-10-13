@@ -36,6 +36,7 @@ const correspondenceNavigation = [
 ];
 
 const navigation = [
+  { label: "Backup ke Lokal", href: "/dashboard/backup-lokal", icon: Archive },
   { label: "Backup Google Drive", href: "/dashboard/backup", icon: CloudUpload },
   { label: "Log Audit Perubahan Data", href: "/dashboard/log-audit", icon: History },
   { label: "Profil Saya", href: "/dashboard/profile", icon: UserRound },

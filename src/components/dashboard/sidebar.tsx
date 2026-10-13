@@ -4,8 +4,9 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Archive, Award, BriefcaseBusiness, Building2, CalendarDays, ChevronDown, ClipboardList, CloudUpload, FileBarChart2, FileCheck2, FileSignature, FileText, FolderOpen, History, House, LayoutDashboard, ListTree, LoaderCircle, Network, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
+import { Archive, Award, BriefcaseBusiness, Building2, CalendarDays, ChevronDown, ClipboardList, CloudUpload, FileBarChart2, FileCheck2, FileSignature, FileText, FolderOpen, History, House, LayoutDashboard, ListTree, LoaderCircle, Network, PanelLeftClose, PanelLeftOpen, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 const personnelNavigation = [
@@ -48,7 +49,43 @@ function NavigationIcon({ icon: Icon, className }: { icon: LucideIcon; className
     : <Icon aria-hidden="true" className={className} strokeWidth={1.75} />;
 }
 
-export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+type NavigationItem = { label: string; href: string; icon: LucideIcon };
+function CompactGroup({ label, icon: Icon, items }: { label: string; icon: LucideIcon; items: NavigationItem[] }) {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const active = items.some(item => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  return <Popover open={open} onOpenChange={setOpen}>
+    <PopoverTrigger render={<Button variant="ghost" size="icon" title={label} aria-label={label} className={cn("size-12 rounded-xl text-emerald-50 hover:bg-white/15 hover:text-white", active && "bg-white/20 text-white")} />}><Icon aria-hidden="true" className="size-5" /></PopoverTrigger>
+    <PopoverContent side="right" align="start" sideOffset={12} className="w-72 max-w-[calc(100vw-6rem)]">
+      <PopoverTitle className="px-2 py-1">{label}</PopoverTitle>
+      <div className="max-h-[70vh] space-y-1 overflow-y-auto">{items.map(item => {
+        const selected = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        return <Link key={item.href} href={item.href} onClick={() => setOpen(false)} aria-current={selected ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-emerald-600", selected ? "bg-emerald-100 font-medium text-emerald-900" : "hover:bg-muted")}><NavigationIcon icon={item.icon} className="size-4 shrink-0" /><span>{item.label}</span></Link>;
+      })}</div>
+    </PopoverContent>
+  </Popover>;
+}
+function CompactSidebar({ onToggle }: { onToggle?: () => void }) {
+  const pathname = usePathname();
+  return <div className="flex h-full flex-col bg-gradient-to-b from-emerald-600 via-green-700 to-sky-700 text-emerald-50">
+    <div className="flex h-20 shrink-0 items-center justify-center border-b border-white/20 bg-white/[0.08]" title="DKPP-Admin · Administrasi DKPP"><span className="grid size-12 place-items-center rounded-xl bg-white p-1 shadow-lg ring-1 ring-amber-200/70"><Image src="/dkpp-admin-logo.png" alt="DKPP-Admin" width={44} height={44} className="size-11 object-contain" priority /></span></div>
+    <nav aria-label="Menu utama" className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto py-4">
+      <Button type="button" variant="ghost" size="icon" aria-label="Perbesar sidebar" title="Perbesar sidebar" aria-expanded={false} aria-controls="desktop-sidebar" onClick={onToggle} className="mb-2 size-12 text-white hover:bg-white/15 hover:text-white"><PanelLeftOpen className="size-5" /></Button>
+      <Link href="/dashboard" title="Dashboard" aria-label="Dashboard" aria-current={pathname === "/dashboard" ? "page" : undefined} className={cn("grid size-12 shrink-0 place-items-center rounded-xl focus-visible:outline-2 focus-visible:outline-amber-300", pathname === "/dashboard" ? "bg-white text-emerald-800" : "hover:bg-white/15")}><NavigationIcon icon={LayoutDashboard} className="size-5" /></Link>
+      <CompactGroup label="Kepegawaian" icon={BriefcaseBusiness} items={personnelNavigation} />
+      <CompactGroup label="Umum" icon={FolderOpen} items={generalNavigation} />
+      <CompactGroup label="Persuratan" icon={FileText} items={correspondenceNavigation} />
+      <CompactGroup label="Perencanaan" icon={ClipboardList} items={[{ label: "Pembuatan PO dan KAK", href: "/dashboard/pembuatan-kak", icon: FileSignature }]} />
+      {navigation.map(item => {
+        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        return <Link key={item.href} href={item.href} title={item.label} aria-label={item.label} aria-current={active ? "page" : undefined} className={cn("grid size-12 shrink-0 place-items-center rounded-xl focus-visible:outline-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800" : "hover:bg-white/15")}><NavigationIcon icon={item.icon} className="size-5" /></Link>;
+      })}
+    </nav>
+    <div className="shrink-0 border-t border-white/20 py-4 text-center text-[10px] font-medium" title="DKPP-Admin · Administrasi DKPP">DKPP<span className="sr-only">-Admin · Administrasi DKPP</span></div>
+  </div>;
+}
+
+export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { onNavigate?: () => void; collapsed?: boolean; onToggle?: () => void }) {
   const pathname = usePathname();
   const personnelActive = personnelNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
   const generalActive = generalNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -58,11 +95,13 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const [correspondenceOpen, setCorrespondenceOpen] = useState(correspondenceActive);
   const planningActive = pathname.startsWith("/dashboard/pembuatan-kak");
   const [planningOpen, setPlanningOpen] = useState(planningActive);
+  if (collapsed) return <CompactSidebar onToggle={onToggle} />;
   return (
     <div className="flex h-full flex-col bg-gradient-to-b from-emerald-600 via-green-700 to-sky-700 text-emerald-50">
       <div className="flex h-20 shrink-0 items-center gap-3 border-b border-white/20 bg-white/[0.08] px-3.5">
         <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white p-1 shadow-lg shadow-emerald-950/25 ring-1 ring-amber-200/70"><Image src="/dkpp-admin-logo.png" alt="" width={52} height={52} className="size-12 object-contain" priority /></span>
         <div className="min-w-0 flex-1"><p className="text-[15px] font-semibold leading-5 text-white">DKPP-Admin</p><p className="truncate text-[11px] text-emerald-100/85">Administrasi DKPP</p></div>
+        {onToggle && <Button type="button" variant="ghost" size="icon" onClick={onToggle} aria-label="Perkecil sidebar" title="Perkecil sidebar" aria-expanded={true} aria-controls="desktop-sidebar" className="size-8 shrink-0 text-white hover:bg-white/15 hover:text-white"><PanelLeftClose className="size-4" /></Button>}
         {onNavigate && <Button variant="ghost" size="icon" onClick={onNavigate} aria-label="Tutup menu" className="size-10 shrink-0 text-white/85 hover:bg-white/15 hover:text-white"><X className="size-4" /></Button>}
       </div>
       <nav aria-label="Menu utama" className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-6">
@@ -122,6 +161,6 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function DesktopSidebar() {
-  return <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-emerald-800/40 lg:block"><SidebarContent /></aside>;
+export function DesktopSidebar({ collapsed = false, onToggle }: { collapsed?: boolean; onToggle?: () => void }) {
+  return <aside id="desktop-sidebar" className={cn("fixed inset-y-0 left-0 z-30 hidden border-r border-emerald-800/40 transition-[width] duration-200 motion-reduce:transition-none lg:block", collapsed ? "w-20" : "w-64")}><SidebarContent collapsed={collapsed} onToggle={onToggle} /></aside>;
 }

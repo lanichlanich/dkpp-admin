@@ -8,6 +8,7 @@ import { isInactiveJobPositionName } from "@/lib/job-position-visibility";
 import { requireUser } from "@/lib/session";
 
 type EmployeeRow = {
+  birth_place: string;
   nip: string;
   job_position_id: string | null;
   name: string;
@@ -28,6 +29,7 @@ function mapEmployee(row: EmployeeRow): Employee {
   const genderDigit = row.nip.slice(-4, -3);
   const gender = genderDigit === "1" ? "Laki-laki" : genderDigit === "2" ? "Perempuan" : "Tidak diketahui";
   return {
+    birthPlace: row.birth_place ?? "",
     nip: row.nip,
     jobPositionId: row.job_position_id,
     name: row.name,
@@ -111,6 +113,7 @@ export const getDpcpEmployeeOptions = cache(async (): Promise<DpcpEmployeeOption
 });
 
 export type EmployeeOptions = {
+  birthPlaces: string[];
   parentUnits: string[];
   units: string[];
   positions: EmployeePositionOption[];
@@ -138,6 +141,7 @@ export const getEmployeeOptions = cache(async (): Promise<EmployeeOptions> => {
     ORDER BY name COLLATE NOCASE, unit COLLATE NOCASE`).all() as EmployeePositionOption[];
   const availablePositions = positions.filter((position) => !isInactiveJobPositionName(position.name));
   return {
+    birthPlaces: unique(employees.map((employee) => employee.birthPlace).filter(Boolean)),
     parentUnits: unique(employees.map((employee) => employee.parentUnit)),
     units: unique(employees.map((employee) => employee.unit)),
     positions: availablePositions.length ? availablePositions : unique(employees.map((employee) => employee.position).filter((name) => !isInactiveJobPositionName(name))).map((name) => ({

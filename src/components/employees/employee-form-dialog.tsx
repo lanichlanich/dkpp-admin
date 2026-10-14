@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useId, useState } from "react";
 import { Check, ChevronsUpDown, LoaderCircle, Pencil, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
@@ -29,6 +29,7 @@ function EmployeeSubmitButton({ editing }: { editing: boolean }) {
 }
 
 export function EmployeeFormDialog({ employee, options }: { employee?: Employee; options: EmployeeOptions }) {
+  const birthPlacesId = useId();
   const editing = Boolean(employee);
   const [open, setOpen] = useState(false);
   const [state, action] = useActionState(saveEmployeeAction, {});
@@ -75,6 +76,13 @@ export function EmployeeFormDialog({ employee, options }: { employee?: Employee;
             <input type="hidden" name="mode" value={editing ? "edit" : "create"} />
             <input type="hidden" name="originalNip" value={employee?.nip ?? ""} />
             <FormMessage status={state.status} message={state.status === "error" ? state.message : undefined} />
+            <div className="space-y-2">
+              <Label htmlFor={`${birthPlacesId}-input`}>Tempat lahir</Label>
+              <Input id={`${birthPlacesId}-input`} name="birthPlace" list={birthPlacesId} defaultValue={employee?.birthPlace ?? ""} maxLength={160} placeholder="Pilih atau ketik tempat lahir" className="h-11" aria-invalid={Boolean(state.errors?.birthPlace)} />
+              <datalist id={birthPlacesId}>{options.birthPlaces.map((place) => <option key={place} value={place} />)}</datalist>
+              <p className="text-xs text-zinc-500">Cari dari pilihan yang tersedia atau isi nama tempat secara manual.</p>
+              <FieldError messages={state.errors?.birthPlace} />
+            </div>
             <div className="grid gap-5 md:grid-cols-2">
               <div className="space-y-2"><RequiredLabel htmlFor="nip">NIP</RequiredLabel><Input id="nip" name="nip" inputMode="numeric" maxLength={18} pattern="[0-9]{18}" defaultValue={employee?.nip} readOnly={editing} required className="h-11 font-mono read-only:bg-zinc-100" aria-invalid={Boolean(state.errors?.nip)} /><p className="text-xs text-zinc-500">Tepat 18 digit dan digunakan sebagai primary key.</p><FieldError messages={state.errors?.nip} /></div>
               <div className="space-y-2"><RequiredLabel htmlFor="name">Nama lengkap</RequiredLabel><Input id="name" name="name" defaultValue={employee?.name} required className="h-11" aria-invalid={Boolean(state.errors?.name)} /><p className="text-xs text-zinc-500">Tuliskan nama beserta gelar sesuai data kepegawaian.</p><FieldError messages={state.errors?.name} /></div>

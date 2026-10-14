@@ -7,6 +7,7 @@ export type PublicUser = {
 };
 
 export type Employee = {
+  birthPlace: string;
   nip: string;
   jobPositionId: string | null;
   name: string;

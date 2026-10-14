@@ -23,6 +23,7 @@ import { formatRetirementAge } from "@/lib/retirement-age";
 const columnLabels: Record<string, string> = {
   nip: "NIP",
   name: "Nama",
+  birthPlace: "Tempat lahir",
   parentUnit: "Unor Induk",
   unit: "Unor",
   position: "Jabatan",
@@ -63,6 +64,7 @@ export function EmployeeDataTable({ data, options }: { data: Employee[]; options
     },
     { accessorKey: "nip", header: ({ column }) => <SortButton column={column}>NIP</SortButton>, cell: ({ row }) => <span className="font-mono text-xs text-zinc-700">{row.original.nip}</span> },
     { accessorKey: "name", header: ({ column }) => <SortButton column={column}>Nama</SortButton>, cell: ({ row }) => <div className="min-w-44"><p className="font-medium text-zinc-900">{row.original.name}</p><p className="mt-0.5 max-w-64 truncate text-xs text-zinc-500">{row.original.position}</p></div> },
+    { accessorKey: "birthPlace", header: ({ column }) => <SortButton column={column}>Tempat lahir</SortButton>, cell: ({ row }) => <span className="text-xs">{row.original.birthPlace || "—"}</span> },
     { accessorKey: "parentUnit", header: ({ column }) => <SortButton column={column}>Unor Induk</SortButton>, cell: ({ row }) => <span className="block max-w-72 truncate text-xs">{row.original.parentUnit}</span> },
     { accessorKey: "unit", header: ({ column }) => <SortButton column={column}>Unor</SortButton>, cell: ({ row }) => <span className="block max-w-64 truncate text-xs">{row.original.unit}</span> },
     { accessorKey: "position", header: ({ column }) => <SortButton column={column}>Jabatan</SortButton>, cell: ({ row }) => <span className="block max-w-72 truncate text-xs">{row.original.position}</span> },

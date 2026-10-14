@@ -82,6 +82,9 @@ export function EmployeeDetailDialog({ employee }: { employee: Employee }) {
             <DetailItem label="Nama lengkap" value={employee.name} />
             </div>
             <div className="bg-white p-4">
+            <DetailItem label="Tempat lahir" value={employee.birthPlace || "—"} />
+            </div>
+            <div className="bg-white p-4">
             <DetailItem label="Jenis ASN" value={employee.asnType} />
             </div>
             <div className="bg-white p-4">

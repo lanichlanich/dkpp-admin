@@ -549,6 +549,9 @@ type EmployeeSeedRow = {
 const employeeSeed: EmployeeSeedRow[] = [];
 
 const employeeColumns = db.prepare("PRAGMA table_info(employees)").all() as Array<{ name: string }>;
+if (!employeeColumns.some((column) => column.name === "birth_place")) {
+  db.exec("ALTER TABLE employees ADD COLUMN birth_place TEXT NOT NULL DEFAULT ''");
+}
 if (!employeeColumns.some((column) => column.name === "gender")) {
   db.exec("ALTER TABLE employees ADD COLUMN gender TEXT NOT NULL DEFAULT 'Tidak diketahui'");
 }

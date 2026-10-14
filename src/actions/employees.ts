@@ -13,6 +13,7 @@ const requiredText = (label: string, max = 160) =>
 const employeeSchema = z.object({
   nip: z.string().trim().regex(/^\d{18}$/, "NIP harus terdiri dari tepat 18 digit."),
   name: requiredText("Nama", 160),
+  birthPlace: z.string().trim().max(160, "Tempat lahir terlalu panjang."),
   parentUnit: requiredText("Unor induk", 200),
   jobPositionId: requiredText("Penempatan jabatan", 80),
   rank: requiredText("Golongan/pangkat", 100),
@@ -35,6 +36,7 @@ export async function saveEmployeeAction(
   const parsed = employeeSchema.safeParse({
     nip: formData.get("nip"),
     name: formData.get("name"),
+    birthPlace: formData.get("birthPlace") ?? "",
     parentUnit: formData.get("parentUnit"),
     jobPositionId: formData.get("jobPositionId"),
     rank: formData.get("rank"),
@@ -81,12 +83,12 @@ export async function saveEmployeeAction(
     await db.prepare(
       `INSERT INTO employees (
         nip, name, parent_unit, unit, position, position_type, echelon, job_position_id,
-        rank, asn_type, gender, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        rank, asn_type, gender, status, created_at, updated_at, birth_place
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       employee.nip, employee.name, employee.parentUnit, employee.unit,
       employee.position, employee.positionType, employee.echelon, position.id, employee.rank,
-      employee.asnType, employee.nip.slice(-4, -3) === "1" ? "Laki-laki" : employee.nip.slice(-4, -3) === "2" ? "Perempuan" : "Tidak diketahui", employee.status, now, now,
+      employee.asnType, employee.nip.slice(-4, -3) === "1" ? "Laki-laki" : employee.nip.slice(-4, -3) === "2" ? "Perempuan" : "Tidak diketahui", employee.status, now, now, employee.birthPlace,
     );
     await createNotification(user.id, "success", "Pegawai ditambahkan", `${employee.name} (${employee.nip}) berhasil ditambahkan.`);
   } else {
@@ -96,12 +98,12 @@ export async function saveEmployeeAction(
     const result = await db.prepare(
       `UPDATE employees SET
         name = ?, parent_unit = ?, unit = ?, position = ?, position_type = ?,
-        echelon = ?, job_position_id = ?, rank = ?, asn_type = ?, gender = ?, status = ?, updated_at = ?
+        echelon = ?, job_position_id = ?, rank = ?, asn_type = ?, gender = ?, status = ?, updated_at = ?, birth_place = COALESCE(?, birth_place)
        WHERE nip = ?`,
     ).run(
       employee.name, employee.parentUnit, employee.unit, employee.position,
       employee.positionType, employee.echelon, position.id, employee.rank, employee.asnType,
-      employee.nip.slice(-4, -3) === "1" ? "Laki-laki" : employee.nip.slice(-4, -3) === "2" ? "Perempuan" : "Tidak diketahui", employee.status, now, employee.nip,
+      employee.nip.slice(-4, -3) === "1" ? "Laki-laki" : employee.nip.slice(-4, -3) === "2" ? "Perempuan" : "Tidak diketahui", employee.status, now, formData.has("birthPlace") ? employee.birthPlace : null, employee.nip,
     );
     if (result.changes === 0) {
       return { status: "error", message: "Data pegawai tidak ditemukan.", submittedAt: Date.now() };

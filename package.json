@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "smoke:employee-birth-place": "node scripts/smoke-employee-birth-place.mjs",
     "smoke:google-drive-backup": "node scripts/smoke-google-drive-backup.mjs",
     "smoke:local-backup": "node scripts/smoke-local-backup.mjs",
     "smoke:auth": "node scripts/smoke-auth.mjs",

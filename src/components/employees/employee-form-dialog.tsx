@@ -72,7 +72,7 @@ export function EmployeeFormDialog({ employee, options }: { employee?: Employee;
       <Dialog open={open} onOpenChange={(nextOpen) => { if (nextOpen) setPositionId(initialPositionId); setOpen(nextOpen); }}>
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-4xl">
           <DialogHeader><DialogTitle>{editing ? "Edit data pegawai" : "Tambah pegawai"}</DialogTitle><DialogDescription>Kolom bertanda <span className="text-red-500">*</span> wajib diisi. Validasi akhir dilakukan di server.</DialogDescription></DialogHeader>
-          <form action={action} className="space-y-5">
+          <form action={action} className="min-w-0 space-y-5">
             <input type="hidden" name="mode" value={editing ? "edit" : "create"} />
             <input type="hidden" name="originalNip" value={employee?.nip ?? ""} />
             <FormMessage status={state.status} message={state.status === "error" ? state.message : undefined} />

@@ -3,10 +3,12 @@ import { randomUUID } from "node:crypto";
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { database as db } from "@/lib/database";
 import { requireAdministrator } from "@/lib/authorization";
 import { MENU_CATALOG } from "@/lib/access-control";
-import { profileSchema, registerSchema } from "@/lib/validation";
+import { editUserSchema, registerSchema } from "@/lib/validation";
+import { deleteSession } from "@/lib/session";
 export type ManagementState = { status?: "success" | "error"; message?: string; submittedAt?: number };
 const menuSchema = z.array(z.string()).max(MENU_CATALOG.length).refine(ids => ids.every(id => MENU_CATALOG.some(menu => menu.id === id)), "Menu tidak valid.");
 const result = (success: boolean, message: string): ManagementState => ({ status: success ? "success" : "error", message, submittedAt: Date.now() });
@@ -58,12 +60,14 @@ export async function createUserAction(_state: ManagementState, form: FormData):
 }
 
 export async function editUserAction(_state: ManagementState, form: FormData): Promise<ManagementState> {
-  await requireAdministrator();
-  const parsed = profileSchema.extend({ id: z.string().min(1).max(80) }).safeParse(
-    Object.fromEntries(["id", "name", "username", "email"].map(key => [key, form.get(key)])),
-  );
+  const actor = await requireAdministrator();
+  const parsed = editUserSchema.safeParse({
+    ...Object.fromEntries(["id", "name", "username", "email"].map(key => [key, form.get(key)])),
+    newPassword: form.get("newPassword") ?? "",
+    confirmNewPassword: form.get("confirmNewPassword") ?? "",
+  });
   if (!parsed.success) return result(false, parsed.error.issues[0]?.message ?? "Periksa data pengguna.");
-  const { id, name, username, email } = parsed.data;
+  const { id, name, username, email, newPassword } = parsed.data;
   const target = await db.prepare("SELECT email, protected_administrator FROM users WHERE id = ?")
     .get<{ email: string; protected_administrator: number }>(id);
   if (!target) return result(false, "Pengguna tidak ditemukan.");
@@ -74,15 +78,28 @@ export async function editUserAction(_state: ManagementState, form: FormData): P
     return result(false, "Email atau username sudah digunakan pengguna lain.");
   }
   try {
-    const saved = await db.prepare("UPDATE users SET name = ?, username = ?, email = ?, updated_at = ? WHERE id = ?")
-      .run(name, username, email.toLowerCase(), new Date().toISOString(), id);
-    if (!saved.changes) return result(false, "Pengguna tidak ditemukan.");
+    const now = new Date().toISOString();
+    if (newPassword) {
+      const passwordHash = await hash(newPassword, 12);
+      await db.transaction([
+        { sql: "UPDATE users SET name = ?, username = ?, email = ?, password_hash = ?, updated_at = ? WHERE id = ?", values: [name, username, email.toLowerCase(), passwordHash, now, id] },
+        { sql: "DELETE FROM sessions WHERE user_id = ?", values: [id] },
+      ]);
+    } else {
+      const saved = await db.prepare("UPDATE users SET name = ?, username = ?, email = ?, updated_at = ? WHERE id = ?")
+        .run(name, username, email.toLowerCase(), now, id);
+      if (!saved.changes) return result(false, "Pengguna tidak ditemukan.");
+    }
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
     if (code === "23505" || code === "SQLITE_CONSTRAINT_UNIQUE") return result(false, "Email atau username sudah digunakan pengguna lain.");
     return result(false, "Data pengguna tidak dapat diperbarui. Silakan coba lagi.");
   }
-  return refreshed("Data pengguna berhasil diperbarui.");
+  if (newPassword && id === actor.id) {
+    await deleteSession();
+    redirect("/login");
+  }
+  return refreshed(newPassword ? "Data dan password pengguna berhasil diperbarui. Pengguna perlu login ulang." : "Data pengguna berhasil diperbarui.");
 }
 
 export async function deleteRoleAction(_state: ManagementState, form: FormData): Promise<ManagementState> {

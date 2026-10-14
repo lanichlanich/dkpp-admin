@@ -47,6 +47,18 @@ export const profileSchema = z.object({
   email,
 });
 
+export const editUserSchema = profileSchema.extend({
+  id: z.string().min(1).max(80),
+  newPassword: z.union([z.literal(""), password]).refine(
+    value => new TextEncoder().encode(value).byteLength <= 72,
+    "Password baru terlalu panjang (maksimal 72 byte).",
+  ),
+  confirmNewPassword: z.string(),
+}).refine(value => value.newPassword === value.confirmNewPassword, {
+  message: "Konfirmasi password baru tidak cocok.",
+  path: ["confirmNewPassword"],
+});
+
 export const passwordSchema = z
   .object({
     currentPassword: z.string().min(1, "Password saat ini wajib diisi."),

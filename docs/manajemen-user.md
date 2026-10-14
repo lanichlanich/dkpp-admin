@@ -2,7 +2,9 @@
 
 Menu **Manajemen User** hanya tersedia bagi administrator. Administrator dapat membuat pengguna, membuat dan mengubah role, memilih menu role, mengganti role pengguna, menonaktifkan akun, dan mengganti akses role dengan menu khusus pengguna.
 
-Tombol **Edit user** mengubah nama, username, dan email. Email dan username harus unik tanpa membedakan huruf besar/kecil. Email administrator utama tetap terkunci. Password, role, status akun, izin menu, dan hubungan dokumen tetap dipertahankan. Perubahan identitas dicatat di log audit; role dan menu tetap dikelola melalui **Atur akses**.
+Tombol **Edit user** mengubah nama, username, dan email, serta menyediakan password baru dan konfirmasinya. Kosongkan kedua kolom password untuk mempertahankan password lama. Password baru minimal 8 karakter dengan huruf dan angka; maksimal 72 byte UTF-8 agar tidak terpotong oleh bcrypt. Password tersimpan sebagai hash bcrypt. Penggantian password dan pencabutan seluruh sesi pengguna dilakukan dalam satu transaksi. Jika administrator mengganti password akun sendiri, ia diarahkan ke login. Password maupun hash tidak dikirim ke tampilan atau dicatat sebagai isi log audit.
+
+Email dan username harus unik tanpa membedakan huruf besar/kecil. Email administrator utama tetap terkunci. Role, status akun, izin menu, dan hubungan dokumen tetap dipertahankan. Perubahan dicatat di log audit; role dan menu tetap dikelola melalui **Atur akses**.
 
 Role **Perencana** awalnya hanya memiliki akses **Perencanaan → Pembuatan PO dan KAK**. Administrator dapat mengubah daftar tersebut. Pilihan menu khusus menggantikan seluruh daftar menu role untuk pengguna tersebut; kosong berarti hanya profil pribadi. Hilangkan pilihan menu khusus untuk kembali mengikuti role.
 

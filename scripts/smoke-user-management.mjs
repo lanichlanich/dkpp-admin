@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import Database from "better-sqlite3";
+import { compare, getRounds, hash } from "bcryptjs";
 import ts from "typescript";
 const require = createRequire(import.meta.url);
 const db = new Database(":memory:");
@@ -35,7 +36,7 @@ function load(name) {
   if (name === "next/cache") return { revalidatePath() {} };
   if (name === "next/navigation") return { redirect: destination => { throw new Error(`Redirect:${destination}`); } };
   if (name === "@/lib/database") return { database: adapter };
-  if (name === "@/lib/session") return { getCurrentUser: async () => currentUser(), requireUser: async () => { const user = currentUser(); if (!user) throw new Error("Unauthorized"); return user; }, createSession: async id => { actorId = id; } };
+  if (name === "@/lib/session") return { getCurrentUser: async () => currentUser(), requireUser: async () => { const user = currentUser(); if (!user) throw new Error("Unauthorized"); return user; }, createSession: async id => { actorId = id; }, deleteSession: async () => { actorId = ""; } };
   if (name === "@/lib/notifications") return { createNotification: async () => {} };
   if (!name.startsWith("@/")) return require(name);
   if (modules.has(name)) return modules.get(name);
@@ -65,12 +66,39 @@ try {
   assert.equal((await actions.editUserAction({}, edit({ username: "bad username" }))).status, "error");
   assert.equal((await actions.editUserAction({}, edit({ id: "missing-user" }))).status, "error");
   assert.equal((await actions.editUserAction({}, form({ id: "admin-test", name: "Admin", username: "admin1", email: "changed@example.test" }))).status, "error");
+  const oldSecret = "OldTestSecret123", newSecret = "NewTestSecret123!";
+  const oldHash = await hash(oldSecret, 4);
+  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(oldHash, "planner-test");
+  const insertSession = db.prepare("INSERT INTO sessions VALUES (?,?,?,?)");
+  insertSession.run("planner-session-1", "planner-test", now, now);
+  insertSession.run("planner-session-2", "planner-test", now, now);
+  insertSession.run("admin-session", "admin-test", now, now);
+  const sessionCount = id => db.prepare("SELECT count(*) AS total FROM sessions WHERE user_id = ?").get(id).total;
+  const storedHash = () => db.prepare("SELECT password_hash FROM users WHERE id = ?").get("planner-test").password_hash;
+  assert.equal((await actions.editUserAction({}, edit({ newPassword: "", confirmNewPassword: "" }))).status, "success");
+  assert.equal(storedHash(), oldHash); assert.equal(sessionCount("planner-test"), 2);
+  for (const [newPassword, confirmNewPassword] of [["short1", "short1"], ["lettersOnly", "lettersOnly"], [newSecret, "different"], ["", newSecret], ["é".repeat(36) + "A1", "é".repeat(36) + "A1"]]) {
+    assert.equal((await actions.editUserAction({}, edit({ newPassword, confirmNewPassword }))).status, "error");
+    assert.equal(storedHash(), oldHash); assert.equal(sessionCount("planner-test"), 2);
+  }
+  db.exec("CREATE TEMP TRIGGER reject_test_session_delete BEFORE DELETE ON sessions WHEN OLD.user_id = 'planner-test' BEGIN SELECT RAISE(ABORT, 'Simulated session failure'); END");
+  assert.equal((await actions.editUserAction({}, edit({ name: "Must roll back", newPassword: newSecret, confirmNewPassword: newSecret }))).status, "error");
+  assert.equal(storedHash(), oldHash); assert.equal(sessionCount("planner-test"), 2);
+  assert.equal(db.prepare("SELECT name FROM users WHERE id = ?").get("planner-test").name, "Perencana Baru");
+  db.exec("DROP TRIGGER reject_test_session_delete");
+  const passwordResult = await actions.editUserAction({}, edit({ newPassword: newSecret, confirmNewPassword: newSecret }));
+  assert.equal(passwordResult.status, "success");
+  assert(await compare(newSecret, storedHash())); assert.equal(await compare(oldSecret, storedHash()), false);
+  assert.equal(getRounds(storedHash()), 12); assert.equal(sessionCount("planner-test"), 0); assert.equal(sessionCount("admin-test"), 1);
+  assert(!JSON.stringify(passwordResult).includes(newSecret)); assert(!JSON.stringify(passwordResult).includes(storedHash()));
+  assert(!JSON.stringify(await load("@/lib/user-management").getUserManagement()).includes(storedHash()));
   assert.equal((await actions.saveUserAccessAction({}, form({ id: "admin-test", roleId: "perencana", active: "on" }))).status, "error");
   assert.equal((await actions.saveUserAccessAction({}, form({ id: "admin-test", roleId: "administrator" }))).status, "error");
   assert.equal((await actions.saveRoleAction({}, form({ id: "administrator", name: "Hacked", menus: ["pembuatan-kak"] }))).status, "error");
   assert.equal((await actions.saveUserAccessAction({}, form({ id: "planner-test", roleId: "perencana", active: "on" }))).status, "success");
   actorId = "planner-test";
   await assert.rejects(() => actions.editUserAction({}, edit({ id: "admin-test", email: "changed@example.test" })), /administrator/);
+  await assert.rejects(() => actions.editUserAction({}, edit({ newPassword: "Unauthorized123", confirmNewPassword: "Unauthorized123" })), /administrator/);
   assert(access.canAccessPath(currentUser(), "/dashboard/pembuatan-kak"));
   for (const menu of access.MENU_CATALOG.filter(m => m.id !== "pembuatan-kak")) assert.equal(access.canAccessMenu(currentUser(), menu.id), false);
   assert.equal(await authorization.checkApiAccess(["pembuatan-kak"]), null);
@@ -102,6 +130,10 @@ try {
   assert.equal((await actions.createUserAction({}, form({ name: "New user", username: "new-test", email: "new@example.test", password: "TemporaryTest123", confirmPassword: "TemporaryTest123", roleId: "perencana" }))).status, "success");
   const created = db.prepare("SELECT role_id, password_hash FROM users WHERE username = ?").get("new-test");
   assert.equal(created.role_id, "perencana"); assert.notEqual(created.password_hash, "TemporaryTest123");
+  await assert.rejects(() => actions.editUserAction({}, form({ id: "admin-test", name: "Admin", username: "admin1", email: "admin1@dkpp.com", newPassword: "AdminTestSecret123", confirmNewPassword: "AdminTestSecret123" })), /Redirect:\/login$/);
+  assert.equal(actorId, ""); assert.equal(sessionCount("admin-test"), 0);
+  actorId = "admin-test";
+  assert(currentUser().isAdministrator); assert(currentUser().protectedAdministrator);
   // Public registration must ignore attempts to supply privileged fields.
   await assert.rejects(() => load("@/actions/auth").registerAction({}, form({ name: "Registered user", username: "registered-test", email: "registered@example.test", password: "TemporaryTest123", confirmPassword: "TemporaryTest123", roleId: "administrator", protected_administrator: "1" })), /Redirect:\/dashboard\/akses/);
   assert.equal(currentUser().roleId, "unassigned"); assert.equal(currentUser().isAdministrator, false);
@@ -110,5 +142,5 @@ try {
     if (!source.includes('export { POST }')) assert.equal((source.match(/export async function (?:GET|POST|DELETE|PATCH|PUT)/g) ?? []).length, (source.match(/const accessDenied = await checkApiAccess/g) ?? []).length, `${file} guard coverage`);
   }
   for (const file of walk("src/app/dashboard").filter(f => f.endsWith("page.tsx") && !["profile", "akses"].includes(path.basename(path.dirname(f))))) assert.match(readFileSync(file, "utf8"), /requireMenuAccess|getUserManagement/);
-  console.log("User-management smoke passed: migration, preserved passwords, role inheritance, overrides, live revocation, API 401/403, action denial, no self escalation, protected administrator, account creation and registration, all page/API guards.");
+  console.log("User-management smoke passed: optional password update, bcrypt login verification, confirmation/length validation, atomic rollback and session revocation, self-reset logout, credential privacy, administrator protection, roles and all page/API guards.");
 } finally { db.close(); }

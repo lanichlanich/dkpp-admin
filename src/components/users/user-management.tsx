@@ -65,6 +65,12 @@ function EditUserDialog({ user }: { user: ManagedUser }) {
             <Input id={`edit-${user.id}-${name}`} name={String(name)} type={String(type)} defaultValue={String(value)} maxLength={Number(limit)} readOnly={name === "email" && user.protectedAdministrator} required autoComplete="off" />
           </div>)}
           {user.protectedAdministrator && <p className="text-sm text-zinc-600">Email administrator utama dilindungi dan tidak dapat diubah.</p>}
+          <fieldset className="space-y-3 rounded-lg border p-3">
+            <legend className="px-1 text-sm font-medium">Ganti password (opsional)</legend>
+            <p className="text-xs text-zinc-600">Kosongkan untuk tetap menggunakan password lama. Password baru minimal 8 karakter, mengandung huruf dan angka. Setelah diganti, pengguna perlu login ulang.</p>
+            <div className="space-y-1"><Label htmlFor={`edit-${user.id}-new-password`}>Password baru</Label><Input id={`edit-${user.id}-new-password`} name="newPassword" type="password" autoComplete="new-password" minLength={8} maxLength={72} /></div>
+            <div className="space-y-1"><Label htmlFor={`edit-${user.id}-confirm-password`}>Konfirmasi password baru</Label><Input id={`edit-${user.id}-confirm-password`} name="confirmNewPassword" type="password" autoComplete="new-password" maxLength={72} /></div>
+          </fieldset>
           <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" onClick={() => setOpen(false)}>Batal</Button><Submit>Simpan perubahan</Submit></div>
         </form>
       </DialogContent>

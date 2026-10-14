@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getDpcpDocumentForDownload } from "@/lib/dpcp-documents";
 import { getCurrentUser } from "@/lib/session";
 import { downloadStorageObject } from "@/lib/storage";
@@ -5,6 +6,8 @@ import { downloadStorageObject } from "@/lib/storage";
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, context: RouteContext<"/api/dpcp/[id]/download">) {
+  const accessDenied = await checkApiAccess(["dpcp"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

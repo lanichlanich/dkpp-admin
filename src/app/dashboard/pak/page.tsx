@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import { getSignatoryOptions } from "@/lib/signatory-options";
 import type { Metadata } from "next";
 import { PakForm } from "@/components/pak/pak-form";
@@ -6,6 +7,7 @@ import { getPakEmployeeOptions } from "@/lib/employees";
 import { getPakHistory } from "@/lib/pak-documents";
 export const metadata: Metadata = { title: "Pembuatan PAK" };
 export default async function PakPage() {
+  await requireMenuAccess("pak");
   const signatories = await getSignatoryOptions();
   const [employees, documents] = await Promise.all([getPakEmployeeOptions(), getPakHistory()]);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());

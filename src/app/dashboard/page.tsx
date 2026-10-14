@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight, Building2, ChartColumn, UserCheck, UsersRound } from "lucide-react";
@@ -9,6 +10,7 @@ import { getEmployeeStatistics, getUpcomingBirthdays, getUpcomingRetirements } f
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
+  await requireMenuAccess("dashboard");
   const [statistics, upcomingRetirements, upcomingBirthdays] = await Promise.all([
     getEmployeeStatistics(),
     getUpcomingRetirements(),

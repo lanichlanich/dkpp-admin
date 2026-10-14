@@ -1,9 +1,12 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getCurrentUser } from "@/lib/session";
 import { findReport, reportFilePath } from "@/lib/wfh-report-store";
 import { downloadStorageObject } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const accessDenied = await checkApiAccess(["laporan-wfh"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Silakan masuk kembali." }, { status: 401 });
   const { id } = await params;

@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import { getSignatoryOptions } from "@/lib/signatory-options";
 import type { Metadata } from "next";
 import { SuratPengantarForm } from "@/components/surat-pengantar/surat-pengantar-form";
@@ -7,6 +8,7 @@ import { getSuratPengantarHistory } from "@/lib/surat-pengantar-documents";
 export const metadata: Metadata = { title: "Pembuatan Surat Pengantar" };
 
 export default async function SuratPengantarPage() {
+  await requireMenuAccess("surat-pengantar");
   const signatories = await getSignatoryOptions();
   const documents = await getSuratPengantarHistory();
   const today = new Intl.DateTimeFormat("en-CA", {

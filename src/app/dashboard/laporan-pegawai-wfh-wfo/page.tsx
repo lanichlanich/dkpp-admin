@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FileDown, FileSpreadsheet } from "lucide-react";
@@ -7,6 +8,7 @@ import { getScheduleEntries, getScheduleMonths, groupScheduleEntries, monthLabel
 export const metadata: Metadata = { title: "Laporan Pegawai WFH/WFO" };
 
 export default async function ScheduleReportPage({ searchParams }: { searchParams: Promise<{ bulan?: string }> }) {
+  await requireMenuAccess("laporan-pegawai-wfh-wfo");
   const query = await searchParams;
   const months = await getScheduleMonths();
   const period = validPeriod(query.bulan ?? "") ? query.bulan! : months[0]?.period ?? "2026-10";

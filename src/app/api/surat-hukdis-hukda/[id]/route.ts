@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { createNotification } from "@/lib/notifications";
 import { deleteOfficialStatementDocument } from "@/lib/official-statement-documents";
 import { officialStatementTypeLabels } from "@/lib/official-statement-validation";
@@ -9,6 +10,8 @@ export async function DELETE(
   _request: Request,
   context: RouteContext<"/api/surat-hukdis-hukda/[id]">,
 ) {
+  const accessDenied = await checkApiAccess(["surat-hukdis-hukda"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
   const { id } = await context.params;

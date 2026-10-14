@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getCurrentUser } from "@/lib/session";
 import {
   getEmployeesForSuratLupaAbsen,
@@ -10,6 +11,8 @@ import { createNotification } from "@/lib/notifications";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["surat-lupa-absen-pulang"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
   let body: unknown;

@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { ScheduleBoard } from "@/components/wfh/schedule-board";
 import { getActiveScheduleEmployees, getScheduleEntries, getScheduleMonths, fridayDates, monthLabel, nextPeriod, validPeriod } from "@/lib/wfh-schedule";
@@ -5,6 +6,7 @@ import { getActiveScheduleEmployees, getScheduleEntries, getScheduleMonths, frid
 export const metadata: Metadata = { title: "Daftar Pegawai WFH/WFO" };
 
 export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ bulan?: string }> }) {
+  await requireMenuAccess("daftar-wfh");
   const query = await searchParams;
   const current = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit" }).format(new Date());
   const period = validPeriod(query.bulan ?? "") ? query.bulan! : current < "2026-10" ? "2026-10" : current;

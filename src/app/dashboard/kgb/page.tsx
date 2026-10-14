@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import { getSignatoryOptions } from "@/lib/signatory-options";
 import type { Metadata } from "next";
 import { KgbForm } from "@/components/kgb/kgb-form";
@@ -8,6 +9,7 @@ import { getKgbHistory } from "@/lib/kgb-documents";
 export const metadata: Metadata = { title: "Pembuatan SK KGB" };
 
 export default async function KgbPage() {
+  await requireMenuAccess("kgb");
   const signatories = await getSignatoryOptions();
   const [employees, documents] = await Promise.all([getKgbEmployeeOptions(), getKgbHistory()]);
   return (

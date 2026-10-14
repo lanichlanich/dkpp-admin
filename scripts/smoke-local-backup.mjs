@@ -15,6 +15,7 @@ const poName = "12345678-1234-1234-1234-123456789abc.docx";
 const contents = new Map(["employee.pdf", "kak.docx", "rka.pdf", poName, "report.docx"].map(name => [name, Buffer.from(`Original bytes for ${name}`)]));
 contents.set("orphan.pdf", randomBytes(5 * 1024 * 1024));
 const snapshot = { tables: {
+  app_roles: [{ id: "administrator", name: "Administrator", is_administrator: 1, menu_permissions: "[]" }],
   employees: [{ nip: "198001012005011001", name: "Pegawai Uji" }],
   users: [{ id: "admin", username: "admin1", password_hash: "restore-hash" }],
   employee_documents: [{ id: "employee", storage_name: "employee.pdf", original_file_name: "pegawai.pdf" }],
@@ -23,7 +24,7 @@ const snapshot = { tables: {
 }, storageObjects: [...contents.keys()].map(name => ({ name, metadata: { size: contents.get(name).length } })) };
 function setup(user = { id: "admin", username: "admin1" }, failure = false) {
   const state = { snapshots: 0, downloads: [] }, cache = new Map();
-  cache.set(path.resolve("src/lib/session.ts"), { exports: { getCurrentUser: async () => user } });
+  cache.set(path.resolve("src/lib/session.ts"), { exports: { getCurrentUser: async () => user ? { isAdministrator: true, menuPermissions: [], ...user } : null } });
   cache.set(path.resolve("src/lib/database.ts"), { exports: { createBackupSnapshot: async () => { state.snapshots++; return snapshot; } } });
   cache.set(path.resolve("src/lib/storage.ts"), { exports: { downloadStorageObject: async name => { state.downloads.push(name); if (failure) throw new Error("Unreadable file"); return contents.get(name); } } });
   function load(file) {
@@ -62,7 +63,7 @@ try {
   const bytes = Buffer.concat(chunks); assert(bytes.length > 4.5 * 1024 * 1024, "Exercise a backup above Vercel's buffered payload limit");
   assert.equal(bytes.length, Number(response.headers.get("x-backup-bytes"))); assert.equal(createHash("sha256").update(bytes).digest("hex"), response.headers.get("x-backup-sha256"));
   const files = extract(bytes), manifest = JSON.parse(files.get("manifest.json"));
-  assert.equal(manifest.tableCount, 5); assert.equal(manifest.documentCount, 5); assert.equal(manifest.unlinkedStorageObjectCount, 1);
+  assert.equal(manifest.tableCount, 6); assert.equal(manifest.documentCount, 5); assert.equal(manifest.unlinkedStorageObjectCount, 1);
   assert.deepEqual(JSON.parse(files.get("Kepegawaian/database/employees.json")), snapshot.tables.employees);
   assert.deepEqual(JSON.parse(files.get("Sistem/database/users.json")), snapshot.tables.users);
   assert(![...files.keys()].some(name => /sessions|\.env/.test(name))); assert(files.has("PEMULIHAN.txt"));

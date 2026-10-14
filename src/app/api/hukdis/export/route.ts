@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { z } from "zod";
 import { getHukdisEmployees } from "@/lib/employees";
 import { getHukdisRecords } from "@/lib/hukdis";
@@ -10,6 +11,8 @@ export const runtime = "nodejs";
 const exportSchema = z.object({ period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/) });
 
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["hukdis"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

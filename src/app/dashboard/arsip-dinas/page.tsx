@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { ArsipDinas } from "@/components/arsip-dinas/arsip-dinas";
 import { listArchiveDocuments } from "@/lib/arsip-dinas";
@@ -6,6 +7,7 @@ import { requireUser } from "@/lib/session";
 export const metadata: Metadata = { title: "Arsip Dinas" };
 
 export default async function ArsipDinasPage() {
+  await requireMenuAccess("arsip-dinas");
   await requireUser();
   const documents = await listArchiveDocuments();
   return <div className="mx-auto max-w-6xl space-y-6">

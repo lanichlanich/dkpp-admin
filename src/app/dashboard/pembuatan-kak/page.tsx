@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/session";
 import { getKakHistory } from "@/lib/kak";
@@ -7,6 +8,7 @@ import { KakForm } from "@/components/kak/form";
 import { parseKakArchiveQuery } from "@/lib/kak-archive";
 export const metadata: Metadata = { title: "Pembuatan PO dan KAK" };
 export default async function KakPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  await requireMenuAccess("pembuatan-kak");
   await requireUser();
   const query = parseKakArchiveQuery(await searchParams);
   const [history, signatories, employees] = await Promise.all([getKakHistory(query), getSignatoryOptions(), getPptkEmployeeOptions()]);

@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { GoogleDriveBackupPanel } from "@/components/backups/google-drive-backup-panel";
 import { googleDriveBackupAdminConfigured, googleDriveBackupAllowed, googleDriveBackupReady } from "@/lib/google-drive-backup";
@@ -7,6 +8,7 @@ export const metadata: Metadata = { title: "Backup Google Drive" };
 export const maxDuration = 300;
 
 export default async function BackupPage() {
+  await requireMenuAccess("backup");
   const user = await requireUser();
   const authorized = googleDriveBackupAllowed(user.username);
   const adminListConfigured = googleDriveBackupAdminConfigured();

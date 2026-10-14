@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { generateKakDraft } from "@/lib/gemini-kak";
@@ -16,6 +17,8 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 const active = new Set<string>();
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["pembuatan-kak"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Silakan masuk terlebih dahulu." }, { status: 401 });
   if (Number(request.headers.get("content-length")) > MAX_MULTIPART_REQUEST_SIZE_BYTES) return NextResponse.json({ error: "Ukuran upload maksimal 2 MB." }, { status: 413 });

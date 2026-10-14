@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { CalendarDays, Scale } from "lucide-react";
 import { HukdisFormDialog } from "@/components/hukdis/hukdis-form-dialog";
@@ -34,6 +35,7 @@ export default async function HukdisPage({
 }: {
   searchParams: Promise<{ month?: string | string[]; year?: string | string[] }>;
 }) {
+  await requireMenuAccess("hukdis");
   const [employees, params] = await Promise.all([getHukdisEmployees(), searchParams]);
   const now = new Date();
   const requestedMonth = Number(scalar(params.month));

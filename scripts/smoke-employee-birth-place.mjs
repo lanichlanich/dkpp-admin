@@ -25,7 +25,7 @@ const actions = ts.transpileModule(readFileSync("src/actions/employees.ts", "utf
 }).outputText;
 new Function("require", "exports", actions)((name) => {
   if (name === "@/lib/database") return { database: adapter };
-  if (name === "@/lib/session") return { requireUser: async () => { if (!signedIn) throw new Error("Unauthorized"); return { id: "test-user" }; } };
+  if (name === "@/lib/authorization") return { requireMenuAccess: async () => { if (!signedIn) throw new Error("Unauthorized"); return { id: "test-user" }; } };
   if (name === "@/lib/notifications") return { createNotification: async () => {} };
   if (name === "@/lib/job-position-visibility") return { isInactiveJobPositionName: () => false };
   if (name === "next/cache") return { revalidatePath: () => {} };

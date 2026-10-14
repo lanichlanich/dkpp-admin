@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import { getSignatoryOptions } from "@/lib/signatory-options";
 import type { Metadata } from "next";
 import { WfhForm } from "@/components/wfh/wfh-form";
@@ -8,6 +9,7 @@ import { WFH_TEMPLATE_YEAR } from "@/lib/wfh";
 export const metadata: Metadata = { title: "Pembuatan Surat Tugas WFH" };
 
 export default async function WfhPage() {
+  await requireMenuAccess("wfh");
   const signatories = await getSignatoryOptions();
   const documents = await getWfhHistory();
   const currentDate = new Intl.DateTimeFormat("en-CA", {

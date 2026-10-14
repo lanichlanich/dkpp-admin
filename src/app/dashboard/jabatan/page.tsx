@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { Network } from "lucide-react";
 import { PositionTree } from "@/components/job-positions/position-tree";
@@ -7,6 +8,7 @@ import { getOrganizationUnits } from "@/lib/organization-units";
 export const metadata: Metadata = { title: "Daftar Jabatan" };
 
 export default async function JobPositionsPage() {
+  await requireMenuAccess("jabatan");
   const [positions, units] = await Promise.all([getJobPositions(), getOrganizationUnits()]);
   const activePositions = positions.filter((position) => position.activeEmployeeCount > 0).length;
   return <div className="mx-auto max-w-7xl space-y-6">

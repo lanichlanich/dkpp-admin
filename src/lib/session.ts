@@ -52,10 +52,13 @@ export const getCurrentUser = cache(async (): Promise<PublicUser | null> => {
 
   const row = await db
     .prepare(
-      `SELECT users.id, users.name, users.username, users.email, users.created_at
+      `SELECT users.id, users.name, users.username, users.email, users.created_at,
+        users.role_id, users.menu_permissions, users.protected_administrator,
+        app_roles.name AS role_name, app_roles.is_administrator, app_roles.menu_permissions AS role_permissions
        FROM sessions
        INNER JOIN users ON users.id = sessions.user_id
-       WHERE sessions.token_hash = ? AND sessions.expires_at > ?`,
+       INNER JOIN app_roles ON app_roles.id = users.role_id
+       WHERE sessions.token_hash = ? AND sessions.expires_at > ? AND users.is_active = 1`,
     )
     .get(hashToken(token), new Date().toISOString()) as
     | {
@@ -64,6 +67,12 @@ export const getCurrentUser = cache(async (): Promise<PublicUser | null> => {
         username: string;
         email: string;
         created_at: string;
+        role_id: string;
+        role_name: string;
+        is_administrator: number;
+        protected_administrator: number;
+        menu_permissions: string | null;
+        role_permissions: string;
       }
     | undefined;
 

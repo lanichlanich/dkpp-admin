@@ -1,8 +1,11 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getPakDocumentForDownload } from "@/lib/pak-documents";
 import { getCurrentUser } from "@/lib/session";
 import { downloadStorageObject } from "@/lib/storage";
 export const runtime = "nodejs";
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const accessDenied = await checkApiAccess(["pak"]);
+  if (accessDenied) return accessDenied;
   if (!await getCurrentUser()) return Response.json({ message: "Silakan masuk kembali." }, { status: 401 });
   const { id } = await context.params;
   const document = await getPakDocumentForDownload(id);

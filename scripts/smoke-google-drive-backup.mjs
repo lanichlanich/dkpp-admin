@@ -11,6 +11,7 @@ const sourceNames = ["employee.pdf", "kak.docx", "rka.pdf", poName, "report-1.do
 const fixtureBytes = name => Buffer.from(`Fixture content: ${name}`);
 const snapshot = {
   tables: {
+    app_roles: [{ id: "administrator", name: "Administrator", is_administrator: 1, menu_permissions: "[]" }],
     employees: [{ id: "employee-1", name: "Pegawai Contoh" }],
     employee_documents: [{ id: "doc-1", storage_name: "employee.pdf", original_file_name: "scan.pdf" }],
     kak_documents: [{
@@ -36,7 +37,7 @@ delete process.env.GOOGLE_DRIVE_BACKUP_ENCRYPTION_KEY;
 function setup({ tokenError, tokenStatus = 400, permissions = [{ type: "user" }], canWrite = true, malformedError = false, username = "admin1" } = {}) {
   const state = { snapshots: 0, downloads: [], folders: [], uploads: [], tokenCalls: 0 };
   const cache = new Map();
-  cache.set(path.resolve("src/lib/session.ts"), { exports: { requireUser: async () => ({ username }) } });
+  cache.set(path.resolve("src/lib/session.ts"), { exports: { requireUser: async () => ({ username, isAdministrator: true, menuPermissions: [] }) } });
   cache.set(path.resolve("src/lib/database.ts"), { exports: {
     createBackupSnapshot: async () => { state.snapshots++; return snapshot; },
   } });
@@ -157,7 +158,7 @@ try {
   const result = await actions.runGoogleDriveBackupAction();
   assert.equal(result.status, "success"); assert.match(result.message, /\.tar\.gz/);
   assert.equal(state.snapshots, 1);
-  assert.equal(result.archiveCount, 5); assert.equal(result.tableCount, 5);
+  assert.equal(result.archiveCount, 5); assert.equal(result.tableCount, 6);
   assert.equal(result.documentCount, 5); assert.equal(result.unlinkedStorageObjectCount, 1);
   assert.equal(state.tokenCalls, 1, "Reuse the access token across folder creation and uploads");
   assert.deepEqual([...state.downloads].sort(), [...sourceNames].sort());

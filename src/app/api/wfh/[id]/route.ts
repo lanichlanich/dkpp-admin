@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { createNotification } from "@/lib/notifications";
 import { getCurrentUser } from "@/lib/session";
 import { deleteWfhDocument } from "@/lib/wfh-documents";
@@ -8,6 +9,8 @@ export async function DELETE(
   _request: Request,
   context: RouteContext<"/api/wfh/[id]">,
 ) {
+  const accessDenied = await checkApiAccess(["wfh"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

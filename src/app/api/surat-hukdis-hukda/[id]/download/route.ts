@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getOfficialStatementDocumentForDownload } from "@/lib/official-statement-documents";
 import { getCurrentUser } from "@/lib/session";
 import { downloadStorageObject } from "@/lib/storage";
@@ -8,6 +9,8 @@ export async function GET(
   _request: Request,
   context: RouteContext<"/api/surat-hukdis-hukda/[id]/download">,
 ) {
+  const accessDenied = await checkApiAccess(["surat-hukdis-hukda"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
   const { id } = await context.params;

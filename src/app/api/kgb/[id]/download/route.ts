@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getKgbDocumentForDownload } from "@/lib/kgb-documents";
 import { getCurrentUser } from "@/lib/session";
 import { downloadStorageObject } from "@/lib/storage";
@@ -5,6 +6,8 @@ import { downloadStorageObject } from "@/lib/storage";
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, context: RouteContext<"/api/kgb/[id]/download">) {
+  const accessDenied = await checkApiAccess(["kgb"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

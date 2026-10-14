@@ -1,9 +1,11 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { ClassificationBrowser } from "@/components/letters/classification-browser";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Klasifikasi Surat" };
 export default async function ClassificationPage() {
+  await requireMenuAccess("klasifikasi-surat");
   await requireUser();
   return <div className="mx-auto max-w-6xl space-y-6">
     <div><p className="text-sm font-medium text-emerald-700">Administrasi persuratan</p>

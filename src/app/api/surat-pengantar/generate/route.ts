@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { formatIndonesianDate } from "@/lib/kgb";
 import { createNotification } from "@/lib/notifications";
 import { getCurrentUser } from "@/lib/session";
@@ -8,6 +9,8 @@ import { suratPengantarSchema } from "@/lib/surat-pengantar-validation";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["surat-pengantar"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

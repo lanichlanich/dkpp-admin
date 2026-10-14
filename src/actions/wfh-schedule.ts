@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { database as db } from "@/lib/database";
-import { requireUser } from "@/lib/session";
+import { requireMenuAccess } from "@/lib/authorization";
 import { fridayDates, getScheduleEntries, groupScheduleEntries, monthLabel, nextPeriod, validPeriod, type WorkLocation } from "@/lib/wfh-schedule";
 import { continueFridayStatuses } from "@/lib/wfh-schedule-pattern";
 
@@ -14,7 +14,7 @@ function refreshSchedule() {
 }
 
 export async function createScheduleMonth(period: string): Promise<ActionResult> {
-  const user = await requireUser();
+  const user = await requireMenuAccess("daftar-wfh");
   if (!validPeriod(period)) return { success: false, message: "Bulan tidak valid." };
   const existing = await db.prepare("SELECT period FROM wfh_schedule_months WHERE period = ?").get(period);
   if (existing) return { success: false, message: "Jadwal bulan ini sudah tersedia." };
@@ -63,7 +63,7 @@ export async function createScheduleMonth(period: string): Promise<ActionResult>
 }
 
 export async function continueScheduleMonth(period: string): Promise<ActionResult> {
-  const user = await requireUser();
+  const user = await requireMenuAccess("daftar-wfh");
   if (!validPeriod(period)) return { success: false, message: "Bulan tidak valid." };
   const targetPeriod = nextPeriod(period, 1);
   const [sourceMonth, targetMonth] = await Promise.all([
@@ -115,7 +115,7 @@ export async function continueScheduleMonth(period: string): Promise<ActionResul
 }
 
 export async function addScheduleEmployee(period: string, nip: string): Promise<ActionResult> {
-  const user = await requireUser();
+  const user = await requireMenuAccess("daftar-wfh");
   if (!validPeriod(period) || !/^\d{18}$/.test(nip)) return { success: false, message: "Data pegawai atau bulan tidak valid." };
   const month = await db.prepare("SELECT period FROM wfh_schedule_months WHERE period = ?").get(period);
   if (!month) return { success: false, message: "Buat jadwal bulan terlebih dahulu." };
@@ -141,7 +141,7 @@ export async function addScheduleEmployee(period: string, nip: string): Promise<
 }
 
 export async function setScheduleStatus(period: string, nip: string, date: string, status: WorkLocation): Promise<ActionResult> {
-  const user = await requireUser();
+  const user = await requireMenuAccess("daftar-wfh");
   if (!validPeriod(period) || !/^\d{18}$/.test(nip) || !fridayDates(period).includes(date) || !["WFH", "WFO"].includes(status)) {
     return { success: false, message: "Perubahan status tidak valid." };
   }

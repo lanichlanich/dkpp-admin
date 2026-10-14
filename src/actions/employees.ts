@@ -5,7 +5,7 @@ import { z } from "zod";
 import { database as db } from "@/lib/database";
 import { createNotification } from "@/lib/notifications";
 import { isInactiveJobPositionName } from "@/lib/job-position-visibility";
-import { requireUser } from "@/lib/session";
+import { requireMenuAccess } from "@/lib/authorization";
 
 const requiredText = (label: string, max = 160) =>
   z.string().trim().min(1, `${label} wajib diisi.`).max(max, `${label} terlalu panjang.`);
@@ -32,7 +32,7 @@ export async function saveEmployeeAction(
   _state: EmployeeFormState,
   formData: FormData,
 ): Promise<EmployeeFormState> {
-  const user = await requireUser();
+  const user = await requireMenuAccess("pegawai");
   const parsed = employeeSchema.safeParse({
     nip: formData.get("nip"),
     name: formData.get("name"),
@@ -126,7 +126,7 @@ const bulkSchema = z.object({
 });
 
 export async function bulkEmployeeAction(input: z.infer<typeof bulkSchema>) {
-  const user = await requireUser();
+  const user = await requireMenuAccess("pegawai");
   const parsed = bulkSchema.safeParse(input);
   if (!parsed.success) return { success: false, message: "Pilihan pegawai atau aksi tidak valid." };
 

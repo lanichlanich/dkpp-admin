@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import { getSignatoryOptions } from "@/lib/signatory-options";
 import type { Metadata } from "next";
 import { PembukaanKerjakuForm } from "@/components/pembukaan-kerjaku/form";
@@ -7,6 +8,7 @@ import { requireUser } from "@/lib/session";
 export const metadata: Metadata = { title: "Permohonan Pembukaan Kerjaku" };
 
 export default async function PembukaanKerjakuPage() {
+  await requireMenuAccess("pembukaan-kerjaku");
   const signatories = await getSignatoryOptions();
   await requireUser();
   const [employees, history] = await Promise.all([getEmployeesForKerjaku(), getKerjakuRequestHistory()]);

@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { z } from "zod";
 import { createNotification } from "@/lib/notifications";
 import { database as db } from "@/lib/database";
@@ -52,6 +53,8 @@ async function getEmployee(nip: string) {
 }
 
 export async function GET(_request: Request, context: RouteContext<"/api/employees/[nip]/documents">) {
+  const accessDenied = await checkApiAccess(["pegawai"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 
@@ -62,6 +65,8 @@ export async function GET(_request: Request, context: RouteContext<"/api/employe
 }
 
 export async function POST(request: Request, context: RouteContext<"/api/employees/[nip]/documents">) {
+  const accessDenied = await checkApiAccess(["pegawai"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

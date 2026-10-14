@@ -1,6 +1,6 @@
 "use server";
 
-import { requireUser } from "@/lib/session";
+import { requireMenuAccess } from "@/lib/authorization";
 import { checkGoogleDriveBackupConnection, createGoogleDriveBackup, googleDriveBackupAllowed } from "@/lib/google-drive-backup";
 
 export type BackupActionResult = {
@@ -15,7 +15,7 @@ export type BackupActionResult = {
 };
 
 export async function checkGoogleDriveBackupAction(): Promise<BackupActionResult> {
-  const user = await requireUser();
+  const user = await requireMenuAccess("backup");
   if (!googleDriveBackupAllowed(user.username)) {
     return { status: "error", message: "Akun ini tidak termasuk administrator yang diizinkan menjalankan backup." };
   }
@@ -28,7 +28,7 @@ export async function checkGoogleDriveBackupAction(): Promise<BackupActionResult
 }
 
 export async function runGoogleDriveBackupAction(): Promise<BackupActionResult> {
-  const user = await requireUser();
+  const user = await requireMenuAccess("backup");
   if (!googleDriveBackupAllowed(user.username)) {
     return { status: "error", message: "Akun ini tidak termasuk administrator yang diizinkan menjalankan backup." };
   }

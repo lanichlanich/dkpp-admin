@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import { getSignatoryOptions } from "@/lib/signatory-options";
 import type { Metadata } from "next";
 import { OfficialStatementForm } from "@/components/official-statements/official-statement-form";
@@ -8,6 +9,7 @@ import { getOfficialStatementHistory } from "@/lib/official-statement-documents"
 export const metadata: Metadata = { title: "Pembuatan Surat HUKDIS dan HUKDA" };
 
 export default async function OfficialStatementsPage() {
+  await requireMenuAccess("surat-hukdis-hukda");
   const signatories = await getSignatoryOptions();
   const [employees, documents] = await Promise.all([getDpcpEmployeeOptions(), getOfficialStatementHistory()]);
   const today = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Jakarta" }).format(new Date());

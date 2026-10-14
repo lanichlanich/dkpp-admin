@@ -5,7 +5,7 @@ import { z } from "zod";
 import { database as db } from "@/lib/database";
 import { hukdisSanctions } from "@/lib/hukdis-types";
 import { createNotification } from "@/lib/notifications";
-import { requireUser } from "@/lib/session";
+import { requireMenuAccess } from "@/lib/authorization";
 
 const sanctionCodes = hukdisSanctions.map((sanction) => sanction.code) as [
   (typeof hukdisSanctions)[number]["code"],
@@ -44,7 +44,7 @@ export async function saveHukdisAction(
   _state: HukdisFormState,
   formData: FormData,
 ): Promise<HukdisFormState> {
-  const user = await requireUser();
+  const user = await requireMenuAccess("hukdis");
   const parsed = hukdisSchema.safeParse({
     employeeNip: formData.get("employeeNip"),
     reportPeriod: formData.get("reportPeriod"),

@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getCurrentUser } from "@/lib/session";
 import { getKerjakuRequestDownload } from "@/lib/pembukaan-kerjaku";
 import { downloadStorageObject } from "@/lib/storage";
@@ -5,6 +6,8 @@ import { downloadStorageObject } from "@/lib/storage";
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, context: RouteContext<"/api/pembukaan-kerjaku/[id]/download">) {
+  const accessDenied = await checkApiAccess(["pembukaan-kerjaku"]);
+  if (accessDenied) return accessDenied;
   if (!await getCurrentUser()) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
   const { id } = await context.params;
   const document = await getKerjakuRequestDownload(id);

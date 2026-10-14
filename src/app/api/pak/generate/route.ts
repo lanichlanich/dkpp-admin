@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { database as db } from "@/lib/database";
 import { generatePakDocument } from "@/lib/pak-document";
 import { savePakDocument } from "@/lib/pak-documents";
@@ -6,6 +7,8 @@ import { getCurrentUser } from "@/lib/session";
 
 export const runtime = "nodejs";
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["pak"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
   let body: unknown;

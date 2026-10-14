@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB, MAX_MULTIPART_REQUEST_SIZE_BYTES } from "@/lib/upload-limits";
 import { getCurrentUser } from "@/lib/session";
 import { archiveMetadataSchema, listArchiveDocuments, saveArchiveDocument } from "@/lib/arsip-dinas";
@@ -5,11 +6,15 @@ import { archiveMetadataSchema, listArchiveDocuments, saveArchiveDocument } from
 export const runtime = "nodejs";
 
 export async function GET() {
+  const accessDenied = await checkApiAccess(["arsip-dinas"]);
+  if (accessDenied) return accessDenied;
   if (!await getCurrentUser()) return Response.json({ message: "Silakan masuk kembali." }, { status: 401 });
   return Response.json({ documents: await listArchiveDocuments() }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["arsip-dinas"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Silakan masuk kembali." }, { status: 401 });
   if (Number(request.headers.get("content-length") || 0) > MAX_MULTIPART_REQUEST_SIZE_BYTES) return Response.json({ message: `PDF maksimal ${MAX_UPLOAD_SIZE_MB} MB.` }, { status: 413 });

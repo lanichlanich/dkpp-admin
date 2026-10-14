@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { database as db } from "@/lib/database";
 import { generateOfficialStatementDocument, formatOfficialNip } from "@/lib/official-statement-document";
 import { saveOfficialStatementDocument } from "@/lib/official-statement-documents";
@@ -9,6 +10,8 @@ import { getCurrentUser } from "@/lib/session";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["surat-hukdis-hukda"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

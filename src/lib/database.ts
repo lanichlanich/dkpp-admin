@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { Pool, types, type PoolClient } from "pg";
 
 const TABLE_NAMES = [
+  "app_roles",
   "users",
   "sessions",
   "employees",

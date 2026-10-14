@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { z } from "zod";
 import { extractGeminiDocumentData, DocumentAiError } from "@/lib/gemini-document-ai";
 import { getCurrentUser } from "@/lib/session";
@@ -7,6 +8,8 @@ export const runtime = "nodejs";
 const inputSchema = z.object({ kind: z.enum(["employee-document", "dpcp", "official-archive"]), employeeName: z.string().max(160), employeeNip: z.string().max(30), documentType: z.string().max(80) });
 const active = new Set<string>();
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["pegawai","dpcp","arsip-dinas"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Silakan masuk kembali." }, { status: 401 });
   if (Number(request.headers.get("content-length") || 0) > MAX_MULTIPART_REQUEST_SIZE_BYTES) return Response.json({ message: `Total dokumen maksimal ${MAX_UPLOAD_SIZE_MB} MB.` }, { status: 413 });
@@ -16,6 +19,8 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const parsed = inputSchema.safeParse(Object.fromEntries(["kind", "employeeName", "employeeNip", "documentType"].map(k => [k, form.get(k) || ""])));
     if (!parsed.success) return Response.json({ message: "Permintaan tidak valid." }, { status: 422 });
+    const kindAccess = await checkApiAccess([{ "employee-document": "pegawai", dpcp: "dpcp", "official-archive": "arsip-dinas" }[parsed.data.kind]]);
+    if (kindAccess) return kindAccess;
     const files = [...form.getAll("file"), ...form.getAll("files")].filter((v): v is File => v instanceof File && v.size > 0);
     return Response.json(await extractGeminiDocumentData({ kind: parsed.data.kind, files, context: { nama: parsed.data.employeeName, nip: parsed.data.employeeNip, jenisDokumen: parsed.data.documentType } }), { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

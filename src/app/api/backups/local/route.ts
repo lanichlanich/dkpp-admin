@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getCurrentUser } from "@/lib/session";
 import { createLocalBackup, localBackupAllowed } from "@/lib/local-backup";
 
@@ -5,6 +6,8 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 const active = new Set<string>();
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["backup-lokal"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ error: "Silakan masuk terlebih dahulu." }, { status: 401 });
   if (!localBackupAllowed(user.username)) return Response.json({ error: "Backup hanya tersedia untuk administrator yang ditetapkan." }, { status: 403 });

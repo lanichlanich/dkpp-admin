@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { database as db } from "@/lib/database";
-import { requireUser } from "@/lib/session";
+import { requireMenuAccess } from "@/lib/authorization";
 
 const schema = z.object({
   id: z.string().trim().max(80),
@@ -27,7 +27,7 @@ function refreshUnitPages() {
 }
 
 export async function saveOrganizationUnitAction(_state: OrganizationUnitFormState, formData: FormData): Promise<OrganizationUnitFormState> {
-  await requireUser();
+  await requireMenuAccess("unit-organisasi");
   const parsed = schema.safeParse({
     id: formData.get("id"), name: formData.get("name"), parentId: formData.get("parentId"),
   });
@@ -85,7 +85,7 @@ export async function saveOrganizationUnitAction(_state: OrganizationUnitFormSta
 }
 
 export async function deleteOrganizationUnitAction(id: string) {
-  await requireUser();
+  await requireMenuAccess("unit-organisasi");
   const parsedId = z.string().uuid().safeParse(id);
   if (!parsedId.success) return { success: false, message: "ID unit organisasi tidak valid." };
   const counts = await db.prepare(`SELECT

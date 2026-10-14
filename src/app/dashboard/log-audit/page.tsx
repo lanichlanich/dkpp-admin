@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { AuditLogTable } from "@/components/audit-log/audit-log-table";
 import { listAuditLogs } from "@/lib/audit-logs";
@@ -6,6 +7,7 @@ import { requireUser } from "@/lib/session";
 export const metadata: Metadata = { title: "Log Audit Perubahan Data" };
 
 export default async function AuditLogPage() {
+  await requireMenuAccess("log-audit");
   await requireUser();
   const page = await listAuditLogs();
   return <div className="mx-auto max-w-7xl space-y-6">

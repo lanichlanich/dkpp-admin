@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { SuratLupaAbsenPulangForm } from "@/components/surat-lupa-absen-pulang/form";
 import { SuratLupaAbsenPulangHistory } from "@/components/surat-lupa-absen-pulang/history";
@@ -7,6 +8,7 @@ import { requireUser } from "@/lib/session";
 export const metadata: Metadata = { title: "Surat Lupa Absen Pulang" };
 
 export default async function SuratLupaAbsenPulangPage() {
+  await requireMenuAccess("surat-lupa-absen-pulang");
   await requireUser();
   const [employees, documents] = await Promise.all([
     getEmployeesForSuratLupaAbsen(),

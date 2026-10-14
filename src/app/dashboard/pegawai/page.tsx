@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { EmployeeDataTable } from "@/components/employees/employee-data-table";
 import { EmployeeFormDialog } from "@/components/employees/employee-form-dialog";
@@ -6,6 +7,7 @@ import { getEmployeeOptions, getEmployees } from "@/lib/employees";
 export const metadata: Metadata = { title: "Daftar Pegawai" };
 
 export default async function EmployeesPage() {
+  await requireMenuAccess("pegawai");
   const [employees, options] = await Promise.all([getEmployees(), getEmployeeOptions()]);
   return (
     <div className="mx-auto max-w-[96rem] space-y-6">

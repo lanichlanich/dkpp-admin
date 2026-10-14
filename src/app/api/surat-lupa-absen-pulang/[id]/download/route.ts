@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getSuratLupaAbsenDownload } from "@/lib/surat-lupa-absen-pulang";
 import { getCurrentUser } from "@/lib/session";
 import { downloadStorageObject } from "@/lib/storage";
@@ -5,6 +6,8 @@ import { downloadStorageObject } from "@/lib/storage";
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const accessDenied = await checkApiAccess(["surat-lupa-absen-pulang"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
   const { id } = await context.params;

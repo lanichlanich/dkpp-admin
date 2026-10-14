@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getCurrentUser } from "@/lib/session";
 import { getScheduleEntries, getScheduleMonths, validPeriod } from "@/lib/wfh-schedule";
 import { createScheduleExcel, createSchedulePdf } from "@/lib/wfh-schedule-export";
@@ -5,6 +6,8 @@ import { createScheduleExcel, createSchedulePdf } from "@/lib/wfh-schedule-expor
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ period: string; format: string }> }) {
+  const accessDenied = await checkApiAccess(["daftar-wfh","laporan-pegawai-wfh-wfo"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
   const { period, format } = await params;

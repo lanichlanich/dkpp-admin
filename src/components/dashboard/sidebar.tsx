@@ -1,5 +1,7 @@
 "use client";
 
+import { canAccessPath } from "@/lib/access-control";
+import { useAccess } from "@/components/dashboard/access-context";
 import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -36,6 +38,7 @@ const correspondenceNavigation = [
 ];
 
 const navigation = [
+  { label: "Manajemen User", href: "/dashboard/manajemen-user", icon: UsersRound },
   { label: "Backup ke Lokal", href: "/dashboard/backup-lokal", icon: Archive },
   { label: "Backup Google Drive", href: "/dashboard/backup", icon: CloudUpload },
   { label: "Log Audit Perubahan Data", href: "/dashboard/log-audit", icon: History },
@@ -67,17 +70,23 @@ function CompactGroup({ label, icon: Icon, items }: { label: string; icon: Lucid
   </Popover>;
 }
 function CompactSidebar({ onToggle }: { onToggle?: () => void }) {
+  const access = useAccess();
+  const allowed = (item: NavigationItem) => canAccessPath(access, item.href);
+  const personnelItems = personnelNavigation.filter(allowed);
+  const generalItems = generalNavigation.filter(allowed);
+  const correspondenceItems = correspondenceNavigation.filter(allowed);
+  const navigationItems = navigation.filter(allowed);
   const pathname = usePathname();
   return <div className="flex h-full flex-col bg-gradient-to-b from-emerald-600 via-green-700 to-sky-700 text-emerald-50">
     <div className="flex h-20 shrink-0 items-center justify-center border-b border-white/20 bg-white/[0.08]" title="DKPP-Admin · Administrasi DKPP"><span className="grid size-12 place-items-center rounded-xl bg-white p-1 shadow-lg ring-1 ring-amber-200/70"><Image src="/dkpp-admin-logo.png" alt="DKPP-Admin" width={44} height={44} className="size-11 object-contain" priority /></span></div>
     <nav aria-label="Menu utama" className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto py-4">
       <Button type="button" variant="ghost" size="icon" aria-label="Perbesar sidebar" title="Perbesar sidebar" aria-expanded={false} aria-controls="desktop-sidebar" onClick={onToggle} className="mb-2 size-12 text-white hover:bg-white/15 hover:text-white"><PanelLeftOpen className="size-5" /></Button>
-      <Link href="/dashboard" title="Dashboard" aria-label="Dashboard" aria-current={pathname === "/dashboard" ? "page" : undefined} className={cn("grid size-12 shrink-0 place-items-center rounded-xl focus-visible:outline-2 focus-visible:outline-amber-300", pathname === "/dashboard" ? "bg-white text-emerald-800" : "hover:bg-white/15")}><NavigationIcon icon={LayoutDashboard} className="size-5" /></Link>
-      <CompactGroup label="Kepegawaian" icon={BriefcaseBusiness} items={personnelNavigation} />
-      <CompactGroup label="Umum" icon={FolderOpen} items={generalNavigation} />
-      <CompactGroup label="Persuratan" icon={FileText} items={correspondenceNavigation} />
-      <CompactGroup label="Perencanaan" icon={ClipboardList} items={[{ label: "Pembuatan PO dan KAK", href: "/dashboard/pembuatan-kak", icon: FileSignature }]} />
-      {navigation.map(item => {
+{canAccessPath(access, "/dashboard") &&       <Link href="/dashboard" title="Dashboard" aria-label="Dashboard" aria-current={pathname === "/dashboard" ? "page" : undefined} className={cn("grid size-12 shrink-0 place-items-center rounded-xl focus-visible:outline-2 focus-visible:outline-amber-300", pathname === "/dashboard" ? "bg-white text-emerald-800" : "hover:bg-white/15")}><NavigationIcon icon={LayoutDashboard} className="size-5" /></Link>}
+      {personnelItems.length > 0 && <CompactGroup label="Kepegawaian" icon={BriefcaseBusiness} items={personnelItems} />}
+      {generalItems.length > 0 && <CompactGroup label="Umum" icon={FolderOpen} items={generalItems} />}
+      {correspondenceItems.length > 0 && <CompactGroup label="Persuratan" icon={FileText} items={correspondenceItems} />}
+      {canAccessPath(access, "/dashboard/pembuatan-kak") && <CompactGroup label="Perencanaan" icon={ClipboardList} items={[{ label: "Pembuatan PO dan KAK", href: "/dashboard/pembuatan-kak", icon: FileSignature }]} />}
+      {navigationItems.map(item => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         return <Link key={item.href} href={item.href} title={item.label} aria-label={item.label} aria-current={active ? "page" : undefined} className={cn("grid size-12 shrink-0 place-items-center rounded-xl focus-visible:outline-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800" : "hover:bg-white/15")}><NavigationIcon icon={item.icon} className="size-5" /></Link>;
       })}
@@ -87,6 +96,12 @@ function CompactSidebar({ onToggle }: { onToggle?: () => void }) {
 }
 
 export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { onNavigate?: () => void; collapsed?: boolean; onToggle?: () => void }) {
+  const access = useAccess();
+  const allowed = (item: NavigationItem) => canAccessPath(access, item.href);
+  const personnelItems = personnelNavigation.filter(allowed);
+  const generalItems = generalNavigation.filter(allowed);
+  const correspondenceItems = correspondenceNavigation.filter(allowed);
+  const navigationItems = navigation.filter(allowed);
   const pathname = usePathname();
   const personnelActive = personnelNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
   const generalActive = generalNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -107,45 +122,45 @@ export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { on
       </div>
       <nav aria-label="Menu utama" className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-6">
         <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-200">Menu utama</p>
-        {(() => {
+        {canAccessPath(access, "/dashboard") && (() => {
           const active = pathname === "/dashboard";
           return <Link href="/dashboard" onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("mb-1 flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={LayoutDashboard} className="size-5 shrink-0" /><span className="min-w-0 leading-5">Dashboard</span></Link>;
         })()}
-        <button type="button" aria-expanded={personnelOpen} onClick={() => setPersonnelOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", personnelActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
+        {personnelItems.length > 0 && <button type="button" aria-expanded={personnelOpen} onClick={() => setPersonnelOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", personnelActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
           <BriefcaseBusiness aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Kepegawaian</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", personnelOpen && "rotate-180")} />
-        </button>
-        {personnelOpen && <div className="ml-3 space-y-1 border-l border-amber-200/45 pl-3">
-          {personnelNavigation.map((item) => {
+        </button>}
+        {personnelItems.length > 0 && personnelOpen && <div className="ml-3 space-y-1 border-l border-amber-200/45 pl-3">
+          {personnelItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
             return <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={Icon} className="size-4 shrink-0" /><span className="min-w-0 leading-5">{item.label}</span></Link>;
           })}
         </div>}
-        <button type="button" aria-expanded={generalOpen} onClick={() => setGeneralOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", generalActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
+        {generalItems.length > 0 && <button type="button" aria-expanded={generalOpen} onClick={() => setGeneralOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", generalActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
           <FolderOpen aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Umum</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", generalOpen && "rotate-180")} />
-        </button>
-        {generalOpen && <div className="ml-3 space-y-1 border-l border-amber-200/45 pl-3">
-          {generalNavigation.map((item) => {
+        </button>}
+        {generalItems.length > 0 && generalOpen && <div className="ml-3 space-y-1 border-l border-amber-200/45 pl-3">
+          {generalItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
             return <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={Icon} className="size-4 shrink-0" /><span className="min-w-0 leading-5">{item.label}</span></Link>;
           })}
         </div>}
-        <button type="button" aria-expanded={correspondenceOpen} onClick={() => setCorrespondenceOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", correspondenceActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
+        {correspondenceItems.length > 0 && <button type="button" aria-expanded={correspondenceOpen} onClick={() => setCorrespondenceOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", correspondenceActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
           <FileText aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Persuratan</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", correspondenceOpen && "rotate-180")} />
-        </button>
-        {correspondenceOpen && <div className="ml-3 space-y-1 border-l border-amber-200/45 pl-3">
-          {correspondenceNavigation.map((item) => {
+        </button>}
+        {correspondenceItems.length > 0 && correspondenceOpen && <div className="ml-3 space-y-1 border-l border-amber-200/45 pl-3">
+          {correspondenceItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
             return <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={Icon} className="size-4 shrink-0" /><span className="min-w-0 leading-5">{item.label}</span></Link>;
           })}
         </div>}
-        <button type="button" aria-expanded={planningOpen} onClick={() => setPlanningOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", planningActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
+        {canAccessPath(access, "/dashboard/pembuatan-kak") && <button type="button" aria-expanded={planningOpen} onClick={() => setPlanningOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", planningActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
           <ClipboardList aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Perencanaan</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", planningOpen && "rotate-180")} />
-        </button>
-        {planningOpen && <div className="ml-3 border-l border-amber-200/45 pl-3"><Link href="/dashboard/pembuatan-kak" onClick={onNavigate} aria-current={planningActive ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", planningActive ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={FileSignature} className="size-4 shrink-0" /><span>Pembuatan PO dan KAK</span></Link></div>}
-        {navigation.map((item) => {
+        </button>}
+        {canAccessPath(access, "/dashboard/pembuatan-kak") && planningOpen && <div className="ml-3 border-l border-amber-200/45 pl-3"><Link href="/dashboard/pembuatan-kak" onClick={onNavigate} aria-current={planningActive ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", planningActive ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={FileSignature} className="size-4 shrink-0" /><span>Pembuatan PO dan KAK</span></Link></div>}
+        {navigationItems.map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;
           return (

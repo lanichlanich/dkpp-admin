@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { database as db } from "@/lib/database";
 import { generateKgbDocument } from "@/lib/kgb-document";
 import { saveKgbDocument } from "@/lib/kgb-documents";
@@ -18,6 +19,8 @@ export const runtime = "nodejs";
 type EmployeeRow = { nip: string; name: string; rank: string; asn_type: string; status: string };
 
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["kgb"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

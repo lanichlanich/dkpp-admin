@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { getKakDownload } from "@/lib/kak";
@@ -6,6 +7,8 @@ import { kakBundleFileName } from "@/lib/kak-file-metadata";
 import PizZip from "pizzip";
 export const runtime = "nodejs";
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  const accessDenied = await checkApiAccess(["pembuatan-kak"]);
+  if (accessDenied) return accessDenied;
   if (!await getCurrentUser()) return NextResponse.json({ error: "Silakan masuk terlebih dahulu." }, { status: 401 });
   const query = new URL(request.url).searchParams;
   const variant = query.get("source");

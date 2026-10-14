@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { deleteEmployeeDocument, updateEmployeeDocument } from "@/lib/employee-documents";
 import { EMPLOYEE_DOCUMENT_TYPE_LABELS, getAllowedEmployeeDocumentTypes } from "@/lib/employee-document-types";
 import { employeeDocumentEditSchema } from "@/lib/employee-document-validation";
@@ -8,6 +9,8 @@ import { getCurrentUser } from "@/lib/session";
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request, context: RouteContext<"/api/employees/[nip]/documents/[id]">) {
+  const accessDenied = await checkApiAccess(["pegawai"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
   const { nip, id } = await context.params;
@@ -34,6 +37,8 @@ export async function DELETE(
   _request: Request,
   context: RouteContext<"/api/employees/[nip]/documents/[id]">,
 ) {
+  const accessDenied = await checkApiAccess(["pegawai"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

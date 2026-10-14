@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import PizZip from "pizzip";
 import { database as db } from "@/lib/database";
 import { getEmployeeDocumentsForArchive } from "@/lib/employee-documents";
@@ -40,6 +41,8 @@ export async function GET(
   _request: Request,
   context: RouteContext<"/api/employees/[nip]/documents/archive">,
 ) {
+  const accessDenied = await checkApiAccess(["pegawai"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

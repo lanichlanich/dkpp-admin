@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getCurrentUser } from "@/lib/session";
 import { getReportEmployee } from "@/lib/wfh-report-store";
 import { reportContextSchema } from "@/lib/wfh-report-validation";
@@ -7,6 +8,8 @@ export const runtime = "nodejs";
 const inFlight = new Set<string>();
 const lastRequest = new Map<string, number>();
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["laporan-wfh"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Silakan masuk kembali." }, { status: 401 });
   const input = reportContextSchema.safeParse(await request.json().catch(() => null));

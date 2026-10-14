@@ -10,7 +10,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     getNotificationCenter(),
   ]);
   return (
-    <DashboardShell>
+    <DashboardShell user={user}>
       <DashboardHeader user={user} notifications={notificationCenter.notifications} unreadCount={notificationCenter.unreadCount} /><main className="p-4 md:p-7 lg:p-8">{children}</main>
     </DashboardShell>
   );

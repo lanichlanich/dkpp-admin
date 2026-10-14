@@ -32,6 +32,7 @@ const TABLE_CATEGORY: Record<string, Category> = {
   surat_lupa_absen_documents: "Persuratan",
   service_archive_documents: "Persuratan",
   users: "Sistem",
+  app_roles: "Sistem",
   notifications: "Sistem",
   audit_logs: "Sistem",
 };

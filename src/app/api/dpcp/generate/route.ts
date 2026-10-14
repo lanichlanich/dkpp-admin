@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { database as db } from "@/lib/database";
 import { generateDpcpDocument } from "@/lib/dpcp-document";
 import { saveDpcpDocument } from "@/lib/dpcp-documents";
@@ -24,6 +25,8 @@ function optionalDate(value: string) {
 }
 
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["dpcp"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

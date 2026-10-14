@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getCurrentUser } from "@/lib/session";
 import { getSuratPengantarDocumentForDownload } from "@/lib/surat-pengantar-documents";
 import { downloadStorageObject } from "@/lib/storage";
@@ -8,6 +9,8 @@ export async function GET(
   _request: Request,
   context: RouteContext<"/api/surat-pengantar/[id]/download">,
 ) {
+  const accessDenied = await checkApiAccess(["surat-pengantar"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

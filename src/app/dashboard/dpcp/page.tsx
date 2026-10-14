@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import { getSignatoryOptions } from "@/lib/signatory-options";
 import type { Metadata } from "next";
 import { DpcpForm } from "@/components/dpcp/dpcp-form";
@@ -8,6 +9,7 @@ import { getDpcpEmployeeOptions } from "@/lib/employees";
 export const metadata: Metadata = { title: "Pembuatan DPCP" };
 
 export default async function DpcpPage() {
+  await requireMenuAccess("dpcp");
   const signatories = await getSignatoryOptions();
   const [employees, documents] = await Promise.all([getDpcpEmployeeOptions(), getDpcpHistory()]);
   const today = new Intl.DateTimeFormat("en-CA", {

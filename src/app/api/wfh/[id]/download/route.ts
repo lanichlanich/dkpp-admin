@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getCurrentUser } from "@/lib/session";
 import { getWfhDocumentForDownload } from "@/lib/wfh-documents";
 import { downloadStorageObject } from "@/lib/storage";
@@ -5,6 +6,8 @@ import { downloadStorageObject } from "@/lib/storage";
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, context: RouteContext<"/api/wfh/[id]/download">) {
+  const accessDenied = await checkApiAccess(["wfh"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

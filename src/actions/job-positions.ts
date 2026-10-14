@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { database as db } from "@/lib/database";
 import { isInactiveJobPositionName } from "@/lib/job-position-visibility";
-import { requireUser } from "@/lib/session";
+import { requireMenuAccess } from "@/lib/authorization";
 
 const text = (label: string, max = 200) => z.string().trim().min(1, `${label} wajib diisi.`).max(max, `${label} terlalu panjang.`);
 const positionSchema = z.object({
@@ -31,7 +31,7 @@ function refreshPositionPages() {
 }
 
 export async function saveJobPositionAction(_state: JobPositionFormState, formData: FormData): Promise<JobPositionFormState> {
-  await requireUser();
+  await requireMenuAccess("jabatan");
   const parsed = positionSchema.safeParse({
     id: formData.get("id"), name: formData.get("name"), organizationUnitId: formData.get("organizationUnitId"),
     positionType: formData.get("positionType"), echelon: formData.get("echelon"), parentId: formData.get("parentId"),
@@ -94,7 +94,7 @@ export async function saveJobPositionAction(_state: JobPositionFormState, formDa
 }
 
 export async function moveJobPositionAction(id: string, parentId: string | null) {
-  await requireUser();
+  await requireMenuAccess("jabatan");
   const parsedId = z.string().uuid().safeParse(id);
   const parsedParentId = parentId === null ? { success: true as const, data: null } : z.string().uuid().safeParse(parentId);
   if (!parsedId.success || !parsedParentId.success) return { success: false, message: "Data jabatan tidak valid." };
@@ -128,7 +128,7 @@ export async function moveJobPositionAction(id: string, parentId: string | null)
 }
 
 export async function deleteJobPositionAction(id: string) {
-  await requireUser();
+  await requireMenuAccess("jabatan");
   const safeId = z.string().uuid().safeParse(id);
   if (!safeId.success) return { success: false, message: "ID jabatan tidak valid." };
   const counts = await db.prepare(`SELECT

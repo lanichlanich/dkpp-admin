@@ -7,6 +7,8 @@ import { database as db } from "@/lib/database";
 import { createNotification } from "@/lib/notifications";
 import { createSession, deleteSession } from "@/lib/session";
 import { loginSchema, registerSchema, type ActionState } from "@/lib/validation";
+import { landingPath } from "@/lib/access-control";
+import { getCurrentUser } from "@/lib/session";
 
 export async function registerAction(
   _state: ActionState,
@@ -53,8 +55,8 @@ export async function registerAction(
   }
 
   await createSession(userId);
-  await createNotification(userId, "info", "Akun berhasil dibuat", "Selamat datang. Akun administrator Anda siap digunakan.");
-  redirect("/dashboard");
+  await createNotification(userId, "info", "Akun berhasil dibuat", "Akun Anda siap digunakan. Hubungi administrator untuk pengaturan akses menu.");
+  redirect("/dashboard/akses");
 }
 
 export async function loginAction(
@@ -74,7 +76,7 @@ export async function loginAction(
   try {
     user = await db
       .prepare(
-        "SELECT id, password_hash FROM users WHERE lower(email) = lower(?) OR lower(username) = lower(?) LIMIT 1",
+        "SELECT id, password_hash FROM users WHERE is_active = 1 AND (lower(email) = lower(?) OR lower(username) = lower(?)) LIMIT 1",
       )
       .get(parsed.data.identity, parsed.data.identity) as
       | { id: string; password_hash: string }
@@ -98,7 +100,8 @@ export async function loginAction(
       message: "Sesi login tidak dapat dibuat. Silakan coba lagi.",
     };
   }
-  redirect("/dashboard");
+  const currentUser = await getCurrentUser();
+  redirect(currentUser ? landingPath(currentUser) : "/login");
 }
 
 export async function logoutAction() {

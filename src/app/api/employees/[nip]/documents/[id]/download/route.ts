@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getEmployeeDocumentForDownload } from "@/lib/employee-documents";
 import { getCurrentUser } from "@/lib/session";
 
@@ -12,6 +13,8 @@ export async function GET(
   _request: Request,
   context: RouteContext<"/api/employees/[nip]/documents/[id]/download">,
 ) {
+  const accessDenied = await checkApiAccess(["pegawai"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
 

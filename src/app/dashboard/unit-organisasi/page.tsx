@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { Building2 } from "lucide-react";
 import { OrganizationUnitList } from "@/components/organization-units/organization-unit-list";
@@ -6,6 +7,7 @@ import { getOrganizationUnits } from "@/lib/organization-units";
 export const metadata: Metadata = { title: "Daftar Unit Organisasi" };
 
 export default async function OrganizationUnitsPage() {
+  await requireMenuAccess("unit-organisasi");
   const units = await getOrganizationUnits();
   const linkedUnits = units.filter((unit) => unit.positionCount > 0).length;
   return <div className="mx-auto max-w-7xl space-y-6">

@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { FileDown } from "lucide-react";
 import { WfhReportForm } from "@/components/wfh/wfh-report-form";
@@ -7,6 +8,7 @@ import { getReportEmployees, getReportHistory } from "@/lib/wfh-report-store";
 
 export const metadata: Metadata = { title: "Laporan WFH" };
 export default async function WfhReportPage() {
+  await requireMenuAccess("laporan-wfh");
   const user = await requireUser();
   const [history, employees] = await Promise.all([
     getReportHistory(user.id),

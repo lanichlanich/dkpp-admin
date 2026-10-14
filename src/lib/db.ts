@@ -548,6 +548,36 @@ type EmployeeSeedRow = {
 // intentionally excluded from the public source repository.
 const employeeSeed: EmployeeSeedRow[] = [];
 
+db.transaction(() => {
+db.exec(`CREATE TABLE IF NOT EXISTS app_roles (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, is_administrator INTEGER NOT NULL DEFAULT 0 CHECK (is_administrator IN (0,1)),
+  menu_permissions TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+); CREATE INDEX IF NOT EXISTS app_roles_name_idx ON app_roles(name);`);
+const roleTimestamp = new Date().toISOString();
+for (const [id, name, administrator, permissions] of [
+  ["administrator", "Administrator", 1, "[]"], ["perencana", "Perencana", 0, '["pembuatan-kak"]'], ["unassigned", "Belum ditetapkan", 0, "[]"],
+] as const) {
+  db.prepare("INSERT INTO app_roles (id, name, is_administrator, menu_permissions, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING")
+    .run(id, name, administrator, permissions, roleTimestamp, roleTimestamp);
+}
+const userColumns = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+for (const [name, definition] of [
+  ["role_id", "TEXT NOT NULL DEFAULT 'unassigned'"], ["menu_permissions", "TEXT"],
+  ["is_active", "INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1))"], ["protected_administrator", "INTEGER NOT NULL DEFAULT 0 CHECK (protected_administrator IN (0,1))"],
+]) {
+  if (!userColumns.some(column => column.name === name)) db.exec(`ALTER TABLE users ADD COLUMN ${name} ${definition}`);
+}
+if (!userColumns.some(column => column.name === "protected_administrator")) {
+  db.prepare("UPDATE users SET role_id = 'administrator', is_active = 1, protected_administrator = 1 WHERE lower(email) = ?").run("admin1@dkpp.com");
+}
+db.exec("CREATE INDEX IF NOT EXISTS users_role_id_idx ON users(role_id)");
+db.exec(`CREATE TRIGGER IF NOT EXISTS users_role_insert_guard BEFORE INSERT ON users
+  WHEN NOT EXISTS (SELECT 1 FROM app_roles WHERE id = NEW.role_id)
+  BEGIN SELECT RAISE(ABORT, 'Role tidak ditemukan'); END;
+  CREATE TRIGGER IF NOT EXISTS users_role_update_guard BEFORE UPDATE OF role_id ON users
+  WHEN NOT EXISTS (SELECT 1 FROM app_roles WHERE id = NEW.role_id)
+  BEGIN SELECT RAISE(ABORT, 'Role tidak ditemukan'); END;`);
+}).immediate();
 const employeeColumns = db.prepare("PRAGMA table_info(employees)").all() as Array<{ name: string }>;
 if (!employeeColumns.some((column) => column.name === "birth_place")) {
   db.exec("ALTER TABLE employees ADD COLUMN birth_place TEXT NOT NULL DEFAULT ''");

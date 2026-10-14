@@ -20,6 +20,9 @@ export async function updateProfileAction(
   if (!parsed.success) {
     return { status: "error", errors: parsed.error.flatten().fieldErrors };
   }
+  if (user.protectedAdministrator && parsed.data.email.toLowerCase() !== user.email.toLowerCase()) {
+    return { status: "error", message: "Email administrator utama tidak dapat diubah." };
+  }
 
   const conflict = await db
     .prepare(

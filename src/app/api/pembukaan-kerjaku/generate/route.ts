@@ -1,3 +1,4 @@
+import { checkApiAccess } from "@/lib/authorization";
 import { getCurrentUser } from "@/lib/session";
 import { generatePembukaanKerjakuDocument } from "@/lib/pembukaan-kerjaku-document";
 import { getEmployeesForKerjaku, kerjakuRequestSchema, saveKerjakuRequest } from "@/lib/pembukaan-kerjaku";
@@ -5,6 +6,8 @@ import { getEmployeesForKerjaku, kerjakuRequestSchema, saveKerjakuRequest } from
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const accessDenied = await checkApiAccess(["pembukaan-kerjaku"]);
+  if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Sesi berakhir. Silakan masuk kembali." }, { status: 401 });
   let body: unknown;

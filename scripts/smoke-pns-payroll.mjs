@@ -4,9 +4,9 @@ import ts from "typescript";
 
 const data = JSON.parse(readFileSync("src/data/pns-salary-2024.json", "utf8"));
 const source = readFileSync("src/lib/pns-payroll.ts", "utf8");
-const module = { exports: {} };
-new Function("require", "exports", ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText)(() => data, module.exports);
-const { calculatePnsPayroll: calculate, DEFAULT_PNS_PAYROLL: defaults, salaryYears } = module.exports;
+const payrollExports = {};
+new Function("require", "exports", ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText)(() => data, payrollExports);
+const { calculatePnsPayroll: calculate, DEFAULT_PNS_PAYROLL: defaults, salaryYears } = payrollExports;
 const run = overrides => calculate({ ...defaults, ...overrides });
 const amount = (rows, name) => rows.find(row => row.name === name)?.amount;
 

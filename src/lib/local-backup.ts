@@ -2,9 +2,8 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { createBackupContent, jakartaBackupName, tarArchive } from "@/lib/google-drive-backup";
 
-export function localBackupAllowed(username: string) {
-  const configured = process.env.BACKUP_ADMIN_USERNAMES ?? process.env.GOOGLE_DRIVE_BACKUP_ADMIN_USERNAMES ?? "";
-  return configured.split(",").map(value => value.trim().toLocaleLowerCase("id-ID")).filter(Boolean).includes(username.trim().toLocaleLowerCase("id-ID"));
+export function localBackupAllowed(user: import("@/lib/access-control").AccessUser) {
+  return user.isAdministrator || user.menuPermissions.includes("backup-lokal");
 }
 export async function createLocalBackup() {
   const createdAt = new Date();

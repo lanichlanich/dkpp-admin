@@ -37,7 +37,7 @@ delete process.env.GOOGLE_DRIVE_BACKUP_ENCRYPTION_KEY;
 function setup({ tokenError, tokenStatus = 400, permissions = [{ type: "user" }], canWrite = true, malformedError = false, username = "admin1" } = {}) {
   const state = { snapshots: 0, downloads: [], folders: [], uploads: [], tokenCalls: 0 };
   const cache = new Map();
-  cache.set(path.resolve("src/lib/session.ts"), { exports: { requireUser: async () => ({ username, isAdministrator: true, menuPermissions: [] }) } });
+  cache.set(path.resolve("src/lib/session.ts"), { exports: { requireUser: async () => ({ username, isAdministrator: username !== "guest", menuPermissions: [] }) } });
   cache.set(path.resolve("src/lib/database.ts"), { exports: {
     createBackupSnapshot: async () => { state.snapshots++; return snapshot; },
   } });
@@ -144,8 +144,8 @@ try {
   assert.equal(readOnly.state.snapshots, 0);
 
   const unauthorized = setup({ username: "guest" });
-  assert.equal((await unauthorized.actions.checkGoogleDriveBackupAction()).status, "error");
-  assert.equal((await unauthorized.actions.runGoogleDriveBackupAction()).status, "error");
+  await assert.rejects(() => unauthorized.actions.checkGoogleDriveBackupAction(), /NEXT_REDIRECT/);
+  await assert.rejects(() => unauthorized.actions.runGoogleDriveBackupAction(), /NEXT_REDIRECT/);
   assert.equal(unauthorized.state.tokenCalls, 0); assert.equal(unauthorized.state.snapshots, 0);
   const connection = setup();
   const connectionResult = await connection.actions.checkGoogleDriveBackupAction();
@@ -154,7 +154,9 @@ try {
 
   const { api, actions, state } = setup();
   assert(api.googleDriveBackupReady(), "Encryption key must not be required");
-  assert(api.googleDriveBackupAllowed("ADMIN1")); assert(!api.googleDriveBackupAllowed("guest"));
+  assert(api.googleDriveBackupAllowed({ isAdministrator: true, menuPermissions: [] }));
+  assert(!api.googleDriveBackupAllowed({ isAdministrator: false, menuPermissions: ["pembuatan-kak"] }));
+  assert(api.googleDriveBackupAllowed({ isAdministrator: false, menuPermissions: ["backup"] }));
   const result = await actions.runGoogleDriveBackupAction();
   assert.equal(result.status, "success"); assert.match(result.message, /\.tar\.gz/);
   assert.equal(state.snapshots, 1);
@@ -181,6 +183,7 @@ try {
   }
   assert.deepEqual(archives.get("Umum").get("files/wfh_reports/record-report-1.docx"), fixtureBytes("report-1.docx"));
   const system = archives.get("Sistem"), orphan = JSON.parse(system.get("database/unlinked-storage-index.json"))[0];
+  assert.deepEqual(JSON.parse(system.get("database/app_roles.json")), snapshot.tables.app_roles);
   assert.equal(orphan.storageName, "orphan.pdf");
   assert.deepEqual(system.get(orphan.path), fixtureBytes("orphan.pdf"));
   console.log("PASS Google Drive backup: plain gzip/tar extraction, 5 categories, database snapshots, KAK/RKA/PO, WFH and orphan bytes; OAuth diagnostics redact secrets and fail before snapshot; private writable folder enforced; encryption key unnecessary.");

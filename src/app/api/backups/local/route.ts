@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ error: "Silakan masuk terlebih dahulu." }, { status: 401 });
-  if (!localBackupAllowed(user.username)) return Response.json({ error: "Backup hanya tersedia untuk administrator yang ditetapkan." }, { status: 403 });
+  if (!localBackupAllowed(user)) return Response.json({ error: "Anda tidak memiliki izin backup lokal." }, { status: 403 });
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) return Response.json({ error: "Permintaan backup tidak diizinkan." }, { status: 403 });
   if (active.has(user.id)) return Response.json({ error: "Backup lokal masih berlangsung. Tunggu hingga selesai." }, { status: 429 });

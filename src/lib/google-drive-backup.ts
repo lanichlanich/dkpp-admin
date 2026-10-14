@@ -85,16 +85,8 @@ function destinationFolderId() {
   return process.env.GOOGLE_DRIVE_BACKUP_FOLDER_ID?.trim() || ROOT_FOLDER_ID;
 }
 
-export function googleDriveBackupAllowed(username: string) {
-  const allowedUsernames = process.env.GOOGLE_DRIVE_BACKUP_ADMIN_USERNAMES
-    ?.split(",")
-    .map((value) => value.trim().toLocaleLowerCase("id-ID"))
-    .filter(Boolean) ?? [];
-  return allowedUsernames.includes(username.trim().toLocaleLowerCase("id-ID"));
-}
-
-export function googleDriveBackupAdminConfigured() {
-  return Boolean(process.env.GOOGLE_DRIVE_BACKUP_ADMIN_USERNAMES?.trim());
+export function googleDriveBackupAllowed(user: import("@/lib/access-control").AccessUser) {
+  return user.isAdministrator || user.menuPermissions.includes("backup");
 }
 
 let cachedToken: { accessToken: string; expiresAt: number } | null = null;

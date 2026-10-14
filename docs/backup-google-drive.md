@@ -13,7 +13,7 @@ New backups are **not encrypted** and can be extracted directly without a passwo
    - `GOOGLE_DRIVE_CLIENT_ID`: OAuth client ID.
    - `GOOGLE_DRIVE_CLIENT_SECRET`: matching OAuth client secret.
    - `GOOGLE_DRIVE_REFRESH_TOKEN`: offline refresh token for the Drive account that can write to the target folder. Copy the **Refresh token** field, not the access token or authorization code. It must be issued to the same OAuth client as the Client ID and Client Secret above.
-   - `GOOGLE_DRIVE_BACKUP_ADMIN_USERNAMES`: comma-separated application usernames allowed to run backups, for example the actual administrator username. This allowlist is checked again in the server action.
+   - Akses backup diatur melalui **Manajemen User**: administrator dapat menjalankan backup, dan role lain harus diberi izin menu **Backup Google Drive**. Server Action memeriksa izin dari database setiap kali dijalankan.
    - `GOOGLE_DRIVE_BACKUP_FOLDER_ID`: optional; defaults to the folder ID supplied for DKPP-Admin.
 5. Keep the Drive folder restricted to the owner and the intended backup account. Changing public access from Editor to Viewer still leaves the folder public; choose **Restricted / Dibatasi** under General access and save.
 

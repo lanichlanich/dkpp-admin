@@ -24,7 +24,7 @@ const snapshot = { tables: {
 }, storageObjects: [...contents.keys()].map(name => ({ name, metadata: { size: contents.get(name).length } })) };
 function setup(user = { id: "admin", username: "admin1" }, failure = false) {
   const state = { snapshots: 0, downloads: [] }, cache = new Map();
-  cache.set(path.resolve("src/lib/session.ts"), { exports: { getCurrentUser: async () => user ? { isAdministrator: true, menuPermissions: [], ...user } : null } });
+  cache.set(path.resolve("src/lib/session.ts"), { exports: { getCurrentUser: async () => user ? { isAdministrator: user.username === "admin1", menuPermissions: [], ...user } : null } });
   cache.set(path.resolve("src/lib/database.ts"), { exports: { createBackupSnapshot: async () => { state.snapshots++; return snapshot; } } });
   cache.set(path.resolve("src/lib/storage.ts"), { exports: { downloadStorageObject: async name => { state.downloads.push(name); if (failure) throw new Error("Unreadable file"); return contents.get(name); } } });
   function load(file) {
@@ -54,7 +54,7 @@ try {
     const fixture = setup(user); assert.equal((await fixture.api.POST(request())).status, status); assert.equal(fixture.state.snapshots, 0);
   }
   const crossOrigin = setup(); assert.equal((await crossOrigin.api.POST(request("https://other.test"))).status, 403); assert.equal(crossOrigin.state.snapshots, 0);
-  const fixture = setup(); assert(fixture.backup.localBackupAllowed("ADMIN1"));
+  const fixture = setup(); assert(fixture.backup.localBackupAllowed({ isAdministrator: true, menuPermissions: [] }));
   const response = await fixture.api.POST(request("https://app.test")); assert.equal(response.status, 200);
   assert.equal(response.headers.get("content-length"), null); assert.match(response.headers.get("content-disposition"), /backup-dkpp-admin-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.tar\.gz/);
   assert.equal((await fixture.api.POST(request())).status, 429);
@@ -66,6 +66,7 @@ try {
   assert.equal(manifest.tableCount, 6); assert.equal(manifest.documentCount, 5); assert.equal(manifest.unlinkedStorageObjectCount, 1);
   assert.deepEqual(JSON.parse(files.get("Kepegawaian/database/employees.json")), snapshot.tables.employees);
   assert.deepEqual(JSON.parse(files.get("Sistem/database/users.json")), snapshot.tables.users);
+  assert.deepEqual(JSON.parse(files.get("Sistem/database/app_roles.json")), snapshot.tables.app_roles);
   assert(![...files.keys()].some(name => /sessions|\.env/.test(name))); assert(files.has("PEMULIHAN.txt"));
   for (const entry of manifest.files) { assert.equal(files.get(entry.path).length, entry.size); assert.equal(createHash("sha256").update(files.get(entry.path)).digest("hex"), entry.sha256); }
   for (const entry of manifest.storageFiles) assert.deepEqual(files.get(entry.path), contents.get(entry.storageName), "Restore mapping must retain original bytes and Storage names");
@@ -74,6 +75,10 @@ try {
   const afterCancel = await fixture.api.POST(request()); assert.equal(afterCancel.status, 200); await afterCancel.body.cancel();
   const failed = setup(undefined, true), oldError = console.error; console.error = () => {};
   try { assert.equal((await failed.api.POST(request())).status, 500); assert.equal((await failed.api.POST(request())).status, 500); } finally { console.error = oldError; }
-  process.env.BACKUP_ADMIN_USERNAMES = "admin2"; assert(!fixture.backup.localBackupAllowed("admin1")); assert(fixture.backup.localBackupAllowed("admin2"));
+  process.env.BACKUP_ADMIN_USERNAMES = "admin2";
+  assert(fixture.backup.localBackupAllowed({ isAdministrator: true, menuPermissions: [] }));
+  assert(!fixture.backup.localBackupAllowed({ isAdministrator: false, menuPermissions: ["pembuatan-kak"] }));
+  const delegated = setup({ id: "delegated", username: "delegated", isAdministrator: false, menuPermissions: ["backup-lokal"] });
+  const permittedBackup = await delegated.api.POST(request()); assert.equal(permittedBackup.status, 200); await permittedBackup.body.cancel();
   console.log("PASS local backup: >5 MB streamed archive, extraction/checksums, original database and all document bytes, restore mapping, no OAuth, admin/auth/origin checks, concurrency, cancellation and complete failure on missing files");
 } finally { globalThis.fetch = originalFetch; }

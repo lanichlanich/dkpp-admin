@@ -10,7 +10,7 @@ Akun lama selain administrator utama serta pendaftaran mandiri mendapatkan role 
 
 Hak akses diperiksa kembali dari database pada setiap permintaan. Perubahan role/menu berlaku tanpa login ulang. Sidebar desktop, ringkas, dan mobile hanya menunjukkan menu yang diizinkan. Halaman, API, dan Server Actions memeriksa izin sendiri; permintaan API yang tidak diizinkan mengembalikan HTTP 403.
 
-Backup ke Lokal dan Google Drive tetap memerlukan allowlist administrator pada environment yang sudah ada, selain izin menu. Backup mengekspor semua data aplikasi sehingga pemberian akses ini perlu dilakukan dengan hati-hati. Tabel `app_roles` dan kolom akses pengguna ikut tercakup dalam backup, sementara sesi login tetap dikecualikan.
+Backup ke Lokal dan Google Drive mengikuti izin menu pada role atau pengaturan khusus pengguna. Daftar username backup pada environment tidak lagi menentukan akses; administrator memiliki izin backup, sementara role lain harus mendapat menu backup secara eksplisit. Backup mengekspor semua data aplikasi. Tabel `app_roles` dan kolom akses pengguna ikut tercakup dalam backup, sementara sesi login tetap dikecualikan.
 
 Migrasi Supabase: `supabase/migrations/20261014055846_add_user_role_management.sql`. SQLite menerapkan perubahan saat database diinisialisasi. Kata sandi, nama, email, dan data administrasi lama tidak ditimpa migrasi.
 

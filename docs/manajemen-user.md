@@ -2,6 +2,8 @@
 
 Menu **Manajemen User** hanya tersedia bagi administrator. Administrator dapat membuat pengguna, membuat dan mengubah role, memilih menu role, mengganti role pengguna, menonaktifkan akun, dan mengganti akses role dengan menu khusus pengguna.
 
+Tombol **Edit user** mengubah nama, username, dan email. Email dan username harus unik tanpa membedakan huruf besar/kecil. Email administrator utama tetap terkunci. Password, role, status akun, izin menu, dan hubungan dokumen tetap dipertahankan. Perubahan identitas dicatat di log audit; role dan menu tetap dikelola melalui **Atur akses**.
+
 Role **Perencana** awalnya hanya memiliki akses **Perencanaan → Pembuatan PO dan KAK**. Administrator dapat mengubah daftar tersebut. Pilihan menu khusus menggantikan seluruh daftar menu role untuk pengguna tersebut; kosong berarti hanya profil pribadi. Hilangkan pilihan menu khusus untuk kembali mengikuti role.
 
 Role **Administrator** memiliki semua menu dan manajemen pengguna. Akun **admin1@dkpp.com** merupakan administrator utama yang dilindungi dari demosi, penonaktifan, dan perubahan email. Administrator lain juga tidak dapat menonaktifkan atau menurunkan role akun mereka sendiri.

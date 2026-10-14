@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { database as db } from "@/lib/database";
 import { requireAdministrator } from "@/lib/authorization";
 import { MENU_CATALOG } from "@/lib/access-control";
-import { registerSchema } from "@/lib/validation";
+import { profileSchema, registerSchema } from "@/lib/validation";
 export type ManagementState = { status?: "success" | "error"; message?: string; submittedAt?: number };
 const menuSchema = z.array(z.string()).max(MENU_CATALOG.length).refine(ids => ids.every(id => MENU_CATALOG.some(menu => menu.id === id)), "Menu tidak valid.");
 const result = (success: boolean, message: string): ManagementState => ({ status: success ? "success" : "error", message, submittedAt: Date.now() });
@@ -55,6 +55,34 @@ export async function createUserAction(_state: ManagementState, form: FormData):
   const now = new Date().toISOString();
   await db.prepare("INSERT INTO users (id, name, username, email, password_hash, role_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(randomUUID(), name, username, email.toLowerCase(), await hash(password, 12), roleId, now, now);
   return refreshed("Pengguna berhasil ditambahkan.");
+}
+
+export async function editUserAction(_state: ManagementState, form: FormData): Promise<ManagementState> {
+  await requireAdministrator();
+  const parsed = profileSchema.extend({ id: z.string().min(1).max(80) }).safeParse(
+    Object.fromEntries(["id", "name", "username", "email"].map(key => [key, form.get(key)])),
+  );
+  if (!parsed.success) return result(false, parsed.error.issues[0]?.message ?? "Periksa data pengguna.");
+  const { id, name, username, email } = parsed.data;
+  const target = await db.prepare("SELECT email, protected_administrator FROM users WHERE id = ?")
+    .get<{ email: string; protected_administrator: number }>(id);
+  if (!target) return result(false, "Pengguna tidak ditemukan.");
+  if (target.protected_administrator === 1 && email.toLowerCase() !== target.email.toLowerCase()) {
+    return result(false, "Email administrator utama tidak dapat diubah.");
+  }
+  if (await db.prepare("SELECT id FROM users WHERE id <> ? AND (lower(username) = lower(?) OR lower(email) = lower(?))").get(id, username, email)) {
+    return result(false, "Email atau username sudah digunakan pengguna lain.");
+  }
+  try {
+    const saved = await db.prepare("UPDATE users SET name = ?, username = ?, email = ?, updated_at = ? WHERE id = ?")
+      .run(name, username, email.toLowerCase(), new Date().toISOString(), id);
+    if (!saved.changes) return result(false, "Pengguna tidak ditemukan.");
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+    if (code === "23505" || code === "SQLITE_CONSTRAINT_UNIQUE") return result(false, "Email atau username sudah digunakan pengguna lain.");
+    return result(false, "Data pengguna tidak dapat diperbarui. Silakan coba lagi.");
+  }
+  return refreshed("Data pengguna berhasil diperbarui.");
 }
 
 export async function deleteRoleAction(_state: ManagementState, form: FormData): Promise<ManagementState> {

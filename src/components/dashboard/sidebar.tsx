@@ -6,7 +6,7 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Archive, Award, BriefcaseBusiness, Building2, CalendarDays, ChevronDown, ClipboardList, CloudUpload, FileBarChart2, FileCheck2, FileSignature, FileText, FolderOpen, History, House, LayoutDashboard, ListTree, LoaderCircle, Network, PanelLeftClose, PanelLeftOpen, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, X } from "lucide-react";
+import { Archive, Award, BriefcaseBusiness, Building2, Calculator, CalendarDays, ChevronDown, ClipboardList, CloudUpload, FileBarChart2, FileCheck2, FileSignature, FileText, FolderOpen, History, House, LayoutDashboard, ListTree, LoaderCircle, Network, PanelLeftClose, PanelLeftOpen, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, Wallet, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -86,6 +86,7 @@ function CompactSidebar({ onToggle }: { onToggle?: () => void }) {
       {generalItems.length > 0 && <CompactGroup label="Umum" icon={FolderOpen} items={generalItems} />}
       {correspondenceItems.length > 0 && <CompactGroup label="Persuratan" icon={FileText} items={correspondenceItems} />}
       {canAccessPath(access, "/dashboard/pembuatan-kak") && <CompactGroup label="Perencanaan" icon={ClipboardList} items={[{ label: "Pembuatan PO dan KAK", href: "/dashboard/pembuatan-kak", icon: FileSignature }]} />}
+      {canAccessPath(access, "/dashboard/simulasi-gaji-pns") && <CompactGroup label="Keuangan" icon={Wallet} items={[{ label: "Simulasi Gaji PNS", href: "/dashboard/simulasi-gaji-pns", icon: Calculator }]} />}
       {navigationItems.map(item => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         return <Link key={item.href} href={item.href} title={item.label} aria-label={item.label} aria-current={active ? "page" : undefined} className={cn("grid size-12 shrink-0 place-items-center rounded-xl focus-visible:outline-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800" : "hover:bg-white/15")}><NavigationIcon icon={item.icon} className="size-5" /></Link>;
@@ -111,6 +112,8 @@ export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { on
   const [correspondenceOpen, setCorrespondenceOpen] = useState(correspondenceActive);
   const planningActive = pathname.startsWith("/dashboard/pembuatan-kak");
   const [planningOpen, setPlanningOpen] = useState(planningActive);
+  const financeActive = pathname.startsWith("/dashboard/simulasi-gaji-pns");
+  const [financeOpen, setFinanceOpen] = useState(financeActive);
   if (collapsed) return <CompactSidebar onToggle={onToggle} />;
   return (
     <div className="flex h-full flex-col bg-gradient-to-b from-emerald-600 via-green-700 to-sky-700 text-emerald-50">
@@ -160,6 +163,10 @@ export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { on
           <ClipboardList aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Perencanaan</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", planningOpen && "rotate-180")} />
         </button>}
         {canAccessPath(access, "/dashboard/pembuatan-kak") && planningOpen && <div className="ml-3 border-l border-amber-200/45 pl-3"><Link href="/dashboard/pembuatan-kak" onClick={onNavigate} aria-current={planningActive ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", planningActive ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={FileSignature} className="size-4 shrink-0" /><span>Pembuatan PO dan KAK</span></Link></div>}
+        {canAccessPath(access, "/dashboard/simulasi-gaji-pns") && <button type="button" aria-expanded={financeOpen} onClick={() => setFinanceOpen(open => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", financeActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
+          <Wallet aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Keuangan</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", financeOpen && "rotate-180")} />
+        </button>}
+        {canAccessPath(access, "/dashboard/simulasi-gaji-pns") && financeOpen && <div className="ml-3 border-l border-amber-200/45 pl-3"><Link href="/dashboard/simulasi-gaji-pns" onClick={onNavigate} aria-current={financeActive ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", financeActive ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={Calculator} className="size-4 shrink-0" /><span>Simulasi Gaji PNS</span></Link></div>}
         {navigationItems.map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;

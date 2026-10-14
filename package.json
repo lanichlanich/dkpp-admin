@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "smoke:user-management": "node scripts/smoke-user-management.mjs",
+    "smoke:pns-payroll": "node scripts/smoke-pns-payroll.mjs",
     "smoke:employee-birth-place": "node scripts/smoke-employee-birth-place.mjs",
     "smoke:google-drive-backup": "node scripts/smoke-google-drive-backup.mjs",
     "smoke:local-backup": "node scripts/smoke-local-backup.mjs",

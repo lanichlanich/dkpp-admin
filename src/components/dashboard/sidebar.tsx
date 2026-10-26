@@ -34,6 +34,7 @@ const correspondenceNavigation = [
   { label: "Klasifikasi Surat", href: "/dashboard/klasifikasi-surat", icon: ListTree },
   { label: "Arsip Dinas", href: "/dashboard/arsip-dinas", icon: Archive },
   { label: "Surat Pengantar", href: "/dashboard/surat-pengantar", icon: Send },
+  { label: "Surat Perbantuan", href: "/dashboard/surat-perbantuan", icon: FileSignature },
   { label: "Surat Lupa Absen Pulang", href: "/dashboard/surat-lupa-absen-pulang", icon: FileSignature },
 ];
 

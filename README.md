@@ -29,6 +29,14 @@ Baca & isi form mengirim PDF, gambar, atau teks dan gambar dalam DOCX ke Google 
 
 Menu Laporan WFH memilih pegawai aktif, menampilkan jabatan/unit, meminta empat usulan tugas Gemini, dan memungkinkan penyuntingan. Realisasi dan persentase diisi pengguna. Setelah konfirmasi pemeriksaan, laporan DOCX dibuat dari template sumber, disimpan dalam arsip milik pengguna, dan dapat diunduh ulang dengan autentikasi. Tanpa Gemini, laporan tetap dapat diisi manual.
 
+## Surat Perbantuan
+
+Menu **Persuratan → Surat Perbantuan** menggunakan `src/templates/template-surat-perbantuan.docx`. Pilih pegawai aktif untuk mengisi nama, NIP, pangkat, golongan, jabatan, dan unit kerja dari database. Isi nomor urut surat, tanggal penetapan secara manual, jabatan perbantuan, serta unit kerja tujuan. Nomor mengikuti awalan dan akhiran pada template: `800.1.11.1 / nomor / Sekret.`
+
+Dokumen DOCX tersimpan di arsip dan dapat diunduh ulang oleh pengguna dengan akses menu Surat Perbantuan. Identitas pegawai diperiksa ulang di server. Kop, isi tetap, serta penandatangan mengikuti template sumber; paragraf kosong di akhir dihapus dan bagian tembusan dijaga tetap bersama. Data dan file arsip ikut backup kategori Persuratan.
+
+SQLite membuat tabel arsip secara otomatis. Untuk lingkungan PostgreSQL, terapkan migrasi `supabase/migrations/20261026021735_add_surat_perbantuan_documents.sql` sebelum menjalankan versi baru. Tabel arsip hanya diakses melalui server aplikasi, dengan RLS aktif dan akses Data API publik dicabut.
+
 ## Verifikasi
 
 ```powershell
@@ -36,6 +44,7 @@ npm.cmd run lint
 npm.cmd run build
 npm.cmd run smoke:wfh-report
 npm.cmd run smoke:gemini
+npm.cmd run smoke:surat-perbantuan
 ```
 
 smoke:gemini menggunakan layanan Gemini dan kuota proyek dengan dokumen uji sintetis.

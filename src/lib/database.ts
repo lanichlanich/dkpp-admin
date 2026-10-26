@@ -18,6 +18,7 @@ const TABLE_NAMES = [
   "pak_documents",
   "wfh_documents",
   "surat_pengantar_documents",
+  "surat_perbantuan_documents",
   "surat_lupa_absen_documents",
   "kerjaku_request_documents",
   "kak_documents",

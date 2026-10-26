@@ -270,6 +270,29 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS kerjaku_request_documents_created_idx
     ON kerjaku_request_documents(created_at DESC);
 
+  CREATE TABLE IF NOT EXISTS surat_perbantuan_documents (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    employee_nip TEXT NOT NULL,
+    employee_name TEXT NOT NULL,
+    employee_rank TEXT NOT NULL,
+    employee_grade TEXT NOT NULL,
+    employee_position TEXT NOT NULL,
+    employee_unit TEXT NOT NULL,
+    nomor_surat TEXT NOT NULL,
+    tanggal_surat TEXT NOT NULL,
+    jabatan_perbantuan TEXT NOT NULL,
+    unit_kerja_perbantuan TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    storage_name TEXT NOT NULL UNIQUE,
+    file_size INTEGER NOT NULL CHECK (file_size BETWEEN 1 AND 2097152),
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS surat_perbantuan_documents_date_idx
+    ON surat_perbantuan_documents(tanggal_surat DESC, created_at DESC);
+  CREATE INDEX IF NOT EXISTS surat_perbantuan_documents_user_idx
+    ON surat_perbantuan_documents(user_id);
+
   CREATE TABLE IF NOT EXISTS surat_lupa_absen_documents (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

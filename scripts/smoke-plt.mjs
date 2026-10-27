@@ -49,6 +49,7 @@ function load(file) {
   return mod.exports;
 }
 const dates = load("src/lib/plt-dates.ts"), service = load("src/lib/plt-assignments.ts");
+const { pltFileName } = load("src/lib/plt-filename.ts");
 const api = load("src/app/api/plt/route.ts"), rowApi = load("src/app/api/plt/[id]/route.ts");
 const download = load("src/app/api/plt/[id]/download/route.ts");
 const values = { employeeNip: nip, actingPosition: "Kepala Bidang Contoh", actingUnit: "Bidang Contoh", skNumber: "800/1/2026", startDate: "2026-10-27", notes: "Data sintetis", previousId: "" };
@@ -61,6 +62,11 @@ const request = (input, method = "POST", file = new File([pdfBytes], "SK-Plt.pdf
 };
 const context = id => ({ params: Promise.resolve({ id }) });
 try {
+  assert.equal(pltFileName("Pegawai Contoh", "Kepala Bidang Contoh", "2026-10-27", "scan.PDF"), "Pegawai Contoh_Kepala Bidang Contoh_2026-10-27.pdf");
+  assert.equal(pltFileName("  Ali / Budi  ", "Kepala: Bidang\\Umum?", "2026-10-27", "SK.docx"), "Ali Budi_Kepala Bidang Umum_2026-10-27.docx");
+  assert.equal(pltFileName("A", "B", "2026-02-30", "SK.pdf"), "");
+  const unicodeName = pltFileName("É😀".repeat(90), "JabatanÉ😀".repeat(90), "2026-10-27", "SK.docx");
+  assert(Buffer.byteLength(unicodeName) <= 240); assert(unicodeName.endsWith("_2026-10-27.docx")); assert(!unicodeName.includes("�"));
   for (const [start, end] of [["2026-10-27", "2027-01-26"], ["2026-01-31", "2026-04-29"], ["2023-11-30", "2024-02-28"], ["2026-11-30", "2027-02-27"], ["2024-02-29", "2024-05-28"], ["2026-12-31", "2027-03-30"]]) assert.equal(dates.pltEndDate(start), end);
   assert(!dates.validPltDate("2026-02-29")); assert(!dates.validPltDate("2026-04-31")); assert(dates.validPltDate("2024-02-29"));
   assert.equal(dates.jakartaToday(new Date("2026-10-26T16:59:59Z")), "2026-10-26");
@@ -69,10 +75,11 @@ try {
   assert.equal(response.status, 201); const { id } = await response.json();
   let row = (await service.getPltAssignments())[0];
   assert.equal(row.employeeName, "Pegawai Contoh"); assert.equal(row.endDate, "2027-01-26");
-  assert.equal(row.fileName, "SK-Plt.pdf"); assert.equal(row.fileSize, pdfBytes.length);
+  assert.equal(row.fileName, "Pegawai Contoh_Kepala Bidang Contoh_2026-10-27.pdf"); assert.equal(row.fileSize, pdfBytes.length);
   response = await download.GET(new Request("http://localhost"), context(id));
   assert.equal(response.status, 200); assert(Buffer.from(await response.arrayBuffer()).equals(pdfBytes));
   assert.match(response.headers.get("content-disposition"), /attachment/);
+  assert.equal(decodeURIComponent(response.headers.get("content-disposition").split("filename*=UTF-8''")[1]), "Pegawai Contoh_Kepala Bidang Contoh_2026-10-27.pdf");
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   const oldStorageName = db.prepare("SELECT storage_name FROM plt_assignments WHERE id = ?").get(id).storage_name;
   for (const [day, expected] of [["2026-10-26", "upcoming"], ["2027-01-11", "active"], ["2027-01-12", "expiring"], ["2027-01-26", "expiring"], ["2027-01-27", "expired"]]) assert.equal(dates.pltStatus(row, day).status, expected);
@@ -87,6 +94,18 @@ try {
   assert(storedFiles.has(oldStorageName), "Metadata edit must retain the original SK");
   response = await rowApi.PATCH(request(values, "PATCH", new File([pdfBytes], "SK baru.pdf")), context(id));
   assert.equal(response.status, 200); assert(!storedFiles.has(oldStorageName)); assert.equal(storedFiles.size, 1);
+  const storedName = db.prepare("SELECT storage_name FROM plt_assignments WHERE id = ?").get(id).storage_name;
+  response = await rowApi.PATCH(request({ ...values, actingPosition: "Jabatan File Uji", startDate: "2026-11-02" }, "PATCH", null), context(id));
+  assert.equal(response.status, 200);
+  assert.equal(db.prepare("SELECT file_name FROM plt_assignments WHERE id = ?").get(id).file_name, "Pegawai Contoh_Jabatan File Uji_2026-11-02.pdf");
+  assert.equal(db.prepare("SELECT storage_name FROM plt_assignments WHERE id = ?").get(id).storage_name, storedName, "Metadata edits must keep the stored file");
+  response = await download.GET(new Request("http://localhost"), context(id));
+  assert(Buffer.from(await response.arrayBuffer()).equals(pdfBytes));
+  assert.equal(decodeURIComponent(response.headers.get("content-disposition").split("filename*=UTF-8''")[1]), "Pegawai Contoh_Jabatan File Uji_2026-11-02.pdf");
+  assert.equal((await rowApi.PATCH(request(values, "PATCH", null), context(id))).status, 200);
+  db.prepare("UPDATE plt_assignments SET file_name = 'legacy-scan.pdf' WHERE id = ?").run(id);
+  assert.equal((await service.getPltAssignments())[0].fileName, "Pegawai Contoh_Kepala Bidang Contoh_2026-10-27.pdf");
+  assert.equal((await service.getPltDocument(id)).fileName, "Pegawai Contoh_Kepala Bidang Contoh_2026-10-27.pdf");
   for (const file of [new File(["plain text"], "wrong.pdf"), new File([pdfBytes], "bad.exe"), new File([new Uint8Array(2 * 1024 * 1024 + 1)], "large.pdf"), new File([], "empty.pdf")]) {
     response = await api.POST(request({ ...values, actingUnit: "Unit berbeda" }, "POST", file));
     assert([400, 413].includes(response.status));

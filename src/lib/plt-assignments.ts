@@ -5,6 +5,7 @@ import { database as db } from "@/lib/database";
 import { requireMenuAccess } from "@/lib/authorization";
 import { pltEndDate, pltSchema, type PltAssignment, type PltEmployee } from "@/lib/plt-dates";
 import { removePltFile, storePltFile, type PltDocument } from "@/lib/plt-files";
+import { pltFileName } from "@/lib/plt-filename";
 
 export class PltError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -20,7 +21,7 @@ const select = `SELECT p.id, p.employee_nip AS employeeNip, p.employee_name AS e
 export async function getPltAssignments(): Promise<PltAssignment[]> {
   await requireMenuAccess("daftar-plt");
   const rows = await db.prepare(`${select} ORDER BY p.end_date, p.employee_name`).all<PltAssignment>();
-  return rows.map(row => ({ ...row, hasNext: Boolean(row.hasNext) }));
+  return rows.map(row => ({ ...row, hasNext: Boolean(row.hasNext), fileName: row.fileName ? pltFileName(row.employeeName, row.actingPosition, row.startDate, row.fileName) || row.fileName : null }));
 }
 export async function getPltEmployees() {
   await requireMenuAccess("daftar-plt");
@@ -38,8 +39,11 @@ function refresh() {
 
 export async function getPltDocument(id: string) {
   await requireMenuAccess("daftar-plt");
-  return db.prepare(`SELECT file_name AS fileName, storage_name AS storageName, file_size AS fileSize, mime_type AS mimeType
-    FROM plt_assignments WHERE id = ? AND storage_name IS NOT NULL`).get<PltDocument>(id);
+  const row = await db.prepare(`SELECT file_name AS fileName, storage_name AS storageName, file_size AS fileSize, mime_type AS mimeType,
+    employee_name AS employeeName, acting_position AS actingPosition, CAST(start_date AS TEXT) AS startDate
+    FROM plt_assignments WHERE id = ? AND storage_name IS NOT NULL`).get<PltDocument & { employeeName: string; actingPosition: string; startDate: string }>(id);
+  if (!row) return undefined;
+  return { fileName: pltFileName(row.employeeName, row.actingPosition, row.startDate, row.storageName) || row.fileName, storageName: row.storageName, fileSize: row.fileSize, mimeType: row.mimeType };
 }
 
 export async function savePltAssignment(input: unknown, id?: string, file?: File) {
@@ -75,7 +79,8 @@ export async function savePltAssignment(input: unknown, id?: string, file?: File
       AND replacement.id <> ? AND replacement.start_date <= ?))`;
   const overlapValues = [assignmentId, assignmentId, previousId ?? "", data.actingPosition, data.actingUnit, endDate, data.startDate, assignmentId, data.startDate];
   const uploaded = file ? await storePltFile(file) : undefined;
-  const document = (uploaded ?? oldDocument)!;
+  const source = (uploaded ?? oldDocument)!;
+  const document = { ...source, fileName: pltFileName(employee.name, data.actingPosition, data.startDate, source.storageName) };
   try {
     const result = existing
       ? await db.prepare(`UPDATE plt_assignments SET employee_nip = ?, employee_name = ?, acting_position = ?, acting_unit = ?,

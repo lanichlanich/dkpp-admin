@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { jakartaToday, nextPltDay, pltDateLabel, pltEndDate, pltSchema, pltStatus, pltTimeLabel, PLT_REMINDER_DAYS, PLT_STATUS_LABELS, type PltAssignment, type PltEmployee, type PltInput, type PltStatus } from "@/lib/plt-dates";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 import { applyPltExtraction } from "@/lib/plt-ai-fields";
+import { pltFileName } from "@/lib/plt-filename";
 import type { LocalDocumentExtractionResult } from "@/lib/local-document-ai-types";
 
 const colors: Record<PltStatus, string> = {
@@ -74,6 +75,8 @@ function PltEditor({ editor, employees, today, onClose }: { editor: Editor; empl
   const working = saving || extracting;
   const [employeeOpen, setEmployeeOpen] = useState(false);
   const selected = employees.find(employee => employee.nip === values.employeeNip);
+  const fileNamePreview = (selected || row?.employeeNip === values.employeeNip) && values.actingPosition.trim()
+    ? pltFileName(selected?.name ?? row?.employeeName ?? "", values.actingPosition, values.startDate, skFile?.name ?? (!extend ? row?.fileName ?? "" : "")) : "";
   const endDate = pltEndDate(values.startDate);
   const linked = Boolean(values.previousId);
   function setValue(key: keyof PltInput, value: string) {
@@ -143,7 +146,7 @@ function PltEditor({ editor, employees, today, onClose }: { editor: Editor; empl
         <div className="space-y-2"><Label htmlFor="plt-endDate">Tanggal berakhir otomatis</Label><Input id="plt-endDate" value={endDate ? pltDateLabel(endDate) : ""} readOnly className="bg-zinc-50" /></div>
       </div>
       <div className="space-y-2 rounded-xl border p-4"><Label htmlFor="plt-skFile" className="flex items-center gap-2"><FileUp className="size-4 text-indigo-600" />Dokumen SK Plt.</Label>
-        {row?.fileName && !extend && <p className="break-words text-xs text-zinc-600">Tersimpan: <a href={`/api/plt/${row.id}/download`} className="font-medium text-indigo-700 underline underline-offset-2">{row.fileName}</a>. Kosongkan unggahan untuk tetap memakai file ini.</p>}
+        {row?.fileName && !extend && <p className="break-words text-xs text-zinc-600">Tersimpan: <a href={`/api/plt/${row.id}/download`} download={row.fileName} className="font-medium text-indigo-700 underline underline-offset-2">{row.fileName}</a>. Kosongkan unggahan untuk tetap memakai file ini.</p>}
         <Input id="plt-skFile" type="file" name="skFile" accept=".pdf,.doc,.docx" disabled={working} required={!row || extend || !row.fileName} aria-invalid={Boolean(errors.skFile)} aria-describedby="plt-file-help" onChange={event => {
           const file = event.target.files?.[0] ?? null;
           const message = file && file.size > MAX_UPLOAD_SIZE_BYTES ? `Ukuran SK Plt. maksimal ${MAX_UPLOAD_SIZE_MB} MB.` : file && (!file.size || !/\.(pdf|doc|docx)$/i.test(file.name)) ? "Pilih file PDF, DOC, atau DOCX yang tidak kosong." : undefined;
@@ -152,6 +155,7 @@ function PltEditor({ editor, employees, today, onClose }: { editor: Editor; empl
           setExtraction(null);
           if (message) event.currentTarget.value = "";
         }} />{error("skFile")}<p id="plt-file-help" className="text-xs leading-5 text-zinc-500">PDF, DOC, atau DOCX, maksimal {MAX_UPLOAD_SIZE_MB} MB. Unggah SK sesuai periode penugasan; perpanjangan memerlukan dokumen SK baru.</p>
+        {fileNamePreview && <p className="break-words rounded-lg bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">Nama file setelah disimpan: <strong className="font-medium text-zinc-900">{fileNamePreview}</strong></p>}
         <Button type="button" variant="outline" onClick={readSk} disabled={working || !values.employeeNip || (!skFile && (!row?.fileName || extend))}>{extracting ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4 text-indigo-600" />}{extracting ? "Membaca SK…" : "Baca dengan Gemini"}</Button>
         <p className="text-xs leading-5 text-zinc-500">Gemini membaca PDF/DOCX untuk mengisi nomor SK, jabatan, unit, dan tanggal mulai. Dokumen dikirim ke Google Gemini. Isian manual dipertahankan; periksa hasil sebelum menyimpan. DOC lama tetap bisa diunggah dan diisi manual.</p>
         {extraction && <div role="status" className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs leading-5 text-indigo-950"><p className="font-semibold">Hasil pembacaan Gemini</p><p>{extraction.filled.length ? `Diisi: ${extraction.filled.join(", ")}.` : "Tidak ada isian baru yang diterapkan. Lengkapi atau periksa form secara manual."}</p>{extraction.warnings.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-4">{extraction.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}</div>}
@@ -186,7 +190,7 @@ export function PltList({ assignments, employees, initialToday }: { assignments:
     </>;
   }
   function documentLink(row: PltAssignment) {
-    return row.fileName ? <a href={`/api/plt/${row.id}/download`} title={row.fileName} className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 underline-offset-4 hover:underline"><Download className="size-3.5" />Unduh SK <span className="font-normal text-zinc-500">({Math.max(1, Math.ceil((row.fileSize ?? 0) / 1024))} KB)</span></a> : <p className="mt-2 text-xs text-amber-700">SK belum diunggah</p>;
+    return row.fileName ? <a href={`/api/plt/${row.id}/download`} download={row.fileName} title={row.fileName} className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 underline-offset-4 hover:underline"><Download className="size-3.5" />Unduh SK <span className="font-normal text-zinc-500">({Math.max(1, Math.ceil((row.fileSize ?? 0) / 1024))} KB)</span></a> : <p className="mt-2 text-xs text-amber-700">SK belum diunggah</p>;
   }
   async function confirmed() {
     if (!confirm) return;

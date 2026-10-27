@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { pltFileName } from "@/lib/plt-filename";
 export { mapPublicUser } from "@/lib/db-types";
 export type { Employee, PublicUser } from "@/lib/db-types";
 
@@ -448,6 +449,14 @@ for (const [name, definition] of [["file_name", "TEXT"], ["storage_name", "TEXT"
   if (!pltColumns.some(column => column.name === name)) db.exec(`ALTER TABLE plt_assignments ADD COLUMN ${name} ${definition}`);
 }
 db.exec("CREATE UNIQUE INDEX IF NOT EXISTS plt_assignments_storage_idx ON plt_assignments(storage_name)");
+db.transaction(() => {
+  const documents = db.prepare("SELECT id, employee_name, acting_position, start_date, storage_name, file_name FROM plt_assignments WHERE storage_name IS NOT NULL").all() as Array<{ id: string; employee_name: string; acting_position: string; start_date: string; storage_name: string; file_name: string }>;
+  const rename = db.prepare("UPDATE plt_assignments SET file_name = ?, updated_at = ? WHERE id = ?");
+  for (const document of documents) {
+    const fileName = pltFileName(document.employee_name, document.acting_position, document.start_date, document.storage_name);
+    if (fileName && fileName !== document.file_name) rename.run(fileName, new Date().toISOString(), document.id);
+  }
+}).immediate();
 
 let employeeDocumentsTable = db.prepare(
   "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'employee_documents'",

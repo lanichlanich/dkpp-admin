@@ -16,7 +16,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     const fallback = document.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
     return new Response(new Uint8Array(bytes), { headers: {
       "Content-Type": document.mimeType,
-      "Content-Disposition": `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(document.fileName)}`,
+      "Content-Disposition": `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(document.fileName).replace(/['()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)}`,
       "Content-Length": String(bytes.length), "X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store",
     } });
   } catch (error) {

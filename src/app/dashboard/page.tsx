@@ -6,15 +6,21 @@ import { EmployeeCategoryChart } from "@/components/dashboard/employee-statistic
 import { BirthdayTimelinePanel, RetirementTimelinePanel } from "@/components/dashboard/employee-timeline-panels";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getEmployeeStatistics, getUpcomingBirthdays, getUpcomingRetirements } from "@/lib/employees";
+import { canAccessMenu } from "@/lib/access-control";
+import { getPltAssignments } from "@/lib/plt-assignments";
+import { jakartaToday } from "@/lib/plt-dates";
+import { PltReminderPanel } from "@/components/plt/plt-list";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
-  await requireMenuAccess("dashboard");
-  const [statistics, upcomingRetirements, upcomingBirthdays] = await Promise.all([
+  const user = await requireMenuAccess("dashboard");
+  const showPlt = canAccessMenu(user, "daftar-plt");
+  const [statistics, upcomingRetirements, upcomingBirthdays, pltAssignments] = await Promise.all([
     getEmployeeStatistics(),
     getUpcomingRetirements(),
     getUpcomingBirthdays(),
+    showPlt ? getPltAssignments() : Promise.resolve([]),
   ]);
   const cards = [
     { label: "Pegawai Aktif", value: statistics.active, description: "Status aktif saja", icon: UserCheck, color: "bg-emerald-50 text-emerald-600" },
@@ -53,6 +59,8 @@ export default async function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      {showPlt && <PltReminderPanel assignments={pltAssignments} initialToday={jakartaToday()} />}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="min-w-0 shadow-sm">

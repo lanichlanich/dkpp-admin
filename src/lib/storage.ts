@@ -3,8 +3,8 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 
 const bucket = process.env.SUPABASE_STORAGE_BUCKET || "dkpp-admin";
-const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/$/, "");
-const secretKey = process.env.SUPABASE_SECRET_KEY;
+const supabaseUrl = process.env.SUPABASE_URL?.trim().replace(/\/$/, "");
+const secretKey = process.env.SUPABASE_SECRET_KEY?.trim();
 
 export function isStorageConfigured() {
   return Boolean(supabaseUrl && secretKey);

@@ -28,6 +28,7 @@ const excludedSourceNames = new Set([
 ]);
 
 const documentStores = [
+  { table: "plt_assignments", directory: "plt-documents", storedName: (row) => row.storage_name },
   { table: "employee_documents", directory: "employee-documents", storedName: (row) => row.storage_name },
   { table: "kgb_documents", directory: "kgb-documents", storedName: (row) => row.storage_name },
   { table: "dpcp_documents", directory: "dpcp-documents", storedName: (row) => row.storage_name },

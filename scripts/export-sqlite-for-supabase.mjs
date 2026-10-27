@@ -9,6 +9,7 @@ database.pragma("foreign_keys = ON");
 const tables = [
   { name: "users", key: (row) => row.id },
   { name: "employees", key: (row) => row.nip },
+  { name: "plt_assignments", key: (row) => row.id },
   { name: "sessions", key: (row) => row.token_hash },
   { name: "notifications", key: (row) => row.id },
   { name: "kgb_documents", key: (row) => row.id },

@@ -10,6 +10,7 @@ const TABLE_NAMES = [
   "users",
   "sessions",
   "employees",
+  "plt_assignments",
   "organization_units",
   "job_positions",
   "notifications",
@@ -339,6 +340,9 @@ function createPostgresAdapter(url: string): DatabaseAdapter {
         const operations: AuditOperation[] = [];
         for (let index = 0; index < statements.length; index += 1) {
           const statement = statements[index];
+          if (mutations[index]?.entity === "plt_assignments") {
+            await client.query("LOCK TABLE adminflow.plt_assignments IN SHARE ROW EXCLUSIVE MODE");
+          }
           const result = await client.query(postgresPlaceholders(qualifyTables(statement.sql)), statement.values);
           const mutation = mutations[index];
           if (mutation && (result.rowCount ?? 0) > 0) operations.push({ ...mutation, affectedRows: result.rowCount ?? 0 });
@@ -377,6 +381,10 @@ function createPostgresAdapter(url: string): DatabaseAdapter {
           try {
             await client.query("BEGIN");
             const actor = request ? await getPostgresActor(client, request) : null;
+            // Serialize appointment writes so two simultaneous overlap checks cannot both succeed.
+            if (mutation.entity === "plt_assignments") {
+              await client.query("LOCK TABLE adminflow.plt_assignments IN SHARE ROW EXCLUSIVE MODE");
+            }
             const result = await client.query(statement, values);
             const changes = result.rowCount ?? 0;
             if (request && changes > 0) {

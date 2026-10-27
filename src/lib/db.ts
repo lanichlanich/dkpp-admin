@@ -138,6 +138,32 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS notifications_user_created_idx
     ON notifications(user_id, created_at DESC);
 
+  CREATE TABLE IF NOT EXISTS plt_assignments (
+    id TEXT PRIMARY KEY,
+    employee_nip TEXT NOT NULL,
+    employee_name TEXT NOT NULL,
+    acting_position TEXT NOT NULL,
+    acting_unit TEXT NOT NULL,
+    sk_number TEXT NOT NULL,
+    file_name TEXT,
+    storage_name TEXT UNIQUE,
+    file_size INTEGER CHECK (file_size BETWEEN 1 AND 2097152),
+    mime_type TEXT,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL CHECK (end_date >= start_date),
+    notes TEXT NOT NULL DEFAULT '',
+    previous_id TEXT UNIQUE REFERENCES plt_assignments(id) ON DELETE RESTRICT,
+    closed_at TEXT,
+    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS plt_assignments_end_idx ON plt_assignments(end_date);
+  CREATE INDEX IF NOT EXISTS plt_assignments_employee_idx ON plt_assignments(employee_nip);
+  CREATE INDEX IF NOT EXISTS plt_assignments_creator_idx ON plt_assignments(created_by);
+  CREATE UNIQUE INDEX IF NOT EXISTS plt_assignments_period_idx
+    ON plt_assignments(lower(acting_position), lower(acting_unit), start_date) WHERE closed_at IS NULL;
+
   CREATE TABLE IF NOT EXISTS audit_logs (
     id TEXT PRIMARY KEY,
     user_id TEXT,
@@ -416,6 +442,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS hukdis_records_period_idx
     ON hukdis_records(report_period);
 `);
+
+const pltColumns = db.prepare("PRAGMA table_info(plt_assignments)").all() as Array<{ name: string }>;
+for (const [name, definition] of [["file_name", "TEXT"], ["storage_name", "TEXT"], ["file_size", "INTEGER CHECK (file_size BETWEEN 1 AND 2097152)"], ["mime_type", "TEXT"]]) {
+  if (!pltColumns.some(column => column.name === name)) db.exec(`ALTER TABLE plt_assignments ADD COLUMN ${name} ${definition}`);
+}
+db.exec("CREATE UNIQUE INDEX IF NOT EXISTS plt_assignments_storage_idx ON plt_assignments(storage_name)");
 
 let employeeDocumentsTable = db.prepare(
   "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'employee_documents'",

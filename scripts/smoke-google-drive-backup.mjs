@@ -7,12 +7,13 @@ import ts from "typescript";
 
 const require = createRequire(import.meta.url);
 const poName = "12345678-1234-1234-1234-123456789abc.docx";
-const sourceNames = ["employee.pdf", "kak.docx", "rka.pdf", poName, "report-1.docx", "perbantuan.docx", "orphan.pdf"];
+const sourceNames = ["employee.pdf", "kak.docx", "rka.pdf", poName, "report-1.docx", "perbantuan.docx", "plt.pdf", "orphan.pdf"];
 const fixtureBytes = name => Buffer.from(`Fixture content: ${name}`);
 const snapshot = {
   tables: {
     app_roles: [{ id: "administrator", name: "Administrator", is_administrator: 1, menu_permissions: "[]" }],
     employees: [{ id: "employee-1", name: "Pegawai Contoh" }],
+    plt_assignments: [{ id: "plt-1", storage_name: "plt.pdf", file_name: "SK-Plt.pdf", employee_nip: "199001012020121001", start_date: "2026-10-27", end_date: "2027-01-26" }, { id: "plt-legacy", storage_name: null }],
     employee_documents: [{ id: "doc-1", storage_name: "employee.pdf", original_file_name: "scan.pdf" }],
     kak_documents: [{
       id: "kak-1", storage_name: "kak.docx", file_name: "KAK.docx",
@@ -161,8 +162,8 @@ try {
   const result = await actions.runGoogleDriveBackupAction();
   assert.equal(result.status, "success"); assert.match(result.message, /\.tar\.gz/);
   assert.equal(state.snapshots, 1);
-  assert.equal(result.archiveCount, 5); assert.equal(result.tableCount, 7);
-  assert.equal(result.documentCount, 6); assert.equal(result.unlinkedStorageObjectCount, 1);
+  assert.equal(result.archiveCount, 5); assert.equal(result.tableCount, 8);
+  assert.equal(result.documentCount, 7); assert.equal(result.unlinkedStorageObjectCount, 1);
   assert.equal(state.tokenCalls, 1, "Reuse the access token across folder creation and uploads");
   assert.deepEqual([...state.downloads].sort(), [...sourceNames].sort());
   assert.equal(state.folders.length, 6); assert.equal(state.uploads.length, 5);
@@ -177,6 +178,8 @@ try {
   }
   assert.equal(categories.size, 0);
   assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/employees.json")), snapshot.tables.employees);
+  assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/plt_assignments.json")), snapshot.tables.plt_assignments);
+  assert.deepEqual(archives.get("Kepegawaian").get("files/plt_assignments/record-plt-1.pdf"), fixtureBytes("plt.pdf"));
   assert.deepEqual(archives.get("Kepegawaian").get("files/employee_documents/record-doc-1.pdf"), fixtureBytes("employee.pdf"));
   const planning = archives.get("Perencanaan");
   for (const [suffix, extension, source] of [["", "docx", "kak.docx"], ["-rka", "pdf", "rka.pdf"], ["-po", "docx", poName]]) {

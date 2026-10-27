@@ -14,6 +14,7 @@ type ArchiveFile = { path: string; bytes: Buffer };
 
 const TABLE_CATEGORY: Record<string, Category> = {
   employees: "Kepegawaian",
+  plt_assignments: "Kepegawaian",
   organization_units: "Kepegawaian",
   job_positions: "Kepegawaian",
   hukdis_records: "Kepegawaian",
@@ -39,6 +40,7 @@ const TABLE_CATEGORY: Record<string, Category> = {
 };
 
 const DOCUMENT_TABLES = new Set([
+  "plt_assignments",
   "kak_documents",
   "employee_documents",
   "kgb_documents",
@@ -55,6 +57,7 @@ const DOCUMENT_TABLES = new Set([
 ]);
 
 const LOCAL_DOCUMENT_DIRECTORIES: Record<string, string> = {
+  plt_assignments: "plt-documents",
   kak_documents: "kak-documents",
   employee_documents: "employee-documents",
   kgb_documents: "kgb-documents",
@@ -298,7 +301,7 @@ export async function createBackupContent() {
   const documents = Object.entries(snapshot).flatMap(([table, rows]) => DOCUMENT_TABLES.has(table)
     ? rows.flatMap((row, index) => table === "kak_documents"
       ? kakDocumentRows(row).map((documentRow) => ({ table, index, row: documentRow }))
-      : [{ table, row, index }])
+      : table === "plt_assignments" && !row.storage_name ? [] : [{ table, row, index }])
     : []);
   const referencedStorageNames = new Set(documents.map(({ table, row }) =>
     table === "wfh_reports" ? `${String(row.id)}.docx` : String(row.storage_name ?? ""),

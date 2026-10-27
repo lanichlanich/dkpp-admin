@@ -37,6 +37,18 @@ Dokumen DOCX tersimpan di arsip dan dapat diunduh ulang oleh pengguna dengan aks
 
 SQLite membuat tabel arsip secara otomatis. Untuk lingkungan PostgreSQL, terapkan migrasi `supabase/migrations/20261026021735_add_surat_perbantuan_documents.sql` sebelum menjalankan versi baru. Tabel arsip hanya diakses melalui server aplikasi, dengan RLS aktif dan akses Data API publik dicabut.
 
+## Daftar Plt.
+
+**Kepegawaian → Daftar Plt.** mencatat pegawai, jabatan/unit Plt., nomor SK atau surat tugas, tanggal mulai, dokumen SK, dan catatan. Unggah SK dalam format PDF, DOC, atau DOCX maksimal **2 MB**. Berkas tersimpan privat dan hanya dapat diunduh melalui aplikasi oleh pengguna yang memiliki akses Daftar Plt. Saat edit, file lama tetap dipakai jika tidak diganti; perpanjangan memerlukan unggahan SK baru. Data dan berkas SK ikut backup Kepegawaian.
+
+Satu periode berlangsung tiga bulan kalender (tanggal mulai termasuk); tanggal akhir dihitung satu hari sebelum tanggal mulai tiga bulan berikutnya, dengan penyesuaian akhir bulan. Contoh: 27 Oktober 2026–26 Januari 2027.
+
+Pengingat di daftar dan dashboard muncul mulai H-14, pada hari terakhir, dan sesudah habis berdasarkan WIB. Perpanjangan **+3 bulan** memerlukan nomor SK baru, dimulai sehari setelah periode sebelumnya, dan tidak menghapus riwayat. Periode yang sudah diperpanjang tidak dapat diedit/dihapus sebelum periode lanjutannya dihapus. Gunakan **Selesai** untuk menghentikan pengingat penugasan yang telah berakhir lebih awal.
+
+Administrator memiliki akses otomatis. Izin **Daftar Plt.** untuk role/pengguna lain diatur melalui Manajemen User; halaman, API, serta data pengingat dashboard memeriksa izin yang sama. Data tidak mengubah jabatan utama pegawai, tercatat dalam audit, dan ikut backup Kepegawaian. Pengingat ditampilkan di dalam aplikasi; tidak mengirim email atau pesan eksternal.
+
+SQLite membuat tabel dan memperbarui kolom otomatis. PostgreSQL menggunakan migrasi `supabase/migrations/20261027024952_add_plt_assignments.sql` dan migrasi tambahan `add_plt_assignment_documents`, dengan RLS aktif dan akses `anon`/`authenticated` dicabut. Uji fungsi terisolasi: `npm.cmd run smoke:plt`.
+
 ## Verifikasi
 
 ```powershell

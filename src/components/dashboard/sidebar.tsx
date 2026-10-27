@@ -15,6 +15,7 @@ const personnelNavigation = [
   { label: "Daftar Pegawai", href: "/dashboard/pegawai", icon: UsersRound },
   { label: "Daftar Unit Organisasi", href: "/dashboard/unit-organisasi", icon: Building2 },
   { label: "Daftar Jabatan", href: "/dashboard/jabatan", icon: Network },
+  { label: "Daftar Plt.", href: "/dashboard/daftar-plt", icon: CalendarDays },
   { label: "Daftar Hukdis", href: "/dashboard/hukdis", icon: Scale },
   { label: "Surat HUKDIS & HUKDA", href: "/dashboard/surat-hukdis-hukda", icon: FileCheck2 },
   { label: "DPCP", href: "/dashboard/dpcp", icon: ScrollText },

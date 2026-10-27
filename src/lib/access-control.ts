@@ -1,7 +1,7 @@
 export const MENU_CATALOG = [
   { id: "dashboard", label: "Dashboard", group: "Utama", path: "/dashboard" },
   ...[
-    ["pegawai", "Daftar Pegawai"], ["unit-organisasi", "Daftar Unit Organisasi"], ["jabatan", "Daftar Jabatan"],
+    ["pegawai", "Daftar Pegawai"], ["unit-organisasi", "Daftar Unit Organisasi"], ["jabatan", "Daftar Jabatan"], ["daftar-plt", "Daftar Plt."],
     ["hukdis", "Daftar Hukdis"], ["surat-hukdis-hukda", "Surat HUKDIS & HUKDA"], ["dpcp", "DPCP"],
     ["pak", "PAK"], ["kgb", "SK KGB"], ["pembukaan-kerjaku", "Pembukaan Kerjaku"],
   ].map(([id, label]) => ({ id, label, group: "Kepegawaian", path: `/dashboard/${id}` })),

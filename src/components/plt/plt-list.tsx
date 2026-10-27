@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BellRing, CalendarClock, Check, CheckCheck, ChevronsUpDown, Download, FileUp, LoaderCircle, Pencil, Plus, RotateCw, Search, Trash2 } from "lucide-react";
+import { BellRing, CalendarClock, Check, CheckCheck, ChevronsUpDown, Download, FileUp, LoaderCircle, Pencil, Plus, RotateCw, Search, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { jakartaToday, nextPltDay, pltDateLabel, pltEndDate, pltSchema, pltStatus, pltTimeLabel, PLT_REMINDER_DAYS, PLT_STATUS_LABELS, type PltAssignment, type PltEmployee, type PltInput, type PltStatus } from "@/lib/plt-dates";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
+import { applyPltExtraction } from "@/lib/plt-ai-fields";
+import type { LocalDocumentExtractionResult } from "@/lib/local-document-ai-types";
 
 const colors: Record<PltStatus, string> = {
   upcoming: "bg-sky-100 text-sky-900", active: "bg-emerald-100 text-emerald-900", expiring: "bg-amber-100 text-amber-900",
@@ -66,13 +68,51 @@ function PltEditor({ editor, employees, today, onClose }: { editor: Editor; empl
   const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
   const [saving, setSaving] = useState(false);
   const [skFile, setSkFile] = useState<File | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [extraction, setExtraction] = useState<{ filled: string[]; warnings: string[] } | null>(null);
+  const [editedFields, setEditedFields] = useState<Set<keyof PltInput>>(() => new Set());
+  const working = saving || extracting;
   const [employeeOpen, setEmployeeOpen] = useState(false);
   const selected = employees.find(employee => employee.nip === values.employeeNip);
   const endDate = pltEndDate(values.startDate);
   const linked = Boolean(values.previousId);
-  function setValue(key: keyof PltInput, value: string) { setValues(current => ({ ...current, [key]: value })); setErrors(current => ({ ...current, [key]: undefined })); }
+  function setValue(key: keyof PltInput, value: string) {
+    setEditedFields(current => new Set(current).add(key));
+    if (key === "employeeNip") setExtraction(null);
+    setValues(current => ({ ...current, [key]: value })); setErrors(current => ({ ...current, [key]: undefined }));
+  }
+  async function readSk() {
+    if (working) return;
+    if (!values.employeeNip) { toast.error("Pilih pegawai sebelum membaca SK Plt."); return; }
+    setExtracting(true); setExtraction(null);
+    try {
+      let source = skFile;
+      if (!source && row?.fileName && !extend) {
+        const saved = await fetch(`/api/plt/${row.id}/download`);
+        if (!saved.ok) throw new Error("SK tersimpan tidak dapat dibaca. Unggah kembali berkas SK.");
+        source = new File([await saved.blob()], row.fileName);
+      }
+      if (!source) throw new Error("Unggah SK Plt. terlebih dahulu.");
+      if (/\.doc$/i.test(source.name)) throw new Error("Pembacaan Gemini memerlukan PDF atau DOCX. Konversikan DOC lama, atau isi form secara manual.");
+      if (source.size > MAX_UPLOAD_SIZE_BYTES) throw new Error(`Ukuran SK Plt. maksimal ${MAX_UPLOAD_SIZE_MB} MB.`);
+      const body = new FormData();
+      body.set("kind", "plt-assignment"); body.set("employeeNip", values.employeeNip);
+      body.set("employeeName", selected?.name ?? row?.employeeName ?? "");
+      body.set("documentType", "SK / Surat Tugas Pelaksana Tugas (Plt.)"); body.set("file", source);
+      const response = await fetch("/api/document-ai/extract", { method: "POST", body });
+      const result = await response.json() as LocalDocumentExtractionResult & { message?: string };
+      if (!response.ok) throw new Error(result.message ?? "SK Plt. gagal dibaca.");
+      const merged = applyPltExtraction(values, result, editedFields, linked);
+      setValues(merged.values); setErrors({});
+      setExtraction({ filled: merged.filled, warnings: result.warnings });
+      if (merged.filled.length) toast.success(`${merged.filled.length} kolom diisi. Periksa hasilnya sebelum menyimpan.`);
+      else toast.info("Belum ada isian baru yang dapat diterapkan. Periksa hasil pembacaan dan lengkapi manual.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "SK Plt. gagal dibaca."); }
+    finally { setExtracting(false); }
+  }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (working) return;
     const parsed = pltSchema.safeParse(values);
     if (!parsed.success) { setErrors(parsed.error.flatten().fieldErrors); return; }
     if (!skFile && (!row || extend || !row.fileName)) { setErrors({ skFile: ["Unggah dokumen SK Plt. untuk periode ini."] }); return; }
@@ -89,12 +129,12 @@ function PltEditor({ editor, employees, today, onClose }: { editor: Editor; empl
     } catch (error) { toast.error(error instanceof Error ? error.message : "Koneksi bermasalah. Silakan coba lagi."); }
     finally { setSaving(false); }
   }
-  const field = (key: keyof PltInput) => ({ id: `plt-${key}`, value: values[key] ?? "", onChange: (event: React.ChangeEvent<HTMLInputElement>) => setValue(key, event.target.value), "aria-invalid": Boolean(errors[key]), "aria-describedby": errors[key] ? `plt-error-${key}` : undefined, disabled: saving || (linked && ["actingPosition", "actingUnit", "startDate"].includes(key)) });
+  const field = (key: keyof PltInput) => ({ id: `plt-${key}`, value: values[key] ?? "", onChange: (event: React.ChangeEvent<HTMLInputElement>) => setValue(key, event.target.value), "aria-invalid": Boolean(errors[key]), "aria-describedby": errors[key] ? `plt-error-${key}` : undefined, disabled: working || (linked && ["actingPosition", "actingUnit"].includes(key)) });
   const error = (key: string) => errors[key] && <p id={`plt-error-${key}`} role="alert" className="text-xs text-destructive">{errors[key]?.[0]}</p>;
-  return <Dialog open onOpenChange={open => { if (!open && !saving) onClose(); }}><DialogContent showCloseButton={!saving} className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
-    <DialogHeader><DialogTitle>{extend ? "Perpanjang Plt. tiga bulan" : row ? "Edit penugasan Plt." : "Tambah penugasan Plt."}</DialogTitle><DialogDescription>{extend ? "Periode baru dimulai sehari setelah periode sebelumnya. Masukkan nomor SK perpanjangan; riwayat lama tetap tersimpan." : "Pilih pegawai, isi jabatan yang diampu dan tanggal mulai sesuai SK atau surat tugas."}</DialogDescription></DialogHeader>
+  return <Dialog open onOpenChange={open => { if (!open && !working) onClose(); }}><DialogContent showCloseButton={!working} className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
+    <DialogHeader><DialogTitle>{extend ? "Perpanjang Plt. tiga bulan" : row ? "Edit penugasan Plt." : "Tambah penugasan Plt."}</DialogTitle><DialogDescription>{extend ? "Sesuaikan tanggal mulai dengan SK baru. Tanggal akhir dihitung tiga bulan dari tanggal tersebut; riwayat lama tetap tersimpan." : "Pilih pegawai, isi jabatan yang diampu dan tanggal mulai sesuai SK atau surat tugas."}</DialogDescription></DialogHeader>
     <form onSubmit={submit} className="space-y-5">
-      <div className="space-y-2"><Label htmlFor="plt-employee">Pegawai</Label><Popover open={employeeOpen} onOpenChange={setEmployeeOpen}><PopoverTrigger render={<Button id="plt-employee" type="button" variant="outline" role="combobox" aria-expanded={employeeOpen} aria-invalid={Boolean(errors.employeeNip)} disabled={saving || linked} className="h-auto min-h-11 w-full justify-between whitespace-normal text-left" />}><span>{selected?.name ?? (row?.employeeNip === values.employeeNip ? row.employeeName : "Cari nama atau NIP pegawai…")}</span><ChevronsUpDown className="size-4 shrink-0" /></PopoverTrigger><PopoverContent className="w-[min(32rem,calc(100vw-3rem))] p-0"><Command><CommandInput placeholder="Cari nama, NIP, jabatan…" /><CommandList><CommandEmpty>Pegawai aktif tidak ditemukan.</CommandEmpty><CommandGroup>{employees.map(employee => <CommandItem key={employee.nip} value={`${employee.nip} ${employee.name} ${employee.position}`} onSelect={() => { setValue("employeeNip", employee.nip); setEmployeeOpen(false); }}><Check className={`size-4 ${values.employeeNip === employee.nip ? "opacity-100" : "opacity-0"}`} /><span><span className="block">{employee.name}</span><span className="text-xs text-zinc-500">{employee.nip} · {employee.position}</span></span></CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent></Popover>{error("employeeNip")}<p className="text-xs text-zinc-500">{values.employeeNip ? `NIP ${values.employeeNip}${selected ? ` · Jabatan asal: ${selected.position}` : ""}` : "Data diambil dari daftar pegawai aktif."}</p></div>
+      <div className="space-y-2"><Label htmlFor="plt-employee">Pegawai</Label><Popover open={employeeOpen} onOpenChange={setEmployeeOpen}><PopoverTrigger render={<Button id="plt-employee" type="button" variant="outline" role="combobox" aria-expanded={employeeOpen} aria-invalid={Boolean(errors.employeeNip)} disabled={working || linked} className="h-auto min-h-11 w-full justify-between whitespace-normal text-left" />}><span>{selected?.name ?? (row?.employeeNip === values.employeeNip ? row.employeeName : "Cari nama atau NIP pegawai…")}</span><ChevronsUpDown className="size-4 shrink-0" /></PopoverTrigger><PopoverContent className="w-[min(32rem,calc(100vw-3rem))] p-0"><Command><CommandInput placeholder="Cari nama, NIP, jabatan…" /><CommandList><CommandEmpty>Pegawai aktif tidak ditemukan.</CommandEmpty><CommandGroup>{employees.map(employee => <CommandItem key={employee.nip} value={`${employee.nip} ${employee.name} ${employee.position}`} onSelect={() => { setValue("employeeNip", employee.nip); setEmployeeOpen(false); }}><Check className={`size-4 ${values.employeeNip === employee.nip ? "opacity-100" : "opacity-0"}`} /><span><span className="block">{employee.name}</span><span className="text-xs text-zinc-500">{employee.nip} · {employee.position}</span></span></CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent></Popover>{error("employeeNip")}<p className="text-xs text-zinc-500">{values.employeeNip ? `NIP ${values.employeeNip}${selected ? ` · Jabatan asal: ${selected.position}` : ""}` : "Data diambil dari daftar pegawai aktif."}</p></div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2"><Label htmlFor="plt-actingPosition">Jabatan Plt.</Label><Input {...field("actingPosition")} list="plt-position-options" required maxLength={200} placeholder="Contoh: Kepala Bidang…" /><datalist id="plt-position-options">{[...new Set(employees.map(employee => employee.position))].map(value => <option key={value} value={value} />)}</datalist>{error("actingPosition")}</div>
         <div className="space-y-2"><Label htmlFor="plt-actingUnit">Unit kerja Plt.</Label><Input {...field("actingUnit")} list="plt-unit-options" required maxLength={200} placeholder="Pilih atau ketik unit kerja" /><datalist id="plt-unit-options">{[...new Set(employees.map(employee => employee.unit))].map(value => <option key={value} value={value} />)}</datalist>{error("actingUnit")}</div>
@@ -104,17 +144,21 @@ function PltEditor({ editor, employees, today, onClose }: { editor: Editor; empl
       </div>
       <div className="space-y-2 rounded-xl border p-4"><Label htmlFor="plt-skFile" className="flex items-center gap-2"><FileUp className="size-4 text-indigo-600" />Dokumen SK Plt.</Label>
         {row?.fileName && !extend && <p className="break-words text-xs text-zinc-600">Tersimpan: <a href={`/api/plt/${row.id}/download`} className="font-medium text-indigo-700 underline underline-offset-2">{row.fileName}</a>. Kosongkan unggahan untuk tetap memakai file ini.</p>}
-        <Input id="plt-skFile" type="file" name="skFile" accept=".pdf,.doc,.docx" disabled={saving} required={!row || extend || !row.fileName} aria-invalid={Boolean(errors.skFile)} aria-describedby="plt-file-help" onChange={event => {
+        <Input id="plt-skFile" type="file" name="skFile" accept=".pdf,.doc,.docx" disabled={working} required={!row || extend || !row.fileName} aria-invalid={Boolean(errors.skFile)} aria-describedby="plt-file-help" onChange={event => {
           const file = event.target.files?.[0] ?? null;
           const message = file && file.size > MAX_UPLOAD_SIZE_BYTES ? `Ukuran SK Plt. maksimal ${MAX_UPLOAD_SIZE_MB} MB.` : file && (!file.size || !/\.(pdf|doc|docx)$/i.test(file.name)) ? "Pilih file PDF, DOC, atau DOCX yang tidak kosong." : undefined;
           setErrors(current => ({ ...current, skFile: message ? [message] : undefined }));
           setSkFile(message ? null : file);
+          setExtraction(null);
           if (message) event.currentTarget.value = "";
         }} />{error("skFile")}<p id="plt-file-help" className="text-xs leading-5 text-zinc-500">PDF, DOC, atau DOCX, maksimal {MAX_UPLOAD_SIZE_MB} MB. Unggah SK sesuai periode penugasan; perpanjangan memerlukan dokumen SK baru.</p>
+        <Button type="button" variant="outline" onClick={readSk} disabled={working || !values.employeeNip || (!skFile && (!row?.fileName || extend))}>{extracting ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4 text-indigo-600" />}{extracting ? "Membaca SK…" : "Baca dengan Gemini"}</Button>
+        <p className="text-xs leading-5 text-zinc-500">Gemini membaca PDF/DOCX untuk mengisi nomor SK, jabatan, unit, dan tanggal mulai. Dokumen dikirim ke Google Gemini. Isian manual dipertahankan; periksa hasil sebelum menyimpan. DOC lama tetap bisa diunggah dan diisi manual.</p>
+        {extraction && <div role="status" className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs leading-5 text-indigo-950"><p className="font-semibold">Hasil pembacaan Gemini</p><p>{extraction.filled.length ? `Diisi: ${extraction.filled.join(", ")}.` : "Tidak ada isian baru yang diterapkan. Lengkapi atau periksa form secara manual."}</p>{extraction.warnings.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-4">{extraction.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}</div>}
       </div>
       <div className="rounded-lg bg-indigo-50 p-3 text-xs leading-5 text-indigo-900">Masa tugas tiga bulan kalender, termasuk tanggal mulai. Tanggal akhir adalah sehari sebelum tanggal yang sama tiga bulan berikutnya; tanggal yang tidak tersedia disesuaikan ke akhir bulan. Pengingat tampil mulai H-{PLT_REMINDER_DAYS} dan tetap tampil jika masa tugas habis.</div>
-      <div className="space-y-2"><Label htmlFor="plt-notes">Catatan (opsional)</Label><textarea id="plt-notes" value={values.notes} onChange={event => setValue("notes", event.target.value)} disabled={saving} maxLength={1000} rows={3} className="w-full rounded-lg border border-input p-3 text-sm" placeholder="Keterangan penugasan" />{error("notes")}</div>
-      <DialogFooter><Button type="button" variant="outline" onClick={onClose} disabled={saving}>Batal</Button><Button type="submit" disabled={saving}>{saving && <LoaderCircle className="size-4 animate-spin" />}{saving ? "Menyimpan…" : extend ? "Simpan perpanjangan" : "Simpan penugasan"}</Button></DialogFooter>
+      <div className="space-y-2"><Label htmlFor="plt-notes">Catatan (opsional)</Label><textarea id="plt-notes" value={values.notes} onChange={event => setValue("notes", event.target.value)} disabled={working} maxLength={1000} rows={3} className="w-full rounded-lg border border-input p-3 text-sm" placeholder="Keterangan penugasan" />{error("notes")}</div>
+      <DialogFooter><Button type="button" variant="outline" onClick={onClose} disabled={working}>Batal</Button><Button type="submit" disabled={working}>{saving && <LoaderCircle className="size-4 animate-spin" />}{saving ? "Menyimpan…" : extend ? "Simpan perpanjangan" : "Simpan penugasan"}</Button></DialogFooter>
     </form>
   </DialogContent></Dialog>;
 }

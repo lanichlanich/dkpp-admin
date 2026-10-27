@@ -1,0 +1,82 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import Module, { createRequire } from "node:module";
+import path from "node:path";
+import PizZip from "pizzip";
+import ts from "typescript";
+
+const require = createRequire(import.meta.url), modules = new Map();
+const nip = "200001012020121099";
+let signedIn = true, menus = ["daftar-plt"], calls = 0, capturedContext = "", pending = null, failModel = false, output;
+class GeminiApiError extends Error { constructor(message, status = 502) { super(message); this.status = status; } }
+const reset = () => { output = { values: { employeeName: "Pegawai Uji", employeeNip: nip, skNumber: "800/AI/2027", actingPosition: "Kepala Bidang Contoh", actingUnit: "Bidang Contoh", startDate: "2027-02-05" }, confidence: Object.fromEntries(["employeeName", "employeeNip", "skNumber", "actingPosition", "actingUnit", "startDate"].map(key => [key, "high"])), warnings: [], identityMismatch: false }; };
+reset();
+const user = () => signedIn ? { id: "plt-ai-user" } : null;
+function load(file) {
+  const filename = path.resolve(file);
+  if (modules.has(filename)) return modules.get(filename).exports;
+  const mod = new Module(filename); mod.filename = filename; mod.paths = Module._nodeModulePaths(path.dirname(filename)); modules.set(filename, mod);
+  mod.require = name => {
+    if (name === "server-only") return {};
+    if (name === "@/lib/gemini-client") return { GeminiApiError, requestGeminiJson: async (_instructions, parts) => { calls++; capturedContext = parts[0].text; if (failModel) throw new GeminiApiError("Kuota Gemini tercapai.", 429); if (pending) await pending; return { value: output, model: "gemini-test" }; } };
+    if (name === "@/lib/session") return { getCurrentUser: async () => user() };
+    if (name === "@/lib/authorization") return { checkApiAccess: async requested => !signedIn ? Response.json({}, { status: 401 }) : requested.some(menu => menus.includes(menu)) ? null : Response.json({}, { status: 403 }) };
+    if (name === "@/lib/database") return { database: { prepare: () => ({ get: async requestedNip => requestedNip === nip ? { name: "Pegawai Uji dari Database" } : undefined }) } };
+    if (name.startsWith("@/")) return load(`src/${name.slice(2)}.ts`);
+    return require(name);
+  };
+  mod._compile(ts.transpileModule(readFileSync(filename, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, filename);
+  return mod.exports;
+}
+const { POST } = load("src/app/api/document-ai/extract/route.ts");
+const { applyPltExtraction } = load("src/lib/plt-ai-fields.ts");
+const zip = new PizZip(); zip.file("word/document.xml", "<w:document><w:p>SK Plt. pegawai pengujian</w:p></w:document>");
+const docx = new File([zip.generate({ type: "nodebuffer" })], "SK-Plt.docx");
+function request(kind = "plt-assignment", employeeNip = nip, file = docx) {
+  const form = new FormData();
+  for (const [key, value] of Object.entries({ kind, employeeNip, employeeName: "Forged client name", documentType: "SK Plt." })) form.set(key, value);
+  if (file) form.set("file", file);
+  return new Request("http://localhost/api/document-ai/extract", { method: "POST", body: form });
+}
+let response = await POST(request()); assert.equal(response.status, 200);
+let result = await response.json();
+assert(capturedContext.includes("Pegawai Uji dari Database")); assert(!capturedContext.includes("Forged client name"));
+assert.equal(result.values.startDate, "2027-02-05"); assert.equal(result.localOnly, false);
+const initial = { employeeNip: nip, actingPosition: "", actingUnit: "", skNumber: "", startDate: "2027-01-27", notes: "", previousId: "" };
+let applied = applyPltExtraction(initial, result, new Set(), false);
+assert.equal(applied.values.startDate, "2027-02-05", "Untouched suggested dates may follow the explicit SK TMT");
+assert.equal(applied.filled.length, 4);
+applied = applyPltExtraction({ ...initial, skNumber: "Nomor manual", startDate: "2027-02-10" }, result, new Set(["skNumber", "startDate"]), false);
+assert.equal(applied.values.skNumber, "Nomor manual"); assert.equal(applied.values.startDate, "2027-02-10");
+applied = applyPltExtraction({ ...initial, actingPosition: "Jabatan asal riwayat", actingUnit: "Unit riwayat" }, result, new Set(), true);
+assert.equal(applied.values.actingPosition, "Jabatan asal riwayat"); assert.equal(applied.values.actingUnit, "Unit riwayat");
+assert.equal(applied.filled.length, 2);
+result.confidence.startDate = "low"; assert.equal(applyPltExtraction(initial, result, new Set(), false).values.startDate, initial.startDate);
+reset(); output.values.startDate = "2027-02-30";
+result = await (await POST(request())).json(); assert.equal(result.values.startDate, "");
+reset(); output.values.employeeNip = "200001012020121088";
+result = await (await POST(request())).json(); assert(Object.values(result.values).every(value => value === "")); assert(result.warnings.length);
+reset(); output.identityMismatch = true;
+result = await (await POST(request())).json(); assert(Object.values(result.values).every(value => value === ""));
+reset(); assert.equal((await POST(request("plt-assignment", "123"))).status, 422);
+assert.equal((await POST(request("plt-assignment", "000000000000000000"))).status, 422);
+const beforeInvalid = calls;
+assert.equal((await POST(request("plt-assignment", nip, new File(["text"], "bad.pdf")))).status, 422);
+assert.equal((await POST(request("plt-assignment", nip, new File([new Uint8Array(2 * 1024 * 1024 + 1)], "large.pdf")))).status, 422);
+assert.equal(calls, beforeInvalid, "Invalid/oversized files must be rejected before Gemini calls");
+assert.equal((await POST(request("employee-document"))).status, 403, "Plt permission must not grant extraction for another feature");
+menus = ["pegawai"]; assert.equal((await POST(request())).status, 403);
+output.values.nomorSurat = "SK-LAMA"; output.confidence.nomorSurat = "high";
+assert.equal((await (await POST(request("employee-document"))).json()).values.nomorSurat, "SK-LAMA");
+menus = ["dpcp"]; output.values.gaji = "3456700"; output.confidence.gaji = "high";
+assert.equal((await (await POST(request("dpcp"))).json()).values.gaji, "3456700");
+menus = ["arsip-dinas"]; output.values.nomor = "ARSIP-LAMA"; output.confidence.nomor = "high";
+assert.equal((await (await POST(request("official-archive"))).json()).values.nomor, "ARSIP-LAMA");
+menus = ["daftar-plt"];
+failModel = true; assert.equal((await POST(request())).status, 429);
+failModel = false; assert.equal((await POST(request())).status, 200, "Failed Gemini calls must release the request guard");
+let release; pending = new Promise(resolve => { release = resolve; });
+const first = POST(request());
+assert.equal((await POST(request())).status, 429); release(); await first; pending = null;
+signedIn = false; assert.equal((await POST(request())).status, 401);
+console.log("PASS Plt Gemini: schema/normalization, server employee identity, mismatched NIP, manual-field preservation, renewal target preservation, invalid/oversized files before API call, feature-scoped authorization and concurrent-request guard.");

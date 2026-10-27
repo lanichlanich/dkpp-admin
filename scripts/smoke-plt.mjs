@@ -106,15 +106,28 @@ try {
   const docxFile = await fileService.storePltFile(new File([docx.generate({ type: "nodebuffer" })], "SK.docx"));
   assert.equal(docxFile.mimeType, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
   await fileService.removePltFile(docxFile);
-  const extension = { ...values, skNumber: "800/3/2027", startDate: "2027-01-27", previousId: id };
-  assert.equal((await api.POST(request({ ...extension, startDate: "2027-01-28" }))).status, 400);
+  const extension = { ...values, skNumber: "800/3/2027", startDate: "2027-02-05", previousId: id };
+  assert.equal((await api.POST(request({ ...extension, startDate: values.startDate }))).status, 400);
   assert.equal((await api.POST(request({ ...extension, employeeNip: otherNip }))).status, 400);
   response = await api.POST(request(extension)); assert.equal(response.status, 201); const nextId = (await response.json()).id;
   assert.equal((await api.POST(request(extension))).status, 409);
   assert.equal((await rowApi.PATCH(request(values, "PATCH"), context(id))).status, 409);
   assert.equal((await rowApi.DELETE(new Request("http://localhost"), context(id))).status, 409);
   row = (await service.getPltAssignments()).find(item => item.id === id);
-  assert.equal(dates.pltStatus(row, "2027-01-27").status, "renewed");
+  assert.equal(dates.pltStatus(row, "2027-01-27").status, "expired", "A future renewal must not hide the gap after the old period expires");
+  assert.equal(dates.pltStatus(row, "2027-02-05").status, "renewed");
+  assert.equal(row.nextStartDate, "2027-02-05");
+  response = await rowApi.PATCH(request({ ...extension, startDate: "2027-01-15" }, "PATCH", null), context(nextId));
+  assert.equal(response.status, 200, "Renewal can begin before the previous SK's original expiry");
+  row = (await service.getPltAssignments()).find(item => item.id === id);
+  assert.equal(dates.pltStatus(row, "2027-01-14").status, "expiring");
+  assert.equal(dates.pltStatus(row, "2027-01-15").status, "renewed");
+  assert.equal(dates.pltStatus(row, "2027-01-26").status, "renewed");
+  assert.equal((await api.POST(request({ ...values, employeeNip: otherNip, startDate: "2027-01-20" }))).status, 409, "Different employees still cannot overlap");
+  response = await api.POST(request({ ...extension, previousId: nextId, startDate: "2027-01-20", skNumber: "800/4/2027" }));
+  assert.equal(response.status, 201, "Chained renewals use the effective replaced period for overlap checks");
+  const thirdId = (await response.json()).id;
+  assert.equal((await rowApi.DELETE(new Request("http://localhost"), context(thirdId))).status, 200);
   assert.equal((await rowApi.PATCH(request({ ...extension, previousId: "" }, "PATCH"), context(nextId))).status, 400);
   assert.equal((await rowApi.PATCH(request({ action: "close" }, "PATCH"), context(nextId))).status, 200);
   const closed = (await service.getPltAssignments()).find(item => item.id === nextId); assert.equal(dates.pltStatus(closed, "2027-06-01").status, "closed");
@@ -142,5 +155,5 @@ try {
   assert(access.canAccessPath({ isAdministrator: true, menuPermissions: [] }, "/dashboard/daftar-plt"));
   assert(!access.canAccessPath({ isAdministrator: false, menuPermissions: ["pegawai"] }, "/dashboard/daftar-plt"));
   assert(access.canAccessPath({ isAdministrator: false, menuPermissions: ["daftar-plt"] }, "/dashboard/daftar-plt"));
-  console.log("PASS Plt.: calendar months/leap years/WIB midnight, H-14/expiry, persistence/edit, server identity, overlap prevention, renewal/history, close/delete, SK upload/replacement/authenticated bytes, 2 MB and signatures, rollback cleanup, session and menu authorization.");
+  console.log("PASS Plt.: calendar months/leap years/WIB midnight, manual renewals with gaps/early replacement/chains, H-14/expiry, persistence/edit, server identity, overlap prevention, renewal/history, close/delete, SK upload/replacement/authenticated bytes, 2 MB and signatures, rollback cleanup, session and menu authorization.");
 } finally { db.close(); }

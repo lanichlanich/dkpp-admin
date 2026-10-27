@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { database as db } from "@/lib/database";
 import { requireMenuAccess } from "@/lib/authorization";
-import { nextPltDay, pltEndDate, pltSchema, type PltAssignment, type PltEmployee } from "@/lib/plt-dates";
+import { pltEndDate, pltSchema, type PltAssignment, type PltEmployee } from "@/lib/plt-dates";
 import { removePltFile, storePltFile, type PltDocument } from "@/lib/plt-files";
 
 export class PltError extends Error {
@@ -13,6 +13,7 @@ const select = `SELECT p.id, p.employee_nip AS employeeNip, p.employee_name AS e
   p.acting_position AS actingPosition, p.acting_unit AS actingUnit, p.sk_number AS skNumber,
   CAST(p.start_date AS TEXT) AS startDate, CAST(p.end_date AS TEXT) AS endDate,
   p.notes, p.closed_at AS closedAt, p.previous_id AS previousId, p.file_name AS fileName, p.file_size AS fileSize,
+  (SELECT CAST(successor.start_date AS TEXT) FROM plt_assignments successor WHERE successor.previous_id = p.id) AS nextStartDate,
   EXISTS(SELECT 1 FROM plt_assignments successor WHERE successor.previous_id = p.id) AS hasNext
   FROM plt_assignments p`;
 
@@ -54,8 +55,10 @@ export async function savePltAssignment(input: unknown, id?: string, file?: File
   if (previousId) {
     const previous = await getAssignment(previousId);
     if (previous.closedAt || (!id && previous.hasNext)) throw new PltError("Penugasan ini sudah selesai atau sudah diperpanjang.", 409);
-    if (previous.employeeNip !== data.employeeNip || previous.actingPosition !== data.actingPosition || previous.actingUnit !== data.actingUnit || nextPltDay(previous.endDate) !== data.startDate)
-      throw new PltError("Perpanjangan harus melanjutkan pegawai, jabatan, unit, dan hari setelah periode sebelumnya.");
+    if (previous.employeeNip !== data.employeeNip || previous.actingPosition !== data.actingPosition || previous.actingUnit !== data.actingUnit)
+      throw new PltError("Perpanjangan harus melanjutkan pegawai, jabatan, dan unit yang sama.");
+    if (data.startDate <= previous.startDate)
+      throw new PltError("Tanggal mulai perpanjangan harus sesudah tanggal mulai periode sebelumnya.");
   }
   const endDate = pltEndDate(data.startDate);
   const oldDocument = id ? await getPltDocument(id) : undefined;
@@ -65,9 +68,12 @@ export async function savePltAssignment(input: unknown, id?: string, file?: File
   // Check overlaps in the mutation itself, including different holders of the same post.
   const overlap = `NOT EXISTS (SELECT 1 FROM plt_assignments successor WHERE successor.previous_id = ?)
     AND NOT EXISTS (SELECT 1 FROM plt_assignments other WHERE other.id <> ?
+    AND other.id <> ?
     AND lower(other.acting_position) = lower(?) AND lower(other.acting_unit) = lower(?)
-    AND other.closed_at IS NULL AND other.start_date <= ? AND other.end_date >= ?)`;
-  const overlapValues = [assignmentId, assignmentId, data.actingPosition, data.actingUnit, endDate, data.startDate];
+    AND other.closed_at IS NULL AND other.start_date <= ? AND other.end_date >= ?
+    AND NOT EXISTS (SELECT 1 FROM plt_assignments replacement WHERE replacement.previous_id = other.id
+      AND replacement.id <> ? AND replacement.start_date <= ?))`;
+  const overlapValues = [assignmentId, assignmentId, previousId ?? "", data.actingPosition, data.actingUnit, endDate, data.startDate, assignmentId, data.startDate];
   const uploaded = file ? await storePltFile(file) : undefined;
   const document = (uploaded ?? oldDocument)!;
   try {

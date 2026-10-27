@@ -43,7 +43,11 @@ SQLite membuat tabel arsip secara otomatis. Untuk lingkungan PostgreSQL, terapka
 
 Satu periode berlangsung tiga bulan kalender (tanggal mulai termasuk); tanggal akhir dihitung satu hari sebelum tanggal mulai tiga bulan berikutnya, dengan penyesuaian akhir bulan. Contoh: 27 Oktober 2026–26 Januari 2027.
 
-Pengingat di daftar dan dashboard muncul mulai H-14, pada hari terakhir, dan sesudah habis berdasarkan WIB. Perpanjangan **+3 bulan** memerlukan nomor SK baru, dimulai sehari setelah periode sebelumnya, dan tidak menghapus riwayat. Periode yang sudah diperpanjang tidak dapat diedit/dihapus sebelum periode lanjutannya dihapus. Gunakan **Selesai** untuk menghentikan pengingat penugasan yang telah berakhir lebih awal.
+Pengingat di daftar dan dashboard muncul mulai H-14, pada hari terakhir, dan sesudah habis berdasarkan WIB. Pada perpanjangan **+3 bulan**, tanggal mulai disarankan sehari setelah periode lama dan **dapat diubah manual sesuai SK baru**; tanggal akhir dihitung tiga bulan dari tanggal yang dipilih. Tanggal mulai baru harus sesudah tanggal mulai lama. Bila SK baru berlaku lebih awal, pengingat periode lama berhenti saat penggantinya mulai; jika ada jeda, masa tugas lama tetap ditandai habis sampai periode baru dimulai. Penugasan lain yang bertumpang tindih tetap ditolak.
+
+Tombol **Baca dengan Gemini** membaca SK PDF/DOCX yang dipilih atau SK tersimpan saat edit. Hasilnya mengisi nomor SK, jabatan Plt., unit tujuan, dan tanggal mulai/TMT (bukan tanggal penerbitan). Identitas dicocokkan dengan pegawai dari database; hasil yang meragukan atau berbeda identitas tidak mengisi form. Perubahan manual tidak ditimpa, sedangkan tanggal awal yang masih berupa saran dapat mengikuti TMT dari SK. Jabatan dan unit pada perpanjangan mengikuti riwayat asal. Hasil pembacaan tetap perlu diperiksa sebelum disimpan. DOC lama perlu dikonversi menjadi PDF/DOCX untuk pembacaan otomatis, atau tetap diisi manual.
+
+Perpanjangan memerlukan nomor SK dan unggahan SK baru, serta tidak menghapus riwayat. Periode yang sudah diperpanjang tidak dapat diedit/dihapus sebelum periode lanjutannya dihapus. Gunakan **Selesai** untuk menghentikan pengingat penugasan yang telah berakhir lebih awal.
 
 Administrator memiliki akses otomatis. Izin **Daftar Plt.** untuk role/pengguna lain diatur melalui Manajemen User; halaman, API, serta data pengingat dashboard memeriksa izin yang sama. Data tidak mengubah jabatan utama pegawai, tercatat dalam audit, dan ikut backup Kepegawaian. Pengingat ditampilkan di dalam aplikasi; tidak mengirim email atau pesan eksternal.
 

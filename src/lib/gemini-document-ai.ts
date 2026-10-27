@@ -3,7 +3,7 @@ import path from "node:path";
 import PizZip from "pizzip";
 import { z } from "zod";
 import { requestGeminiJson, GeminiApiError, type GeminiPart } from "@/lib/gemini-client";
-import { DPCP_EXTRACTION_FIELDS, EMPLOYEE_DOCUMENT_EXTRACTION_FIELDS, OFFICIAL_ARCHIVE_EXTRACTION_FIELDS, type LocalDocumentExtractionKind, type LocalDocumentExtractionResult, type LocalDocumentSource, type ExtractionConfidence } from "@/lib/local-document-ai-types";
+import { DPCP_EXTRACTION_FIELDS, EMPLOYEE_DOCUMENT_EXTRACTION_FIELDS, OFFICIAL_ARCHIVE_EXTRACTION_FIELDS, PLT_ASSIGNMENT_EXTRACTION_FIELDS, type LocalDocumentExtractionKind, type LocalDocumentExtractionResult, type LocalDocumentSource, type ExtractionConfidence } from "@/lib/local-document-ai-types";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 
 export { GeminiApiError as DocumentAiError } from "@/lib/gemini-client";
@@ -12,18 +12,19 @@ function xmlText(xml: string) {
   return xml.replace(/<\/w:(?:p|tr)>/g, "\n").replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&").trim();
 }
 const modelSchema = z.object({ values: z.record(z.string(), z.string()), confidence: z.record(z.string(), z.enum(["high", "medium", "low"])), warnings: z.array(z.string()).max(20), identityMismatch: z.boolean() });
-const dates = new Set(["tglSurat", "tmtSurat", "tmtpns", "tglPasangan", "tglNikah", "tglAnak1", "tglAnak2", "tglDokumen"]);
+const dates = new Set(["tglSurat", "tmtSurat", "tmtpns", "tglPasangan", "tglNikah", "tglAnak1", "tglAnak2", "tglDokumen", "startDate"]);
 function normalize(field: string, value: string) {
   const v = value.trim();
   if (/^(?:null|undefined|tidak ada|tidak ditemukan|n\/a|-)$/i.test(v)) return "";
   if (dates.has(field)) { const d = new Date(`${v}T00:00:00Z`); return /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === v ? v : ""; }
   if (field === "gaji") return /^\d{1,12}$/.test(v) ? v : "";
-  return v.replace(/[\x00-\x1F]+/g, " ").slice(0, field === "alamatPensiun" ? 300 : 160);
+  if (field === "employeeNip") return /^\d{18}$/.test(v.replace(/\s/g, "")) ? v.replace(/\s/g, "") : "";
+  return v.replace(/[\x00-\x1F]+/g, " ").slice(0, field === "alamatPensiun" ? 300 : ["skNumber", "actingPosition", "actingUnit"].includes(field) ? 200 : 160);
 }
 export async function extractGeminiDocumentData({ kind, files, context }: { kind: LocalDocumentExtractionKind; files: File[]; context: Record<string, string> }): Promise<LocalDocumentExtractionResult> {
   if (files.length < 1 || files.length > 5) reject("Pilih satu sampai lima dokumen.");
   if (files.some(f => f.size > MAX_UPLOAD_SIZE_BYTES) || files.reduce((n, f) => n + f.size, 0) > MAX_UPLOAD_SIZE_BYTES) reject(`Maksimal ${MAX_UPLOAD_SIZE_MB} MB per file dan untuk seluruh dokumen.`);
-  const fields = kind === "employee-document" ? EMPLOYEE_DOCUMENT_EXTRACTION_FIELDS : kind === "dpcp" ? DPCP_EXTRACTION_FIELDS : OFFICIAL_ARCHIVE_EXTRACTION_FIELDS;
+  const fields = kind === "employee-document" ? EMPLOYEE_DOCUMENT_EXTRACTION_FIELDS : kind === "dpcp" ? DPCP_EXTRACTION_FIELDS : kind === "plt-assignment" ? PLT_ASSIGNMENT_EXTRACTION_FIELDS : OFFICIAL_ARCHIVE_EXTRACTION_FIELDS;
   const parts: GeminiPart[] = [{ text: `Konteks pegawai untuk pencocokan identitas: ${JSON.stringify(context)}` }];
   const sources: LocalDocumentSource[] = [];
   let expandedSize = 0;
@@ -60,7 +61,9 @@ export async function extractGeminiDocumentData({ kind, files, context }: { kind
     confidence: { type: "object", properties: Object.fromEntries(fields.map(f => [f, { type: "string", enum: ["high", "medium", "low"] }])), required: [...fields] },
     warnings: { type: "array", items: { type: "string" } }, identityMismatch: { type: "boolean" },
   }, required: ["values", "confidence", "warnings", "identityMismatch"] };
-  const instructions = kind === "official-archive"
+  const instructions = kind === "plt-assignment"
+    ? "Dokumen adalah SK atau surat tugas Pelaksana Tugas (Plt.) seorang pegawai. employeeName dan employeeNip adalah identitas penerima tugas, bukan penandatangan. Jika ada beberapa penerima tugas, gunakan hanya pegawai yang cocok dengan nama/NIP pada konteks; bila tidak cocok atau ambigu, kosongkan hasil dan beri peringatan. skNumber adalah nomor lengkap keputusan/surat tugas utama. actingPosition adalah jabatan Plt. yang diberikan pada bagian penugasan, bukan jabatan asal pegawai atau jabatan penandatangan. actingUnit adalah unit tujuan penugasan Plt. yang tertulis. startDate adalah tanggal mulai berlaku/TMT penugasan dalam YYYY-MM-DD, bukan tanggal penerbitan surat. Bila tidak ada tanggal mulai yang eksplisit, kosongkan startDate. Bila bukan penugasan Plt., kosongkan seluruh values dan beri peringatan. Jangan menghitung tanggal akhir."
+    : kind === "official-archive"
     ? "Dokumen adalah arsip dinas Indonesia. namaDokumen adalah judul/uraian dokumen ringkas yang cocok menjadi nama berkas; nomor adalah nomor surat/dokumen jika tercetak, kosong bila tidak ada; jenisDokumen adalah jenis dokumen yang tertulis atau jelas dari isinya; tglDokumen adalah tanggal dokumen ditetapkan/diterbitkan."
     : "Tanggal wajib YYYY-MM-DD; gaji hanya digit gaji pokok, bukan tunjangan. nomorSurat nomor keputusan utama, tglSurat tanggal penetapan, tmtSurat tanggal mulai berlaku, masaKerja masa kerja golongan tertulis. mkg masa kerja golongan; mkp masa kerja pensiun; mksp masa kerja sebelum PNS; tmtpns TMT PNS; alamatPensiun hanya alamat pensiun yang dinyatakan. Kolom anak 1 dan 2 sesuai urutan dokumen.";
   const { value, model } = await requestGeminiJson(
@@ -70,11 +73,14 @@ export async function extractGeminiDocumentData({ kind, files, context }: { kind
   const parsed = modelSchema.safeParse(value);
   if (!parsed.success) throw new GeminiApiError("Hasil ekstraksi Gemini tidak sesuai format. Coba kembali.");
   const values: Record<string, string> = {}, confidence: Record<string, ExtractionConfidence> = {};
+  const nipMismatch = kind === "plt-assignment" && Boolean(parsed.data.values.employeeNip?.trim())
+    && normalize("employeeNip", parsed.data.values.employeeNip) !== context.nip;
+  const identityMismatch = parsed.data.identityMismatch || nipMismatch;
   for (const field of fields) {
-    values[field] = parsed.data.identityMismatch ? "" : normalize(field, parsed.data.values[field] ?? "");
+    values[field] = identityMismatch ? "" : normalize(field, parsed.data.values[field] ?? "");
     confidence[field] = values[field] ? parsed.data.confidence[field] ?? "low" : "low";
   }
   const warnings = parsed.data.warnings.map(w => w.slice(0, 500));
-  if (parsed.data.identityMismatch) warnings.unshift("Identitas pada dokumen tidak cocok dengan pegawai yang dipilih. Isian otomatis dikosongkan.");
+  if (identityMismatch) warnings.unshift("Identitas pada dokumen tidak cocok dengan pegawai yang dipilih. Isian otomatis dikosongkan.");
   return { values, confidence, warnings, sources, model, localOnly: false };
 }

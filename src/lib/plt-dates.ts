@@ -45,21 +45,21 @@ export const pltSchema = z.object({
 });
 export type PltInput = z.infer<typeof pltSchema>;
 export type PltEmployee = { nip: string; name: string; position: string; unit: string };
-export type PltAssignment = PltInput & { id: string; employeeName: string; endDate: string; closedAt: string | null; hasNext: boolean; fileName: string | null; fileSize: number | null };
+export type PltAssignment = PltInput & { id: string; employeeName: string; endDate: string; closedAt: string | null; hasNext: boolean; nextStartDate: string | null; fileName: string | null; fileSize: number | null };
 export type PltStatus = "upcoming" | "active" | "expiring" | "expired" | "renewed" | "closed";
 export const PLT_STATUS_LABELS: Record<PltStatus, string> = {
   upcoming: "Belum mulai", active: "Aktif", expiring: "Segera berakhir", expired: "Habis", renewed: "Diperpanjang", closed: "Selesai",
 };
 export function pltStatus(row: PltAssignment, today: string): { status: PltStatus; days: number } {
   const days = Math.round((Date.parse(`${row.endDate}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / DAY);
-  const status = row.closedAt ? "closed" : row.startDate > today ? "upcoming" : days < 0 ? (row.hasNext ? "renewed" : "expired") : days <= PLT_REMINDER_DAYS ? "expiring" : "active";
+  const status = row.closedAt ? "closed" : row.nextStartDate && row.nextStartDate <= today ? "renewed" : row.startDate > today ? "upcoming" : days < 0 ? "expired" : days <= PLT_REMINDER_DAYS ? "expiring" : "active";
   return { status, days };
 }
 
 export function pltTimeLabel(row: PltAssignment, today: string) {
   const { status, days } = pltStatus(row, today);
   if (status === "closed") return "Ditandai selesai";
-  if (status === "renewed") return "Dilanjutkan ke periode berikutnya";
+  if (status === "renewed") return row.nextStartDate ? `Digantikan mulai ${pltDateLabel(row.nextStartDate)}` : "Dilanjutkan ke periode berikutnya";
   if (status === "upcoming") return `Mulai ${pltDateLabel(row.startDate)}`;
   if (days < 0) return `Lewat ${Math.abs(days)} hari`;
   return days === 0 ? "Berakhir hari ini" : `Sisa ${days} hari`;

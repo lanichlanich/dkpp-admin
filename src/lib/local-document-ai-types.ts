@@ -3,6 +3,13 @@ export const LOCAL_DOCUMENT_EXTRACTION_KINDS = ["employee-document", "dpcp", "of
 export type LocalDocumentExtractionKind = (typeof LOCAL_DOCUMENT_EXTRACTION_KINDS)[number];
 export type ExtractionConfidence = "high" | "medium" | "low";
 
+export const EXTRACTION_DATE_LABELS: Record<string, string> = {
+  tglSurat: "Tanggal penetapan/penerbitan surat", tmtSurat: "TMT surat", tmtpns: "TMT PNS",
+  tglPasangan: "Tanggal lahir pasangan", tglNikah: "Tanggal pernikahan",
+  tglAnak1: "Tanggal lahir anak pertama", tglAnak2: "Tanggal lahir anak kedua",
+  tglDokumen: "Tanggal penetapan/penerbitan dokumen", startDate: "Tanggal mulai/TMT Plt.",
+};
+
 export type LocalDocumentSource = {
   fileName: string;
   method: "text" | "ocr" | "text+ocr" | "gemini";

@@ -51,7 +51,7 @@ const input = {
 };
 const post = (body, auth = true) => fetch(`${baseUrl}/api/dpcp/generate`, { method: "POST", headers: { "Content-Type": "application/json", ...(auth ? cookie : {}) }, body: JSON.stringify(body) });
 try {
-  db.prepare("INSERT INTO users(id,name,username,email,password_hash,created_at,updated_at) VALUES(?,?,?,?,?,?,?)").run(userId, "DPCP test", userId, `${userId}@example.test`, "unused", now, now);
+  db.prepare("INSERT INTO users(id,name,username,email,password_hash,role_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)").run(userId, "DPCP test", userId, `${userId}@example.test`, "unused", "administrator", now, now);
   db.prepare("INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)").run(createHash("sha256").update(token).digest("hex"), userId, new Date(Date.now() + 900000).toISOString(), now);
   assert.equal((await post(input, false)).status, 401);
   for (const change of [{ bup: "59 Tahun" }, { mkg: "28 Tahun 12 Bulan" }, { tmtpns: "2009-02-30" }, { tmtpns: "2099-01-01" }]) {

@@ -62,16 +62,16 @@ export function PltReminderPanel({ assignments, initialToday }: { assignments: P
 }
 
 type Editor = { row?: PltAssignment; extend?: boolean };
-function PltEditor({ editor, employees, today, onClose }: { editor: Editor; employees: PltEmployee[]; today: string; onClose: () => void }) {
+function PltEditor({ editor, employees, onClose }: { editor: Editor; employees: PltEmployee[]; onClose: () => void }) {
   const { row, extend } = editor;
   const router = useRouter();
-  const [values, setValues] = useState<PltInput>({ employeeNip: row?.employeeNip ?? "", actingPosition: row?.actingPosition ?? "", actingUnit: row?.actingUnit ?? "", skNumber: extend ? "" : row?.skNumber ?? "", startDate: row ? (extend ? nextPltDay(row.endDate) : row.startDate) : today, notes: extend ? "" : row?.notes ?? "", previousId: extend ? row?.id : row?.previousId ?? "" });
+  const [values, setValues] = useState<PltInput>({ employeeNip: row?.employeeNip ?? "", actingPosition: row?.actingPosition ?? "", actingUnit: row?.actingUnit ?? "", skNumber: extend ? "" : row?.skNumber ?? "", startDate: row ? (extend ? nextPltDay(row.endDate) : row.startDate) : "", notes: extend ? "" : row?.notes ?? "", previousId: extend ? row?.id : row?.previousId ?? "" });
   const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
   const [saving, setSaving] = useState(false);
   const [skFile, setSkFile] = useState<File | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extraction, setExtraction] = useState<{ filled: string[]; warnings: string[] } | null>(null);
-  const [editedFields, setEditedFields] = useState<Set<keyof PltInput>>(() => new Set());
+  const [editedFields, setEditedFields] = useState<Set<keyof PltInput>>(() => new Set(row && !extend ? ["startDate"] : []));
   const working = saving || extracting;
   const [employeeOpen, setEmployeeOpen] = useState(false);
   const selected = employees.find(employee => employee.nip === values.employeeNip);
@@ -142,7 +142,7 @@ function PltEditor({ editor, employees, today, onClose }: { editor: Editor; empl
         <div className="space-y-2"><Label htmlFor="plt-actingPosition">Jabatan Plt.</Label><Input {...field("actingPosition")} list="plt-position-options" required maxLength={200} placeholder="Contoh: Kepala Bidang…" /><datalist id="plt-position-options">{[...new Set(employees.map(employee => employee.position))].map(value => <option key={value} value={value} />)}</datalist>{error("actingPosition")}</div>
         <div className="space-y-2"><Label htmlFor="plt-actingUnit">Unit kerja Plt.</Label><Input {...field("actingUnit")} list="plt-unit-options" required maxLength={200} placeholder="Pilih atau ketik unit kerja" /><datalist id="plt-unit-options">{[...new Set(employees.map(employee => employee.unit))].map(value => <option key={value} value={value} />)}</datalist>{error("actingUnit")}</div>
         <div className="space-y-2 sm:col-span-2"><Label htmlFor="plt-skNumber">Nomor SK / surat tugas</Label><Input {...field("skNumber")} required maxLength={200} placeholder="Nomor lengkap penetapan / perpanjangan" />{error("skNumber")}</div>
-        <div className="space-y-2"><Label htmlFor="plt-startDate">Tanggal mulai</Label><Input {...field("startDate")} type="date" required />{error("startDate")}</div>
+        <div className="space-y-2"><Label htmlFor="plt-startDate">Tanggal mulai</Label><Input {...field("startDate")} type="date" required />{error("startDate")}<p className="text-xs text-zinc-500">Gunakan TMT penugasan yang tertulis pada SK. Jika Gemini tidak menemukannya, isi manual.</p></div>
         <div className="space-y-2"><Label htmlFor="plt-endDate">Tanggal berakhir otomatis</Label><Input id="plt-endDate" value={endDate ? pltDateLabel(endDate) : ""} readOnly className="bg-zinc-50" /></div>
       </div>
       <div className="space-y-2 rounded-xl border p-4"><Label htmlFor="plt-skFile" className="flex items-center gap-2"><FileUp className="size-4 text-indigo-600" />Dokumen SK Plt.</Label>
@@ -227,7 +227,7 @@ export function PltList({ assignments, employees, initialToday }: { assignments:
       </>}
     </CardContent></Card>
     <p className="text-xs leading-5 text-zinc-500">Pengingat mengikuti tanggal WIB dan diperbarui otomatis saat hari berganti. Perpanjangan memerlukan SK / surat tugas baru dan disimpan sebagai riwayat periode berikutnya. Tandai selesai jika penugasan berakhir lebih awal.</p>
-    {editor && <PltEditor editor={editor} employees={employees} today={today} onClose={() => setEditor(null)} />}
+    {editor && <PltEditor editor={editor} employees={employees} onClose={() => setEditor(null)} />}
     <AlertDialog open={Boolean(confirm)} onOpenChange={open => { if (!open && !busy) setConfirm(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{confirm?.action === "delete" ? "Hapus penugasan Plt.?" : "Tandai penugasan selesai?"}</AlertDialogTitle><AlertDialogDescription>{confirm?.row.employeeName} · {confirm?.row.actingPosition}. {confirm?.action === "delete" ? "Riwayat periode dan berkas SK ini akan dihapus permanen." : "Pengingat periode ini dihentikan. Data penugasan dan SK tetap tersimpan sebagai riwayat."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={busy}>Batal</AlertDialogCancel><AlertDialogAction disabled={busy} onClick={confirmed} variant={confirm?.action === "delete" ? "destructive" : "default"}>{busy && <LoaderCircle className="size-4 animate-spin" />}{busy ? "Menyimpan…" : confirm?.action === "delete" ? "Hapus penugasan" : "Tandai selesai"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </div>;
 }

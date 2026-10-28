@@ -51,7 +51,8 @@ assert.equal(applied.values.skNumber, "Nomor manual"); assert.equal(applied.valu
 applied = applyPltExtraction({ ...initial, actingPosition: "Jabatan asal riwayat", actingUnit: "Unit riwayat" }, result, new Set(), true);
 assert.equal(applied.values.actingPosition, "Jabatan asal riwayat"); assert.equal(applied.values.actingUnit, "Unit riwayat");
 assert.equal(applied.filled.length, 2);
-result.confidence.startDate = "low"; assert.equal(applyPltExtraction(initial, result, new Set(), false).values.startDate, initial.startDate);
+result.confidence.startDate = "low"; assert.equal(applyPltExtraction(initial, result, new Set(), false).values.startDate, "", "An unreadable TMT must not leave a suggested date presented as extracted");
+assert.equal(applyPltExtraction(initial, result, new Set(["startDate"]), false).values.startDate, initial.startDate, "Manual/stored dates must be retained even when Gemini cannot read the TMT");
 reset(); output.values.startDate = "2027-02-30";
 result = await (await POST(request())).json(); assert.equal(result.values.startDate, "");
 reset(); output.values.employeeNip = "200001012020121088";

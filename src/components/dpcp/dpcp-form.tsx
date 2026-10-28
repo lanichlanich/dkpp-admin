@@ -18,6 +18,8 @@ import type { DpcpEmployeeOption } from "@/lib/employees";
 import { dpcpParents, dpcpPensionService, dpcpRetirementDate, dpcpSalary } from "@/lib/dpcp-calculations";
 import { birthDateFromNip, formatIndonesianDate, formatRupiah } from "@/lib/kgb";
 import type { LocalDocumentExtractionResult } from "@/lib/local-document-ai-types";
+import { DPCP_EXTRACTION_FIELDS } from "@/lib/local-document-ai-types";
+import { fillEmptyDocumentFields } from "@/lib/document-ai-fields";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 import { cn } from "@/lib/utils";
 
@@ -172,16 +174,11 @@ export function DpcpForm({ employees, today, signatories }: { employees: DpcpEmp
       const payload = await response.json().catch(() => ({ message: "Dokumen gagal dibaca." })) as LocalDocumentExtractionResult & { message?: string };
       if (!response.ok) throw new Error(payload.message ?? "Dokumen gagal dibaca.");
 
-      const extractedValues = payload.values;
-      const fillable = (Object.keys(initialValues(today)) as (keyof FormValues)[])
-        .filter((key) => key !== "nip" && key !== "tglDpcp" && !values[key] && extractedValues[key]);
       setValues((current) => {
-        const next = { ...current };
-        for (const key of fillable) next[key] = extractedValues[key];
-        return updateCalculatedValues(next, current);
+        return updateCalculatedValues(fillEmptyDocumentFields(current, payload, DPCP_EXTRACTION_FIELDS).values, current);
       });
       setExtractionResult(payload);
-      toast.success(`${fillable.length} kolom kosong berhasil diisi. Periksa hasilnya sebelum membuat DPCP.`);
+      toast.success("Pembacaan selesai. Kolom kosong yang terbaca sudah diisi; periksa hasilnya sebelum membuat DPCP.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Dokumen gagal dibaca.");
     } finally {

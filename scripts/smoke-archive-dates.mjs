@@ -6,6 +6,7 @@ import ts from "typescript";
 
 const require = createRequire(import.meta.url), modules = new Map();
 let dateValue = "8 September 2026", certainty = "high";
+let modelValues, modelConfidence, mismatch = false;
 function load(file) {
   const filename = path.resolve(file); if (modules.has(filename)) return modules.get(filename).exports;
   const mod = new Module(filename); mod.filename = filename; mod.paths = Module._nodeModulePaths(path.dirname(filename)); modules.set(filename, mod);
@@ -14,8 +15,8 @@ function load(file) {
     if (name === "@/lib/gemini-client") return {
       GeminiApiError: class extends Error {},
       requestGeminiJson: async () => ({ model: "fixture", value: {
-        values: { namaDokumen: "Surat Uji", nomor: "UJI/2026", jenisDokumen: "Surat", tglDokumen: dateValue },
-        confidence: { namaDokumen: "high", nomor: "high", jenisDokumen: "high", ...(certainty ? { tglDokumen: certainty } : {}) }, warnings: [], identityMismatch: false,
+        values: modelValues ?? { namaDokumen: "Surat Uji", nomor: "UJI/2026", jenisDokumen: "Surat", tglDokumen: dateValue },
+        confidence: modelConfidence ?? { namaDokumen: "high", nomor: "high", jenisDokumen: "high", ...(certainty ? { tglDokumen: certainty } : {}) }, warnings: [], identityMismatch: mismatch,
       } }),
     };
     if (name.startsWith("@/")) return load(`src/${name.slice(2)}.ts`);
@@ -34,7 +35,7 @@ for (const [input, expected] of [
   ["8 September 2026 atau 9 September 2026", ""], ["2026-10-09T00:00:00Z", ""], ["10/28/2026", ""],
 ]) assert.equal(normalizeDocumentDate(input), expected, input);
 const { extractGeminiDocumentData } = load("src/lib/gemini-document-ai.ts");
-const extract = () => extractGeminiDocumentData({ kind: "official-archive", files: [new File(["%PDF-1.4\n%%EOF"], "Uji.pdf")], context: {} });
+const extract = (kind = "official-archive") => extractGeminiDocumentData({ kind, files: [new File(["%PDF-1.4\n%%EOF"], "Uji.pdf")], context: { nip: "200001012020121099" } });
 let result = await extract(); assert.equal(result.values.tglDokumen, "2026-09-08"); assert.equal(result.confidence.tglDokumen, "high");
 for (const value of ["", "Tidak ditemukan", "31 September 2026", "September 2026", "8 September 2026 atau 9 September 2026"]) {
   dateValue = value; result = await extract(); assert.equal(result.values.tglDokumen, ""); assert.equal(result.confidence.tglDokumen, "low");
@@ -43,4 +44,25 @@ for (const value of ["", "Tidak ditemukan", "31 September 2026", "September 2026
 dateValue = "2026-09-08";
 for (const confidence of ["low", ""]) { certainty = confidence; result = await extract(); assert.equal(result.values.tglDokumen, ""); assert(result.warnings.length); }
 certainty = "medium"; assert.equal((await extract()).values.tglDokumen, "2026-09-08");
-console.log("PASS archive dates: Indonesian/numeric/ISO normalization, day-first order, leap years, invalid/partial/ambiguous-date rejection, confidence gating and explicit manual-date warnings without a fabricated current date.");
+for (const [kind, fields] of [
+  ["employee-document", { tglSurat: ["17 Februari 2025", "2025-02-17"], tmtSurat: ["01/04/2025", "2025-04-01"] }],
+  ["dpcp", { tmtpns: ["1 Maret 2005", "2005-03-01"], tglPasangan: ["12 Juni 1984", "1984-06-12"], tglNikah: ["09/04/2007", "2007-04-09"], tglAnak1: ["29 Februari 2008", "2008-02-29"], tglAnak2: ["3 Des 2012", "2012-12-03"] }],
+  ["plt-assignment", { startDate: ["9 April 2027", "2027-04-09"] }],
+]) {
+  modelValues = { namaPasangan: "Pasangan Uji", namaAnak1: "Anak Uji Satu", namaAnak2: "Anak Uji Dua", ...Object.fromEntries(Object.entries(fields).map(([key, pair]) => [key, pair[0]])) };
+  modelConfidence = Object.fromEntries(Object.keys(modelValues).map(key => [key, "high"]));
+  result = await extract(kind); for (const [field, pair] of Object.entries(fields)) assert.equal(result.values[field], pair[1], `${kind}/${field}`);
+  for (const field of Object.keys(fields)) {
+    const original = modelValues[field];
+    modelValues[field] = "31 Februari 2026"; result = await extract(kind); assert.equal(result.values[field], ""); assert(result.warnings.length);
+    modelValues[field] = original; modelConfidence[field] = "low"; assert.equal((await extract(kind)).values[field], "");
+    delete modelConfidence[field]; assert.equal((await extract(kind)).values[field], ""); modelConfidence[field] = "high";
+  }
+  mismatch = true; result = await extract(kind); assert(Object.values(result.values).every(value => value === "")); mismatch = false;
+}
+const { fillEmptyDocumentFields } = load("src/lib/document-ai-fields.ts");
+const source = { values: { tglSurat: "17 Februari 2025", tmtSurat: "1 April 2025", tglDpcp: "2000-01-01", nomorSurat: "AI" }, confidence: { tglSurat: "high", tmtSurat: "high" } };
+let merged = fillEmptyDocumentFields({ tglSurat: "2024-08-17", tmtSurat: "", nomorSurat: "Manual", tglDpcp: "2026-10-28" }, source, ["tglSurat", "tmtSurat", "nomorSurat"]);
+assert.equal(merged.values.tglSurat, "2024-08-17"); assert.equal(merged.values.tmtSurat, "2025-04-01"); assert.equal(merged.values.nomorSurat, "Manual"); assert.equal(merged.values.tglDpcp, "2026-10-28");
+source.confidence.tmtSurat = "low"; merged = fillEmptyDocumentFields({ tmtSurat: "" }, source, ["tmtSurat"]); assert.equal(merged.values.tmtSurat, "");
+console.log("PASS all Gemini dates: all nine date fields across archive/employee/DPCP/Plt, Indonesian/numeric/ISO formats, leap years, invalid/partial/ambiguous dates, low/missing confidence, identity mismatch, manual/stored values and document-generation date preservation.");

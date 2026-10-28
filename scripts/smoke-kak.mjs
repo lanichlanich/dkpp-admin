@@ -16,7 +16,7 @@ function body(file, options = { tanggalDokumen: "2026-10-08", pptkNama: "", pptk
 const generate = (form, auth = true) => fetch(`${base}/api/kak/generate`, { method: "POST", headers: auth ? headers : {}, body: form });
 try {
   const now = new Date().toISOString();
-  db.prepare("INSERT INTO users (id,name,username,email,password_hash,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").run(id, "KAK Smoke", id, `${id}@example.test`, "unused", now, now);
+  db.prepare("INSERT INTO users (id,name,username,email,password_hash,role_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)").run(id, "KAK Smoke", id, `${id}@example.test`, "unused", "administrator", now, now);
   db.prepare("INSERT INTO sessions (token_hash,user_id,expires_at,created_at) VALUES (?,?,?,?)").run(createHash("sha256").update(token).digest("hex"), id, new Date(Date.now() + 600000).toISOString(), now);
   assert.equal((await generate(body(new File(["%PDF-"], "rka.pdf")), false)).status, 401);
   assert.equal((await generate(body(new File(["%PDF-"], "rka.pdf"), { tanggalDokumen: "bad" }))).status, 400);

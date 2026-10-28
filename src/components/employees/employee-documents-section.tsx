@@ -29,6 +29,7 @@ import {
 } from "@/lib/employee-document-types";
 import type { EmployeeDocument } from "@/lib/employee-documents";
 import type { LocalDocumentExtractionResult } from "@/lib/local-document-ai-types";
+import { fillEmptyDocumentFields } from "@/lib/document-ai-fields";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 import { cn } from "@/lib/utils";
 
@@ -165,13 +166,7 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
       const values = payload.values;
       const found = (["nomorSurat", "tglSurat", "tmtSurat", "masaKerja"] as const)
         .filter((field) => typeof values[field] === "string" && values[field].trim());
-      setMetadata((current) => ({
-        ...current,
-        nomorSurat: current.nomorSurat || values.nomorSurat || "",
-        tglSurat: current.tglSurat || values.tglSurat || "",
-        tmtSurat: current.tmtSurat || values.tmtSurat || "",
-        masaKerja: current.masaKerja || values.masaKerja || "",
-      }));
+      setMetadata(current => fillEmptyDocumentFields(current, payload, ["nomorSurat", "tglSurat", "tmtSurat", "masaKerja"]).values);
       setExtractionResult(payload);
       toast.success(`${found.length} kolom ditemukan. Periksa kembali sebelum mengunggah.`);
     } catch (error) {

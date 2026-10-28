@@ -22,7 +22,7 @@ let report;
 try {
   for(const user of users) {
     const now = new Date().toISOString();
-    db.prepare("INSERT INTO users(id,name,username,email,password_hash,created_at,updated_at) VALUES(?,?,?,?,?,?,?)").run(user.id,"WFH Report Test",user.id,user.id+"@example.test","unused",now,now);
+    db.prepare("INSERT INTO users(id,name,username,email,password_hash,role_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)").run(user.id,"WFH Report Test",user.id,user.id+"@example.test","unused","administrator",now,now);
     db.prepare("INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)").run(createHash("sha256").update(user.token).digest("hex"),user.id,new Date(Date.now()+600000).toISOString(),now);
   }
   assert.equal((await post(input,null)).status,401);

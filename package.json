@@ -11,6 +11,7 @@
     "smoke:plt": "node scripts/smoke-plt.mjs",
     "smoke:arsip-dinas": "node scripts/smoke-arsip-dinas.mjs",
     "smoke:archive-dates": "node scripts/smoke-archive-dates.mjs",
+    "smoke:gemini-dates": "node scripts/smoke-archive-dates.mjs",
     "smoke:plt-ai": "node scripts/smoke-plt-ai.mjs",
     "smoke:pns-payroll": "node scripts/smoke-pns-payroll.mjs",
     "smoke:employee-birth-place": "node scripts/smoke-employee-birth-place.mjs",

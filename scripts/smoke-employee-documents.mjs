@@ -61,9 +61,9 @@ try {
   assert(pns && pppk && pppkPw, "Data pegawai PNS, PPPK, dan PPPK PW untuk smoke test tidak tersedia.");
 
   database.prepare(
-    `INSERT INTO users (id, name, username, email, password_hash, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).run(userId, "Employee Document Smoke Test", userId, `${userId}@example.test`, "not-used", now.toISOString(), now.toISOString());
+    `INSERT INTO users (id, name, username, email, password_hash, role_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(userId, "Employee Document Smoke Test", userId, `${userId}@example.test`, "not-used", "administrator", now.toISOString(), now.toISOString());
   database.prepare(
     "INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)",
   ).run(tokenHash, userId, expiresAt.toISOString(), now.toISOString());

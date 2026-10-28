@@ -1,5 +1,5 @@
 import { checkApiAccess } from "@/lib/authorization";
-import { downloadStorageObject } from "@/lib/storage";
+import { createStorageDownloadUrl, downloadStorageObject, isStorageConfigured } from "@/lib/storage";
 import { getArchiveDownload } from "@/lib/arsip-dinas";
 import { getCurrentUser } from "@/lib/session";
 
@@ -14,6 +14,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const item = await getArchiveDownload(id);
   if (!item) return Response.json({ message: "Arsip tidak ditemukan." }, { status: 404 });
   try {
+    if (isStorageConfigured()) return new Response(null, { status: 302, headers: { Location: await createStorageDownloadUrl(item.storageName, item.fileName), "Cache-Control": "private, no-store" } });
     const bytes = await downloadStorageObject(item.storageName, item.filePath);
     const fileName = item.fileName.replace(/[\r\n"\\]/g, "_");
     return new Response(new Uint8Array(bytes), { headers: { "Content-Type": "application/pdf", "Content-Length": String(bytes.length), "Content-Disposition": `attachment; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(item.fileName)}`, "Cache-Control": "private, no-store" } });

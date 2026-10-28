@@ -25,6 +25,7 @@ const TABLE_NAMES = [
   "kak_documents",
   "official_statement_documents",
   "service_archive_documents",
+  "service_archive_uploads",
   "employee_documents",
   "hukdis_records",
   "wfh_reports",
@@ -36,7 +37,7 @@ const TABLE_NAMES = [
 const TABLES = new Set<string>(TABLE_NAMES);
 
 const AUDITED_TABLES = new Set([...TABLES].filter((table) => ![
-  "sessions", "notifications", "audit_logs",
+  "sessions", "notifications", "audit_logs", "service_archive_uploads",
 ].includes(table)));
 
 type QueryValue = string | number | boolean | null | Buffer;
@@ -309,7 +310,7 @@ function createPostgresAdapter(url: string): DatabaseAdapter {
         await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
         const tables: Record<string, Record<string, unknown>[]> = {};
         for (const table of TABLE_NAMES) {
-          if (table === "sessions") continue;
+          if (table === "sessions" || table === "service_archive_uploads") continue;
           const result = await client.query(`SELECT * FROM adminflow.${table}`);
           tables[table] = result.rows;
         }
@@ -413,7 +414,7 @@ function createSqliteAdapter(): DatabaseAdapter {
       return database.transaction(() => {
         const tables: Record<string, Record<string, unknown>[]> = {};
         for (const table of TABLE_NAMES) {
-          if (table === "sessions") continue;
+          if (table === "sessions" || table === "service_archive_uploads") continue;
           tables[table] = database.prepare(`SELECT * FROM "${table}"`).all() as Record<string, unknown>[];
         }
         return { tables, storageObjects: [] };

@@ -23,7 +23,9 @@ Jangan gunakan awalan NEXT_PUBLIC untuk API key. Pemanggilan Gemini berlangsung 
 
 Salin `.env.example` menjadi `.env.local`, lalu isi API key hanya di lingkungan lokal atau pengaturan Environment Variables Vercel.
 
-Baca & isi form mengirim PDF, gambar, atau teks dan gambar dalam DOCX ke Google Gemini. Maksimal 5 file, 2 MB per file, dan total 2 MB. DOC lama perlu dikonversi ke DOCX/PDF. Hasil hanya mengisi draf kosong, wajib diperiksa sebelum simpan/generasi. Identitas yang tidak cocok mengosongkan hasil ekstraksi. Endpoint lama /api/local-ai/extract menjadi alias ke Gemini; Ollama tidak lagi diperlukan.
+Baca & isi form mengirim PDF, gambar, atau teks dan gambar dalam DOCX ke Google Gemini. Maksimal 5 file, 2 MB per file, dan total 2 MB; khusus Arsip Dinas mendukung PDF hingga 10 MB. DOC lama perlu dikonversi ke DOCX/PDF. Hasil hanya mengisi draf kosong, wajib diperiksa sebelum simpan/generasi. Identitas yang tidak cocok mengosongkan hasil ekstraksi. Endpoint lama /api/local-ai/extract menjadi alias ke Gemini; Ollama tidak lagi diperlukan.
+
+**Persuratan → Arsip Dinas** menerima PDF maksimal **10 MB (10 × 1024 × 1024 byte)**, termasuk untuk pembacaan Gemini. Dalam konfigurasi Supabase, browser mengunggah langsung memakai URL unggah privat tanpa menimpa berkas yang sudah ada. Server memverifikasi pemilik unggahan, masa berlaku, ukuran aktual, dan signature PDF sebelum menyimpan arsip. Unggahan yang gagal disimpan dapat dicoba kembali tanpa menduplikasi arsip; unggahan terbengkalai dibersihkan saat unggahan berikutnya disiapkan setelah token kedaluwarsa. Unduhan memerlukan sesi aplikasi dan diarahkan ke URL privat yang berlaku 60 detik. Mode SQLite tanpa Supabase tetap memakai unggahan multipart dan penyimpanan lokal. Terapkan migrasi `increase_service_archive_upload_limit` untuk batas database dan tabel unggahan sementara.
 
 ## Laporan WFH
 

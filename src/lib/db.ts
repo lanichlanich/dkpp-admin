@@ -360,6 +360,16 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS service_archive_documents_date_idx
     ON service_archive_documents(tgl_dokumen DESC, created_at DESC);
 
+  CREATE TABLE IF NOT EXISTS service_archive_uploads (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    storage_name TEXT NOT NULL UNIQUE,
+    file_size INTEGER NOT NULL CHECK (file_size BETWEEN 1 AND 10485760),
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS service_archive_uploads_expiry_idx ON service_archive_uploads(expires_at);
+
   CREATE TABLE IF NOT EXISTS official_statement_documents (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

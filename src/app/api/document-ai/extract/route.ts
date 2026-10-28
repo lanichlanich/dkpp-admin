@@ -2,7 +2,8 @@ import { checkApiAccess } from "@/lib/authorization";
 import { z } from "zod";
 import { extractGeminiDocumentData, DocumentAiError } from "@/lib/gemini-document-ai";
 import { getCurrentUser } from "@/lib/session";
-import { MAX_MULTIPART_REQUEST_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
+import { MAX_ARCHIVE_MULTIPART_REQUEST_SIZE_BYTES, MAX_ARCHIVE_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
+import { ArchiveUploadError, readArchiveUpload } from "@/lib/archive-uploads";
 import { database as db } from "@/lib/database";
 import { LOCAL_DOCUMENT_EXTRACTION_KINDS } from "@/lib/local-document-ai-types";
 
@@ -14,10 +15,20 @@ export async function POST(request: Request) {
   if (accessDenied) return accessDenied;
   const user = await getCurrentUser();
   if (!user) return Response.json({ message: "Silakan masuk kembali." }, { status: 401 });
-  if (Number(request.headers.get("content-length") || 0) > MAX_MULTIPART_REQUEST_SIZE_BYTES) return Response.json({ message: `Total dokumen maksimal ${MAX_UPLOAD_SIZE_MB} MB.` }, { status: 413 });
+  const json = request.headers.get("content-type")?.includes("application/json");
+  if (Number(request.headers.get("content-length") || 0) > (json ? 4096 : MAX_ARCHIVE_MULTIPART_REQUEST_SIZE_BYTES)) return Response.json({ message: `Total dokumen maksimal ${MAX_ARCHIVE_UPLOAD_SIZE_MB} MB.` }, { status: 413 });
   if (active.has(user.id)) return Response.json({ message: "Pembacaan sebelumnya masih berjalan." }, { status: 429 });
   active.add(user.id);
   try {
+    if (json) {
+      const input = z.object({ kind: z.literal("official-archive"), uploadId: z.string().max(36) }).safeParse(await request.json());
+      if (!input.success) return Response.json({ message: "Permintaan tidak valid." }, { status: 422 });
+      const kindAccess = await checkApiAccess(["arsip-dinas"]);
+      if (kindAccess) return kindAccess;
+      const upload = await readArchiveUpload(user.id, input.data.uploadId);
+      const file = new File([new Uint8Array(upload.bytes)], "Arsip.pdf", { type: "application/pdf" });
+      return Response.json(await extractGeminiDocumentData({ kind: "official-archive", files: [file], context: { nama: "", nip: "", jenisDokumen: "Arsip dinas" } }), { headers: { "Cache-Control": "no-store" } });
+    }
     const form = await request.formData();
     const parsed = inputSchema.safeParse(Object.fromEntries(["kind", "employeeName", "employeeNip", "documentType"].map(k => [k, form.get(k) || ""])));
     if (!parsed.success) return Response.json({ message: "Permintaan tidak valid." }, { status: 422 });
@@ -33,6 +44,6 @@ export async function POST(request: Request) {
     const files = [...form.getAll("file"), ...form.getAll("files")].filter((v): v is File => v instanceof File && v.size > 0);
     return Response.json(await extractGeminiDocumentData({ kind: parsed.data.kind, files, context: { nama: employeeName, nip: parsed.data.employeeNip, jenisDokumen: parsed.data.documentType } }), { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    return Response.json({ message: error instanceof DocumentAiError ? error.message : "Dokumen tidak dapat diproses. Periksa format berkas lalu coba kembali." }, { status: error instanceof DocumentAiError ? error.status : 400 });
+    return Response.json({ message: error instanceof DocumentAiError || error instanceof ArchiveUploadError ? error.message : "Dokumen tidak dapat diproses. Periksa format berkas lalu coba kembali." }, { status: error instanceof DocumentAiError || error instanceof ArchiveUploadError ? error.status : 400 });
   } finally { active.delete(user.id); }
 }

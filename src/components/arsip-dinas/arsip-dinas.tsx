@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ArchiveDocument } from "@/lib/arsip-dinas";
+import { MAX_ARCHIVE_UPLOAD_SIZE_BYTES, MAX_ARCHIVE_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 
 type MetadataFields = { namaDokumen: string; nomor: string; jenisDokumen: string; tglDokumen: string };
 const empty = (today: string): MetadataFields => ({ namaDokumen: "", nomor: "", jenisDokumen: "", tglDokumen: today });
@@ -20,6 +21,7 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
   const [fields, setFields] = useState<MetadataFields>(() => empty(today));
   const [dateEdited, setDateEdited] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [uploaded, setUploaded] = useState<{ file: File; uploadId: string; expiresAt: string } | null>(null);
   const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -29,17 +31,36 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
 
   function update<K extends keyof MetadataFields>(key: K, value: MetadataFields[K]) { setFields((current) => ({ ...current, [key]: value })); }
   function chooseFile(next: File | null) {
-    if (next && (next.type !== "application/pdf" || !next.name.toLowerCase().endsWith(".pdf"))) { toast.error("Pilih berkas PDF."); return; }
-    if (next && next.size > 2 * 1024 * 1024) { toast.error("Ukuran PDF maksimal 2 MB."); return; }
+    setFile(null); setUploaded(null);
+    if (next && (next.type !== "application/pdf" || !next.name.toLowerCase().endsWith(".pdf") || !next.size)) { toast.error("Pilih berkas PDF yang tidak kosong."); return false; }
+    if (next && next.size > MAX_ARCHIVE_UPLOAD_SIZE_BYTES) { toast.error(`Ukuran PDF maksimal ${MAX_ARCHIVE_UPLOAD_SIZE_MB} MB.`); return false; }
     setFile(next);
+    return true;
+  }
+
+  async function ensureUploaded(selected: File) {
+    if (uploaded?.file === selected && Date.parse(uploaded.expiresAt) > Date.now() + 30_000) return uploaded.uploadId;
+    const prepared = await fetch("/api/arsip-dinas/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName: selected.name, fileSize: selected.size, contentType: selected.type }) });
+    const payload = await prepared.json();
+    if (!prepared.ok) throw new Error(payload.message ?? "Unggahan belum dapat disiapkan.");
+    if (payload.local) return null;
+    const response = await fetch(payload.uploadUrl, { method: "PUT", headers: { "Content-Type": "application/pdf", "x-upsert": "false", "Cache-Control": "max-age=0" }, body: selected });
+    if (!response.ok) throw new Error("PDF gagal diunggah. Periksa koneksi lalu coba kembali.");
+    setUploaded({ file: selected, uploadId: payload.uploadId, expiresAt: payload.expiresAt });
+    return payload.uploadId as string;
   }
 
   async function readWithGemini() {
     if (!file) { toast.error("Pilih PDF yang akan dibaca terlebih dahulu."); return; }
     setReading(true); setWarnings([]);
     try {
-      const form = new FormData(); form.set("kind", "official-archive"); form.set("employeeName", ""); form.set("employeeNip", ""); form.set("documentType", "Arsip dinas"); form.set("file", file);
-      const response = await fetch("/api/document-ai/extract", { method: "POST", body: form });
+      const uploadId = await ensureUploaded(file);
+      let response: Response;
+      if (uploadId) response = await fetch("/api/document-ai/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "official-archive", uploadId }) });
+      else {
+        const form = new FormData(); form.set("kind", "official-archive"); form.set("employeeName", ""); form.set("employeeNip", ""); form.set("documentType", "Arsip dinas"); form.set("file", file);
+        response = await fetch("/api/document-ai/extract", { method: "POST", body: form });
+      }
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message ?? "Dokumen gagal dibaca.");
       const values = payload.values as MetadataFields;
@@ -57,12 +78,16 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
     try {
       let response: Response;
       if (editing) response = await fetch(`/api/arsip-dinas/${editing}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fields) });
-      else { const form = new FormData(); Object.entries(fields).forEach(([key, value]) => form.set(key, value)); form.set("file", file!); response = await fetch("/api/arsip-dinas", { method: "POST", body: form }); }
+      else {
+        const uploadId = await ensureUploaded(file!);
+        if (uploadId) response = await fetch("/api/arsip-dinas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...fields, uploadId }) });
+        else { const form = new FormData(); Object.entries(fields).forEach(([key, value]) => form.set(key, value)); form.set("file", file!); response = await fetch("/api/arsip-dinas", { method: "POST", body: form }); }
+      }
       const payload = await response.json(); if (!response.ok) throw new Error(payload.message ?? "Arsip gagal disimpan.");
       if (editing) setDocuments((current) => current.map((item) => item.id === editing ? payload.document : item));
       else setDocuments((current) => [payload.document, ...current]);
       toast.success(editing ? "Metadata arsip diperbarui." : "Arsip dinas berhasil disimpan.");
-      setFields(empty(today)); setDateEdited(false); setFile(null); setEditing(null); setWarnings([]);
+      setFields(empty(today)); setDateEdited(false); setFile(null); setUploaded(null); setEditing(null); setWarnings([]);
       const input = document.getElementById("archive-pdf") as HTMLInputElement | null; if (input) input.value = "";
     } catch (error) { toast.error(error instanceof Error ? error.message : "Arsip gagal disimpan."); }
     finally { setSaving(false); }
@@ -73,7 +98,7 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
 
   return <div className="space-y-6">
     <Card>
-      <CardHeader className="border-b"><CardTitle>{editing ? "Edit metadata arsip" : "Tambah arsip dinas"}</CardTitle><CardDescription>PDF maksimal 2 MB. Nama file unduhan akan mengikuti nama dokumen.</CardDescription></CardHeader>
+      <CardHeader className="border-b"><CardTitle>{editing ? "Edit metadata arsip" : "Tambah arsip dinas"}</CardTitle><CardDescription>PDF maksimal {MAX_ARCHIVE_UPLOAD_SIZE_MB} MB. Nama file unduhan akan mengikuti nama dokumen.</CardDescription></CardHeader>
       <CardContent>
         <form onSubmit={submit} className="space-y-5">
           <div className="grid gap-4 md:grid-cols-2">
@@ -82,7 +107,7 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
             <div className="space-y-2"><Label htmlFor="archive-kind">Jenis dokumen</Label><Input id="archive-kind" value={fields.jenisDokumen} onChange={(e) => update("jenisDokumen", e.target.value)} placeholder="Contoh: Surat Edaran" maxLength={100} required disabled={saving} /></div>
             <div className="space-y-2"><Label htmlFor="archive-date">Tanggal dokumen</Label><Input id="archive-date" type="date" value={fields.tglDokumen} onChange={(e) => { setDateEdited(true); update("tglDokumen", e.target.value); }} required disabled={saving} /></div>
           </div>
-          {!editing && <div className="space-y-2"><Label htmlFor="archive-pdf">Softfile PDF</Label><div className="flex flex-col gap-2 sm:flex-row"><Input id="archive-pdf" type="file" accept="application/pdf,.pdf" onChange={(e) => chooseFile(e.target.files?.[0] ?? null)} disabled={saving || reading} required className="max-w-xl file:mr-3 file:rounded-md file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-emerald-800" /><Button type="button" variant="outline" onClick={readWithGemini} disabled={!file || reading || saving}>{reading ? <><LoaderCircle className="animate-spin" />Membaca...</> : <><Sparkles />Baca dengan Gemini</>}</Button></div><p className="text-xs text-zinc-500">Gemini membaca nama, nomor, jenis, dan tanggal dokumen jika tercantum. Jika gagal menemukan tanggal atau gagal membaca, isian dapat dilengkapi manual. Tinjau hasilnya sebelum menyimpan.</p></div>}
+          {!editing && <div className="space-y-2"><Label htmlFor="archive-pdf">Softfile PDF</Label><div className="flex flex-col gap-2 sm:flex-row"><Input id="archive-pdf" type="file" accept="application/pdf,.pdf" onChange={(e) => { if (!chooseFile(e.target.files?.[0] ?? null)) e.target.value = ""; }} disabled={saving || reading} required className="max-w-xl file:mr-3 file:rounded-md file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-emerald-800" /><Button type="button" variant="outline" onClick={readWithGemini} disabled={!file || reading || saving}>{reading ? <><LoaderCircle className="animate-spin" />Membaca...</> : <><Sparkles />Baca dengan Gemini</>}</Button></div><p className="text-xs text-zinc-500">Gemini membaca nama, nomor, jenis, dan tanggal dokumen jika tercantum dari PDF maksimal {MAX_ARCHIVE_UPLOAD_SIZE_MB} MB. Jika gagal menemukan tanggal atau gagal membaca, isian dapat dilengkapi manual. Tinjau hasilnya sebelum menyimpan.</p></div>}
           {warnings.length > 0 && <div role="status" className="space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{warnings.map((warning, i) => <p key={i}>{warning}</p>)}</div>}
           <div className="flex flex-wrap justify-end gap-2">{editing && <Button type="button" variant="outline" onClick={cancelEdit} disabled={saving}>Batal edit</Button>}<Button type="submit" disabled={saving || reading}>{saving ? <><LoaderCircle className="animate-spin" />Menyimpan...</> : editing ? <><Pencil />Simpan perubahan</> : <><Upload />Simpan arsip</>}</Button></div>
         </form>

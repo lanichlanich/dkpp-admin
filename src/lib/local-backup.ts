@@ -12,7 +12,7 @@ export async function createLocalBackup() {
   const manifest = {
     format: "dkpp-admin-local-backup", version: 1, createdAt: createdAt.toISOString(), timeZone: "Asia/Jakarta",
     tableCount: content.tableCount, documentCount: content.documentCount, unlinkedStorageObjectCount: content.unlinkedStorageObjectCount,
-    excludedTables: ["sessions"],
+    excludedTables: ["sessions", "service_archive_uploads"],
     files: files.map(file => ({ path: file.path, size: file.bytes.length, sha256: createHash("sha256").update(file.bytes).digest("hex") })),
     storageFiles: content.storageFiles,
   };

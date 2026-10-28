@@ -4,7 +4,7 @@ import PizZip from "pizzip";
 import { z } from "zod";
 import { requestGeminiJson, GeminiApiError, type GeminiPart } from "@/lib/gemini-client";
 import { DPCP_EXTRACTION_FIELDS, EMPLOYEE_DOCUMENT_EXTRACTION_FIELDS, OFFICIAL_ARCHIVE_EXTRACTION_FIELDS, PLT_ASSIGNMENT_EXTRACTION_FIELDS, type LocalDocumentExtractionKind, type LocalDocumentExtractionResult, type LocalDocumentSource, type ExtractionConfidence } from "@/lib/local-document-ai-types";
-import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
+import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB, MAX_ARCHIVE_UPLOAD_SIZE_BYTES, MAX_ARCHIVE_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 
 export { GeminiApiError as DocumentAiError } from "@/lib/gemini-client";
 function reject(message: string): never { throw new GeminiApiError(message, 422); }
@@ -23,7 +23,9 @@ function normalize(field: string, value: string) {
 }
 export async function extractGeminiDocumentData({ kind, files, context }: { kind: LocalDocumentExtractionKind; files: File[]; context: Record<string, string> }): Promise<LocalDocumentExtractionResult> {
   if (files.length < 1 || files.length > 5) reject("Pilih satu sampai lima dokumen.");
-  if (files.some(f => f.size > MAX_UPLOAD_SIZE_BYTES) || files.reduce((n, f) => n + f.size, 0) > MAX_UPLOAD_SIZE_BYTES) reject(`Maksimal ${MAX_UPLOAD_SIZE_MB} MB per file dan untuk seluruh dokumen.`);
+  const maxBytes = kind === "official-archive" ? MAX_ARCHIVE_UPLOAD_SIZE_BYTES : MAX_UPLOAD_SIZE_BYTES;
+  const maxMb = kind === "official-archive" ? MAX_ARCHIVE_UPLOAD_SIZE_MB : MAX_UPLOAD_SIZE_MB;
+  if (files.some(f => f.size > maxBytes) || files.reduce((n, f) => n + f.size, 0) > maxBytes) reject(`Maksimal ${maxMb} MB per file dan untuk seluruh dokumen.`);
   const fields = kind === "employee-document" ? EMPLOYEE_DOCUMENT_EXTRACTION_FIELDS : kind === "dpcp" ? DPCP_EXTRACTION_FIELDS : kind === "plt-assignment" ? PLT_ASSIGNMENT_EXTRACTION_FIELDS : OFFICIAL_ARCHIVE_EXTRACTION_FIELDS;
   const parts: GeminiPart[] = [{ text: `Konteks pegawai untuk pencocokan identitas: ${JSON.stringify(context)}` }];
   const sources: LocalDocumentSource[] = [];

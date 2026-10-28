@@ -5,7 +5,8 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { database as db } from "@/lib/database";
-import { isStorageConfigured, uploadStorageObject } from "@/lib/storage";
+import { deleteStorageObject, isStorageConfigured, uploadStorageObject } from "@/lib/storage";
+import { readArchiveUpload, validateArchivePdf } from "@/lib/archive-uploads";
 
 export const archiveMetadataSchema = z.object({
   namaDokumen: z.string().trim().min(1, "Nama dokumen wajib diisi.").max(180).regex(/^[^\r\n<>]+$/, "Nama dokumen tidak valid."),
@@ -47,6 +48,7 @@ export async function listArchiveDocuments(): Promise<ArchiveDocument[]> {
 }
 
 export async function saveArchiveDocument(input: { userId: string; metadata: z.infer<typeof archiveMetadataSchema>; file: Buffer }) {
+  validateArchivePdf(input.file);
   const id = randomUUID();
   const storageName = `${id}.pdf`;
   const fileName = safeFileName(input.metadata.namaDokumen);
@@ -66,9 +68,27 @@ export async function saveArchiveDocument(input: { userId: string; metadata: z.i
         input.metadata.tglDokumen, fileName, storageName, input.file.length, now, now);
   } catch (error) {
     if (local) await rm(filePath, { force: true });
+    else await deleteStorageObject(storageName).catch(() => console.error("Pembersihan unggahan arsip gagal."));
     throw error;
   }
   const row = await db.prepare(`SELECT ${selectColumns} FROM service_archive_documents WHERE id = ?`).get(id) as ArchiveRow;
+  return mapRow(row);
+}
+
+export async function saveUploadedArchiveDocument(input: { userId: string; uploadId: string; metadata: z.infer<typeof archiveMetadataSchema> }) {
+  // The upload id is also the document id: retries cannot create duplicates.
+  const existing = await db.prepare(`SELECT ${selectColumns} FROM service_archive_documents WHERE id = ? AND user_id = ?`).get(input.uploadId, input.userId) as ArchiveRow | undefined;
+  if (existing) return mapRow(existing);
+  const upload = await readArchiveUpload(input.userId, input.uploadId);
+  const now = new Date().toISOString();
+  await db.prepare(`INSERT INTO service_archive_documents
+    (id, user_id, nama_dokumen, nomor, jenis_dokumen, tgl_dokumen, file_name, storage_name, file_size, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`)
+    .run(upload.id, input.userId, input.metadata.namaDokumen, input.metadata.nomor, input.metadata.jenisDokumen,
+      input.metadata.tglDokumen, safeFileName(input.metadata.namaDokumen), upload.storage_name, upload.bytes.length, now, now);
+  // A failed database write leaves the staged upload available for retry.
+  await db.prepare("DELETE FROM service_archive_uploads WHERE id = ? AND user_id = ?").run(upload.id, input.userId);
+  const row = await db.prepare(`SELECT ${selectColumns} FROM service_archive_documents WHERE id = ? AND user_id = ?`).get(upload.id, input.userId) as ArchiveRow;
   return mapRow(row);
 }
 

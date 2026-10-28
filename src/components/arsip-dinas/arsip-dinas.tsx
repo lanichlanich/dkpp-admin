@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Download, FileText, LoaderCircle, Pencil, Search, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,15 +12,14 @@ import type { ArchiveDocument } from "@/lib/arsip-dinas";
 import { MAX_ARCHIVE_UPLOAD_SIZE_BYTES, MAX_ARCHIVE_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 
 type MetadataFields = { namaDokumen: string; nomor: string; jenisDokumen: string; tglDokumen: string };
-const empty = (today: string): MetadataFields => ({ namaDokumen: "", nomor: "", jenisDokumen: "", tglDokumen: today });
+const empty = (): MetadataFields => ({ namaDokumen: "", nomor: "", jenisDokumen: "", tglDokumen: "" });
 function dateLabel(value: string) { return new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${value.slice(0, 10)}T00:00:00Z`)); }
 function sizeLabel(size: number) { return size < 1024 * 1024 ? `${Math.max(1, Math.round(size / 1024))} KB` : `${(size / (1024 * 1024)).toFixed(1)} MB`; }
 
 export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocument[] }) {
-  const today = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Jakarta" }).format(new Date());
   const [documents, setDocuments] = useState(initialDocuments);
-  const [fields, setFields] = useState<MetadataFields>(() => empty(today));
-  const [dateEdited, setDateEdited] = useState(false);
+  const [fields, setFields] = useState<MetadataFields>(empty);
+  const dateEdited = useRef(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploaded, setUploaded] = useState<{ file: File; uploadId: string; expiresAt: string } | null>(null);
   const [reading, setReading] = useState(false);
@@ -35,6 +34,8 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
   function update<K extends keyof MetadataFields>(key: K, value: MetadataFields[K]) { setFields((current) => ({ ...current, [key]: value })); }
   function chooseFile(next: File | null) {
     setFile(null); setUploaded(null);
+    setWarnings([]);
+    if (!dateEdited.current) setFields(current => ({ ...current, tglDokumen: "" }));
     if (next && (next.type !== "application/pdf" || !next.name.toLowerCase().endsWith(".pdf") || !next.size)) { toast.error("Pilih berkas PDF yang tidak kosong."); return false; }
     if (next && next.size > MAX_ARCHIVE_UPLOAD_SIZE_BYTES) { toast.error(`Ukuran PDF maksimal ${MAX_ARCHIVE_UPLOAD_SIZE_MB} MB.`); return false; }
     setFile(next);
@@ -67,7 +68,7 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message ?? "Dokumen gagal dibaca.");
       const values = payload.values as MetadataFields;
-      setFields((current) => ({ namaDokumen: current.namaDokumen || values.namaDokumen || "", nomor: current.nomor || values.nomor || "", jenisDokumen: current.jenisDokumen || values.jenisDokumen || "", tglDokumen: dateEdited ? current.tglDokumen : values.tglDokumen || current.tglDokumen }));
+      setFields((current) => ({ namaDokumen: current.namaDokumen || values.namaDokumen || "", nomor: current.nomor || values.nomor || "", jenisDokumen: current.jenisDokumen || values.jenisDokumen || "", tglDokumen: dateEdited.current ? current.tglDokumen : values.tglDokumen || "" }));
       setWarnings(payload.warnings ?? []);
       toast.success("Pembacaan Gemini selesai. Periksa kembali hasilnya sebelum disimpan.");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Gemini tidak dapat membaca dokumen. Isi form secara manual."); }
@@ -90,14 +91,14 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
       if (editing) setDocuments((current) => current.map((item) => item.id === editing ? payload.document : item));
       else setDocuments((current) => [payload.document, ...current]);
       toast.success(editing ? "Metadata arsip diperbarui." : "Arsip dinas berhasil disimpan.");
-      setFields(empty(today)); setDateEdited(false); setFile(null); setUploaded(null); setEditing(null); setWarnings([]);
+      setFields(empty()); dateEdited.current = false; setFile(null); setUploaded(null); setEditing(null); setWarnings([]);
       const input = document.getElementById("archive-pdf") as HTMLInputElement | null; if (input) input.value = "";
     } catch (error) { toast.error(error instanceof Error ? error.message : "Arsip gagal disimpan."); }
     finally { setSaving(false); }
   }
 
-  function startEdit(doc: ArchiveDocument) { setEditing(doc.id); setFields({ namaDokumen: doc.namaDokumen, nomor: doc.nomor, jenisDokumen: doc.jenisDokumen, tglDokumen: doc.tglDokumen }); setDateEdited(true); setFile(null); setWarnings([]); window.scrollTo({ top: 0, behavior: "smooth" }); }
-  function cancelEdit() { setEditing(null); setFields(empty(today)); setDateEdited(false); setFile(null); const input = document.getElementById("archive-pdf") as HTMLInputElement | null; if (input) input.value = ""; }
+  function startEdit(doc: ArchiveDocument) { setEditing(doc.id); setFields({ namaDokumen: doc.namaDokumen, nomor: doc.nomor, jenisDokumen: doc.jenisDokumen, tglDokumen: doc.tglDokumen }); dateEdited.current = true; setFile(null); setWarnings([]); window.scrollTo({ top: 0, behavior: "smooth" }); }
+  function cancelEdit() { setEditing(null); setFields(empty()); dateEdited.current = false; setFile(null); const input = document.getElementById("archive-pdf") as HTMLInputElement | null; if (input) input.value = ""; }
 
   async function confirmDelete() {
     if (!deleteTarget || deleting) return;
@@ -124,7 +125,7 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
             <div className="space-y-2"><Label htmlFor="archive-name">Nama dokumen</Label><Input id="archive-name" value={fields.namaDokumen} onChange={(e) => update("namaDokumen", e.target.value)} placeholder="Contoh: Surat Edaran Jam Kerja" maxLength={180} required disabled={saving} /></div>
             <div className="space-y-2"><Label htmlFor="archive-number">Nomor dokumen <span className="font-normal text-zinc-500">(jika ada)</span></Label><Input id="archive-number" value={fields.nomor} onChange={(e) => update("nomor", e.target.value)} placeholder="Boleh dikosongkan" maxLength={120} disabled={saving} /></div>
             <div className="space-y-2"><Label htmlFor="archive-kind">Jenis dokumen</Label><Input id="archive-kind" value={fields.jenisDokumen} onChange={(e) => update("jenisDokumen", e.target.value)} placeholder="Contoh: Surat Edaran" maxLength={100} required disabled={saving} /></div>
-            <div className="space-y-2"><Label htmlFor="archive-date">Tanggal dokumen</Label><Input id="archive-date" type="date" value={fields.tglDokumen} onChange={(e) => { setDateEdited(true); update("tglDokumen", e.target.value); }} required disabled={saving} /></div>
+            <div className="space-y-2"><Label htmlFor="archive-date">Tanggal dokumen</Label><Input id="archive-date" type="date" value={fields.tglDokumen} onChange={(e) => { dateEdited.current = true; update("tglDokumen", e.target.value); }} required disabled={saving} /><p className="text-xs text-zinc-500">Tanggal penetapan/penerbitan surat. Jika belum terbaca, isi manual sesuai dokumen.</p></div>
           </div>
           {!editing && <div className="space-y-2"><Label htmlFor="archive-pdf">Softfile PDF</Label><div className="flex flex-col gap-2 sm:flex-row"><Input id="archive-pdf" type="file" accept="application/pdf,.pdf" onChange={(e) => { if (!chooseFile(e.target.files?.[0] ?? null)) e.target.value = ""; }} disabled={saving || reading} required className="max-w-xl file:mr-3 file:rounded-md file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-emerald-800" /><Button type="button" variant="outline" onClick={readWithGemini} disabled={!file || reading || saving}>{reading ? <><LoaderCircle className="animate-spin" />Membaca...</> : <><Sparkles />Baca dengan Gemini</>}</Button></div><p className="text-xs text-zinc-500">Gemini membaca nama, nomor, jenis, dan tanggal dokumen jika tercantum dari PDF maksimal {MAX_ARCHIVE_UPLOAD_SIZE_MB} MB. Jika gagal menemukan tanggal atau gagal membaca, isian dapat dilengkapi manual. Tinjau hasilnya sebelum menyimpan.</p></div>}
           {warnings.length > 0 && <div role="status" className="space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{warnings.map((warning, i) => <p key={i}>{warning}</p>)}</div>}

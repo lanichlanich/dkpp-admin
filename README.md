@@ -29,6 +29,8 @@ Baca & isi form mengirim PDF, gambar, atau teks dan gambar dalam DOCX ke Google 
 
 Pada daftar Arsip Dinas, tombol **Hapus** membuka konfirmasi berisi nama, nomor, dan tanggal dokumen. **Batal** menutup konfirmasi tanpa perubahan; **Ya, hapus arsip** menghapus arsip dan PDF secara permanen. Server memerlukan konfirmasi eksplisit serta versi data yang masih sama. Jika penyimpanan PDF sedang bermasalah, referensi pembersihan tetap tersimpan untuk dicoba ulang otomatis.
 
+Pembacaan tanggal Arsip Dinas memakai tanggal penerbitan/penetapan surat utama, termasuk bagian tanda tangan di halaman akhir. Tanggal kegiatan, TMT, surat rujukan, pengundangan, dan stempel penerimaan tidak dipakai sebagai tanggal penetapan. Format bulan Indonesia dan angka hari/bulan/tahun dinormalisasi menjadi `YYYY-MM-DD`. Tanggal kosong, tidak valid, atau berkeyakinan rendah disertai peringatan dan harus diisi manual; form tidak menggantinya dengan tanggal hari ini. Tanggal yang diketik pengguna tetap dipertahankan, termasuk perubahan saat Gemini sedang membaca.
+
 ## Laporan WFH
 
 Menu Laporan WFH memilih pegawai aktif, menampilkan jabatan/unit, meminta empat usulan tugas Gemini, dan memungkinkan penyuntingan. Realisasi dan persentase diisi pengguna. Setelah konfirmasi pemeriksaan, laporan DOCX dibuat dari template sumber, disimpan dalam arsip milik pengguna, dan dapat diunduh ulang dengan autentikasi. Tanpa Gemini, laporan tetap dapat diisi manual.

@@ -65,4 +65,8 @@ const source = { values: { tglSurat: "17 Februari 2025", tmtSurat: "1 April 2025
 let merged = fillEmptyDocumentFields({ tglSurat: "2024-08-17", tmtSurat: "", nomorSurat: "Manual", tglDpcp: "2026-10-28" }, source, ["tglSurat", "tmtSurat", "nomorSurat"]);
 assert.equal(merged.values.tglSurat, "2024-08-17"); assert.equal(merged.values.tmtSurat, "2025-04-01"); assert.equal(merged.values.nomorSurat, "Manual"); assert.equal(merged.values.tglDpcp, "2026-10-28");
 source.confidence.tmtSurat = "low"; merged = fillEmptyDocumentFields({ tmtSurat: "" }, source, ["tmtSurat"]); assert.equal(merged.values.tmtSurat, "");
+const familySource = { values: { namaAnak1: "Anak Kedua", tglAnak1: "3 Desember 2012" }, confidence: { tglAnak1: "high" } };
+const differentChild = fillEmptyDocumentFields({ namaAnak1: "Anak Pertama", tglAnak1: "" }, familySource, ["namaAnak1", "tglAnak1"]);
+assert.equal(differentChild.values.namaAnak1, "Anak Pertama"); assert.equal(differentChild.values.tglAnak1, ""); assert(differentChild.warnings.length);
+assert.equal(fillEmptyDocumentFields({ namaAnak1: "ANAK KEDUA", tglAnak1: "" }, familySource, ["tglAnak1"]).values.tglAnak1, "2012-12-03");
 console.log("PASS all Gemini dates: all nine date fields across archive/employee/DPCP/Plt, Indonesian/numeric/ISO formats, leap years, invalid/partial/ambiguous dates, low/missing confidence, identity mismatch, manual/stored values and document-generation date preservation.");

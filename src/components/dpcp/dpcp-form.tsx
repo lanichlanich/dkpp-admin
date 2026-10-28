@@ -177,7 +177,7 @@ export function DpcpForm({ employees, today, signatories }: { employees: DpcpEmp
       setValues((current) => {
         return updateCalculatedValues(fillEmptyDocumentFields(current, payload, DPCP_EXTRACTION_FIELDS).values, current);
       });
-      setExtractionResult(payload);
+      setExtractionResult({ ...payload, warnings: [...payload.warnings, ...fillEmptyDocumentFields(values, payload, DPCP_EXTRACTION_FIELDS).warnings] });
       toast.success("Pembacaan selesai. Kolom kosong yang terbaca sudah diisi; periksa hasilnya sebelum membuat DPCP.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Dokumen gagal dibaca.");

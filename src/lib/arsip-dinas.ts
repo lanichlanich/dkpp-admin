@@ -6,7 +6,7 @@ import path from "node:path";
 import { z } from "zod";
 import { database as db } from "@/lib/database";
 import { deleteStorageObject, isStorageConfigured, uploadStorageObject } from "@/lib/storage";
-import { readArchiveUpload, validateArchivePdf } from "@/lib/archive-uploads";
+import { ArchiveUploadError, readArchiveUpload, validateArchivePdf } from "@/lib/archive-uploads";
 
 export const archiveMetadataSchema = z.object({
   namaDokumen: z.string().trim().min(1, "Nama dokumen wajib diisi.").max(180).regex(/^[^\r\n<>]+$/, "Nama dokumen tidak valid."),
@@ -106,4 +106,31 @@ export async function getArchiveDownload(id: string) {
   const row = await db.prepare("SELECT file_name, storage_name FROM service_archive_documents WHERE id = ?").get(id) as { file_name: string; storage_name: string } | undefined;
   if (!row || !storagePattern.test(row.storage_name)) return null;
   return { fileName: row.file_name, storageName: row.storage_name, filePath: path.join(localDirectory, row.storage_name) };
+}
+
+export async function deleteArchiveDocument(id: string, updatedAt: string) {
+  const item = await getArchiveDownload(id);
+  if (!item) throw new ArchiveUploadError("Arsip tidak ditemukan.", 404);
+  const now = new Date().toISOString();
+  // Persist the cleanup record and deletion together. A storage outage must not
+  // lose the reference needed to retry removal of the private PDF.
+  await db.transaction([
+    { sql: `INSERT INTO service_archive_uploads (id, user_id, storage_name, file_size, expires_at, created_at)
+      SELECT id, user_id, storage_name, file_size, ?, ? FROM service_archive_documents WHERE id = ? AND updated_at = ?
+      ON CONFLICT (id) DO UPDATE SET expires_at = excluded.expires_at, created_at = excluded.created_at`,
+      values: ["2000-01-01T00:00:00.000Z", now, id, updatedAt] },
+    { sql: "DELETE FROM service_archive_documents WHERE id = ? AND updated_at = ?", values: [id, updatedAt] },
+  ]);
+  if (await db.prepare("SELECT id FROM service_archive_documents WHERE id = ?").get(id))
+    throw new ArchiveUploadError("Arsip telah berubah. Muat ulang halaman dan periksa kembali sebelum menghapus.", 409);
+  try {
+    if (isStorageConfigured()) await deleteStorageObject(item.storageName);
+    else await rm(item.filePath, { force: true });
+    // Keep the expired cleanup record until previously issued upload URLs have
+    // expired, in case a still-valid upload token recreates the deleted object.
+    return { fileCleanupPending: false };
+  } catch {
+    console.error("Pembersihan PDF arsip akan dicoba kembali melalui antrean unggahan kedaluwarsa.");
+    return { fileCleanupPending: true };
+  }
 }

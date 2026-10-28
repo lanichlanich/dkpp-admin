@@ -27,6 +27,8 @@ Baca & isi form mengirim PDF, gambar, atau teks dan gambar dalam DOCX ke Google 
 
 **Persuratan → Arsip Dinas** menerima PDF maksimal **10 MB (10 × 1024 × 1024 byte)**, termasuk untuk pembacaan Gemini. Dalam konfigurasi Supabase, browser mengunggah langsung memakai URL unggah privat tanpa menimpa berkas yang sudah ada. Server memverifikasi pemilik unggahan, masa berlaku, ukuran aktual, dan signature PDF sebelum menyimpan arsip. Unggahan yang gagal disimpan dapat dicoba kembali tanpa menduplikasi arsip; unggahan terbengkalai dibersihkan saat unggahan berikutnya disiapkan setelah token kedaluwarsa. Unduhan memerlukan sesi aplikasi dan diarahkan ke URL privat yang berlaku 60 detik. Mode SQLite tanpa Supabase tetap memakai unggahan multipart dan penyimpanan lokal. Terapkan migrasi `increase_service_archive_upload_limit` untuk batas database dan tabel unggahan sementara.
 
+Pada daftar Arsip Dinas, tombol **Hapus** membuka konfirmasi berisi nama, nomor, dan tanggal dokumen. **Batal** menutup konfirmasi tanpa perubahan; **Ya, hapus arsip** menghapus arsip dan PDF secara permanen. Server memerlukan konfirmasi eksplisit serta versi data yang masih sama. Jika penyimpanan PDF sedang bermasalah, referensi pembersihan tetap tersimpan untuk dicoba ulang otomatis.
+
 ## Laporan WFH
 
 Menu Laporan WFH memilih pegawai aktif, menampilkan jabatan/unit, meminta empat usulan tugas Gemini, dan memungkinkan penyuntingan. Realisasi dan persentase diisi pengguna. Setelah konfirmasi pemeriksaan, laporan DOCX dibuat dari template sumber, disimpan dalam arsip milik pengguna, dan dapat diunduh ulang dengan autentikasi. Tanpa Gemini, laporan tetap dapat diisi manual.

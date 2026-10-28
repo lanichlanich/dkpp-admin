@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Download, FileText, LoaderCircle, Pencil, Search, Sparkles, Upload } from "lucide-react";
+import { Download, FileText, LoaderCircle, Pencil, Search, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { ArchiveDocument } from "@/lib/arsip-dinas";
 import { MAX_ARCHIVE_UPLOAD_SIZE_BYTES, MAX_ARCHIVE_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 
@@ -25,6 +26,8 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
   const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ArchiveDocument | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [query, setQuery] = useState("");
   const [warnings, setWarnings] = useState<string[]>([]);
   const filtered = useMemo(() => { const q = query.trim().toLocaleLowerCase("id-ID"); return documents.filter((d) => !q || [d.namaDokumen, d.nomor, d.jenisDokumen, d.tglDokumen].some((v) => v.toLocaleLowerCase("id-ID").includes(q))); }, [documents, query]);
@@ -96,6 +99,22 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
   function startEdit(doc: ArchiveDocument) { setEditing(doc.id); setFields({ namaDokumen: doc.namaDokumen, nomor: doc.nomor, jenisDokumen: doc.jenisDokumen, tglDokumen: doc.tglDokumen }); setDateEdited(true); setFile(null); setWarnings([]); window.scrollTo({ top: 0, behavior: "smooth" }); }
   function cancelEdit() { setEditing(null); setFields(empty(today)); setDateEdited(false); setFile(null); const input = document.getElementById("archive-pdf") as HTMLInputElement | null; if (input) input.value = ""; }
 
+  async function confirmDelete() {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/arsip-dinas/${deleteTarget.id}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmed: true, updatedAt: deleteTarget.updatedAt }) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message ?? "Arsip gagal dihapus.");
+      setDocuments(current => current.filter(item => item.id !== deleteTarget.id));
+      if (editing === deleteTarget.id) cancelEdit();
+      setDeleteTarget(null);
+      if (payload.fileCleanupPending) toast.warning("Arsip dihapus. Pembersihan berkas PDF akan dicoba kembali otomatis.");
+      else toast.success("Arsip berhasil dihapus.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Arsip gagal dihapus."); }
+    finally { setDeleting(false); }
+  }
+
   return <div className="space-y-6">
     <Card>
       <CardHeader className="border-b"><CardTitle>{editing ? "Edit metadata arsip" : "Tambah arsip dinas"}</CardTitle><CardDescription>PDF maksimal {MAX_ARCHIVE_UPLOAD_SIZE_MB} MB. Nama file unduhan akan mengikuti nama dokumen.</CardDescription></CardHeader>
@@ -119,8 +138,13 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
       <CardContent className="space-y-4">
         <div className="relative max-w-md"><Search className="absolute left-3 top-2.5 size-4 text-zinc-400" /><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari nama, nomor, jenis, atau tanggal..." className="pl-9" /></div>
         {filtered.length === 0 ? <div className="rounded-lg border border-dashed p-8 text-center text-sm text-zinc-500"><FileText className="mx-auto mb-2 size-7" />{documents.length === 0 ? "Belum ada arsip dinas." : "Tidak ada arsip yang cocok dengan pencarian."}</div> :
-          <div className="overflow-x-auto rounded-lg border"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500"><tr><th className="px-4 py-3">Nama dokumen</th><th className="px-4 py-3">Nomor</th><th className="px-4 py-3">Jenis</th><th className="px-4 py-3">Tanggal</th><th className="px-4 py-3">Softfile</th><th className="px-4 py-3 text-right">Aksi</th></tr></thead><tbody className="divide-y">{filtered.map((doc) => <tr key={doc.id} className="align-top"><td className="max-w-xs px-4 py-3 font-medium text-zinc-950">{doc.namaDokumen}</td><td className="px-4 py-3 text-zinc-600">{doc.nomor || "—"}</td><td className="px-4 py-3 text-zinc-600">{doc.jenisDokumen}</td><td className="whitespace-nowrap px-4 py-3 text-zinc-600">{dateLabel(doc.tglDokumen)}</td><td className="whitespace-nowrap px-4 py-3 text-zinc-600">PDF · {sizeLabel(doc.fileSize)}</td><td className="px-4 py-3"><div className="flex justify-end gap-1"><Button size="icon" variant="ghost" render={<a href={`/api/arsip-dinas/${doc.id}/download`} />} aria-label={`Unduh ${doc.namaDokumen}`}><Download className="size-4" /></Button><Button type="button" size="icon" variant="ghost" aria-label={`Edit ${doc.namaDokumen}`} onClick={() => startEdit(doc)}><Pencil className="size-4" /></Button></div></td></tr>)}</tbody></table></div>}
+          <div className="overflow-x-auto rounded-lg border"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500"><tr><th className="px-4 py-3">Nama dokumen</th><th className="px-4 py-3">Nomor</th><th className="px-4 py-3">Jenis</th><th className="px-4 py-3">Tanggal</th><th className="px-4 py-3">Softfile</th><th className="px-4 py-3 text-right">Aksi</th></tr></thead><tbody className="divide-y">{filtered.map((doc) => <tr key={doc.id} className="align-top"><td className="max-w-xs px-4 py-3 font-medium text-zinc-950">{doc.namaDokumen}</td><td className="px-4 py-3 text-zinc-600">{doc.nomor || "—"}</td><td className="px-4 py-3 text-zinc-600">{doc.jenisDokumen}</td><td className="whitespace-nowrap px-4 py-3 text-zinc-600">{dateLabel(doc.tglDokumen)}</td><td className="whitespace-nowrap px-4 py-3 text-zinc-600">PDF · {sizeLabel(doc.fileSize)}</td><td className="px-4 py-3"><div className="flex justify-end gap-1"><Button size="icon" variant="ghost" render={<a href={`/api/arsip-dinas/${doc.id}/download`} />} aria-label={`Unduh ${doc.namaDokumen}`}><Download className="size-4" /></Button><Button type="button" size="icon" variant="ghost" aria-label={`Edit ${doc.namaDokumen}`} disabled={saving || reading || deleting} onClick={() => startEdit(doc)}><Pencil className="size-4" /></Button><Button type="button" size="sm" variant="ghost" className="text-destructive" aria-label={`Hapus ${doc.namaDokumen}`} disabled={saving || reading || deleting} onClick={() => setDeleteTarget(doc)}><Trash2 className="size-4" />Hapus</Button></div></td></tr>)}</tbody></table></div>}
       </CardContent>
     </Card>
+    <AlertDialog open={Boolean(deleteTarget)} onOpenChange={open => { if (!open && !deleting) setDeleteTarget(null); }}>
+      <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Hapus arsip dinas?</AlertDialogTitle><AlertDialogDescription>
+        Arsip “{deleteTarget?.namaDokumen}”{deleteTarget?.nomor ? `, nomor ${deleteTarget.nomor}` : ""}{deleteTarget ? `, tanggal ${dateLabel(deleteTarget.tglDokumen)}` : ""} beserta berkas PDF akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+      </AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={deleting} onClick={confirmDelete}>{deleting ? <><LoaderCircle className="size-4 animate-spin" />Menghapus...</> : "Ya, hapus arsip"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+    </AlertDialog>
   </div>;
 }

@@ -1,7 +1,9 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import { rm } from "node:fs/promises";
+import path from "node:path";
 import { database as db } from "@/lib/database";
-import { createStorageUploadUrl, deleteStorageObject, downloadStorageObject } from "@/lib/storage";
+import { createStorageUploadUrl, deleteStorageObject, downloadStorageObject, isStorageConfigured } from "@/lib/storage";
 import { MAX_ARCHIVE_UPLOAD_SIZE_BYTES, MAX_ARCHIVE_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 
 export class ArchiveUploadError extends Error {
@@ -15,15 +17,18 @@ export function validateArchivePdf(bytes: Buffer) {
     throw new ArchiveUploadError("Berkas yang diunggah harus PDF yang valid.");
 }
 
-async function cleanupExpiredUploads() {
+export async function cleanupExpiredArchiveUploads() {
   // Signed upload URLs last two hours. Only remove expired, uncommitted objects
   // after an additional hour, so an in-flight finalization cannot lose its file.
   const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const createdCutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
   const expired = await db.prepare(`SELECT id, storage_name FROM service_archive_uploads
-    WHERE expires_at < ? AND NOT EXISTS (SELECT 1 FROM service_archive_documents d WHERE d.id = service_archive_uploads.id)
-    ORDER BY expires_at LIMIT 20`).all<{ id: string; storage_name: string }>(cutoff);
+    WHERE expires_at < ? AND created_at < ? AND NOT EXISTS (SELECT 1 FROM service_archive_documents d WHERE d.id = service_archive_uploads.id)
+    ORDER BY expires_at LIMIT 20`).all<{ id: string; storage_name: string }>(cutoff, createdCutoff);
   for (const upload of expired) {
-    await deleteStorageObject(upload.storage_name);
+    if (!/^[0-9a-f-]{36}\.pdf$/i.test(upload.storage_name)) continue;
+    if (isStorageConfigured()) await deleteStorageObject(upload.storage_name);
+    else await rm(path.join(process.cwd(), "data", "service-archive", upload.storage_name), { force: true });
     await db.prepare("DELETE FROM service_archive_uploads WHERE id = ?").run(upload.id);
   }
 }
@@ -31,7 +36,7 @@ async function cleanupExpiredUploads() {
 export async function prepareArchiveUpload(userId: string, fileSize: number) {
   if (!Number.isSafeInteger(fileSize) || fileSize < 1 || fileSize > MAX_ARCHIVE_UPLOAD_SIZE_BYTES)
     throw new ArchiveUploadError(`Ukuran PDF maksimal ${MAX_ARCHIVE_UPLOAD_SIZE_MB} MB.`, 413);
-  await cleanupExpiredUploads().catch(() => console.error("Pembersihan unggahan arsip sementara belum berhasil."));
+  await cleanupExpiredArchiveUploads().catch(() => console.error("Pembersihan unggahan arsip sementara belum berhasil."));
   const id = randomUUID(), storageName = `${id}.pdf`;
   const uploadUrl = await createStorageUploadUrl(storageName);
   const now = new Date().toISOString(), expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();

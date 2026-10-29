@@ -139,7 +139,11 @@ try {
   assert.equal(currentUser().roleId, "unassigned"); assert.equal(currentUser().isAdministrator, false);
   for (const file of walk("src/app/api").filter(f => f.endsWith("route.ts"))) {
     const source = readFileSync(file, "utf8");
-    if (!source.includes('export { POST }')) assert.equal((source.match(/export async function (?:GET|POST|DELETE|PATCH|PUT)/g) ?? []).length, (source.match(/const accessDenied = await checkApiAccess/g) ?? []).length, `${file} guard coverage`);
+    if (!source.includes('export { POST }')) {
+      const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+      for (const declaration of ast.statements.filter(node => ts.isFunctionDeclaration(node) && /^(GET|POST|DELETE|PATCH|PUT)$/.test(node.name?.text ?? "")))
+        assert.match(declaration.body?.getText(ast) ?? "", /await checkApiAccess\(/, `${file} ${declaration.name.text} guard coverage`);
+    }
   }
   for (const file of walk("src/app/dashboard").filter(f => f.endsWith("page.tsx") && !["profile", "akses"].includes(path.basename(path.dirname(f))))) assert.match(readFileSync(file, "utf8"), /requireMenuAccess|getUserManagement/);
   console.log("User-management smoke passed: optional password update, bcrypt login verification, confirmation/length validation, atomic rollback and session revocation, self-reset logout, credential privacy, administrator protection, roles and all page/API guards.");

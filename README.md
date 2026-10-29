@@ -63,6 +63,20 @@ Administrator memiliki akses otomatis. Izin **Daftar Plt.** untuk role/pengguna 
 
 SQLite membuat tabel dan memperbarui kolom otomatis. PostgreSQL menggunakan migrasi `supabase/migrations/20261027024952_add_plt_assignments.sql` dan migrasi tambahan `add_plt_assignment_documents`, dengan RLS aktif dan akses `anon`/`authenticated` dicabut. Uji fungsi terisolasi: `npm.cmd run smoke:plt`.
 
+## Perpustakaan DKPP
+
+Katalog publik tersedia di **`/perpustakaan`**, tanpa login. Katalog memuat pencarian judul/pengarang, kode inventaris, ISBN, penerbit, filter kategori, stok tersedia, serta detail lokasi rak. Tautan tersedia pada halaman login dan menu admin. Data kontak pengunjung, NIP, catatan internal, serta identitas peminjam tidak ditampilkan di halaman publik.
+
+Menu **Perpustakaan** pada sidebar admin mempunyai tiga submenu, masing-masing dengan izin terpisah pada Manajemen User:
+
+- **Daftar Buku**: tambah/edit inventaris, jumlah eksemplar, rak, dan status aktif. Data awal dari `DAFTAR INVENTARIS BUKU.xlsx`, Sheet1 A4:I157: **154 entri, 251 eksemplar**. Kolom judul/pengarang tetap digabung seperti sumber, kode inventaris tetap berupa teks, dan tanda `-` tetap menandai data yang belum diketahui. Kolom Keterangan menjadi kategori; variasi huruf besar/kecil dikelompokkan hanya pada filter publik. Buku dengan riwayat peminjaman tidak dapat dihapus; nonaktifkan melalui Edit untuk menyimpan riwayat.
+- **Daftar Pengunjung**: pendaftaran umum/manual atau pemilihan pegawai aktif dari database, edit kontak/status, pencatatan kunjungan dengan tanggal dan keperluan, serta unduh kartu PDF ukuran 85,6 × 54 mm. Nama/unit pegawai ditentukan server berdasarkan NIP. Kartu memiliki nomor tetap dan hanya memuat nama, instansi, dan nomor kartu. Kartu hanya dapat diunduh pengguna dengan izin Pengunjung.
+- **Daftar Peminjaman**: pilih buku dan pengunjung terdaftar, jumlah, tanggal pinjam, serta jatuh tempo. Saran jatuh tempo tujuh hari dapat diubah. Catat pengembalian seluruh eksemplar dalam satu transaksi dengan tanggal manual. Status Dipinjam/Terlambat/Dikembalikan berdasarkan tanggal WIB. Tidak ada denda otomatis. Stok dihitung dari transaksi yang belum kembali; penyimpanan serentak diserialkan agar stok tidak negatif. Eksemplar total tidak dapat dikurangi di bawah jumlah yang sedang dipinjam.
+
+Semua perubahan dicatat pada audit dan keempat tabel ikut backup lokal/Google Drive dalam kategori **Perpustakaan**. SQLite membuat tabel dan memuat inventaris hanya saat tabel pertama dibuat. Produksi PostgreSQL memakai `supabase/migrations/20261029075725_add_library.sql`; migrasi menambahkan tabel dan inventaris tanpa mengubah data fitur lain. RLS aktif, Data API `PUBLIC`/`anon`/`authenticated` dicabut. Katalog publik membaca hanya kolom buku melalui server aplikasi, bukan akses langsung Data API.
+
+Uji: `npm.cmd run smoke:library`, `npm.cmd run smoke:google-drive-backup`, dan `npm.cmd run smoke:local-backup`.
+
 ## Verifikasi
 
 ```powershell

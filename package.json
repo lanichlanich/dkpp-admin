@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "smoke:library": "node scripts/smoke-library.mjs",
     "smoke:user-management": "node scripts/smoke-user-management.mjs",
     "smoke:plt": "node scripts/smoke-plt.mjs",
     "smoke:arsip-dinas": "node scripts/smoke-arsip-dinas.mjs",

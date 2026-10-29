@@ -9,10 +9,14 @@ const ROOT_FOLDER_ID = "18c2-AWmf2K0GKDRgv_g3AQUCicv7J1j4";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const UPLOAD_API = "https://www.googleapis.com/upload/drive/v3";
 
-type Category = "Kepegawaian" | "Persuratan" | "Umum" | "Perencanaan" | "Sistem";
+type Category = "Kepegawaian" | "Persuratan" | "Umum" | "Perencanaan" | "Perpustakaan" | "Sistem";
 type ArchiveFile = { path: string; bytes: Buffer };
 
 const TABLE_CATEGORY: Record<string, Category> = {
+  library_books: "Perpustakaan",
+  library_visitors: "Perpustakaan",
+  library_visits: "Perpustakaan",
+  library_loans: "Perpustakaan",
   employees: "Kepegawaian",
   plt_assignments: "Kepegawaian",
   organization_units: "Kepegawaian",
@@ -286,7 +290,7 @@ export function jakartaBackupName(date: Date) {
 export async function createBackupContent() {
   const { tables: snapshot, storageObjects } = await createBackupSnapshot();
   const filesByCategory = new Map<Category, ArchiveFile[]>([
-    ["Kepegawaian", []], ["Persuratan", []], ["Umum", []], ["Perencanaan", []], ["Sistem", []],
+    ["Kepegawaian", []], ["Persuratan", []], ["Umum", []], ["Perencanaan", []], ["Perpustakaan", []], ["Sistem", []],
   ]);
 
   for (const [table, rows] of Object.entries(snapshot)) {

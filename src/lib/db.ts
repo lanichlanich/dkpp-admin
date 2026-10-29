@@ -5,6 +5,8 @@ import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { pltFileName } from "@/lib/plt-filename";
+import { LIBRARY_SCHEMA } from "@/lib/library-schema";
+import librarySeed from "@/data/library-books.json";
 export { mapPublicUser } from "@/lib/db-types";
 export type { Employee, PublicUser } from "@/lib/db-types";
 
@@ -789,3 +791,15 @@ for (const position of positionsForHierarchy) {
 if (process.env.NODE_ENV !== "production") {
   globalForDatabase.adminDatabase = db;
 }
+
+db.transaction(() => {
+  const libraryExists = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'library_books'").get();
+  db.exec(LIBRARY_SCHEMA);
+  if (!libraryExists) {
+    const insert = db.prepare(`INSERT INTO library_books
+      (id, inventory_code, title, publication_year, publication_place, publisher, isbn, category, copies, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    for (const book of librarySeed) insert.run(book.id, book.inventoryCode, book.title, book.publicationYear, book.publicationPlace,
+      book.publisher, book.isbn, book.category, book.copies, now, now);
+  }
+})();

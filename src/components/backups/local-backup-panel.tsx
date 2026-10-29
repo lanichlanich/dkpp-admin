@@ -39,7 +39,7 @@ export function LocalBackupPanel({ authorized }: { authorized: boolean }) {
   }
   return <section className="space-y-4 rounded-2xl border bg-white p-5 shadow-sm md:p-6">
     <h2 className="text-lg font-semibold">Download backup lengkap</h2>
-    <p className="text-sm leading-6 text-muted-foreground">Satu arsip .tar.gz berisi snapshot database, seluruh berkas tersimpan, manifest pemeriksaan, dan petunjuk pemulihan. Data dikelompokkan dalam folder Kepegawaian, Persuratan, Umum, Perencanaan, dan Sistem.</p>
+    <p className="text-sm leading-6 text-muted-foreground">Satu arsip .tar.gz berisi snapshot database, seluruh berkas tersimpan, manifest pemeriksaan, dan petunjuk pemulihan. Data dikelompokkan dalam folder Kepegawaian, Persuratan, Umum, Perencanaan, Perpustakaan, dan Sistem.</p>
     <p className="text-sm leading-6 text-muted-foreground">Termasuk PO, KAK, RKA sumber, dan berkas yang belum terhubung ke metadata fitur. Sesi login dan konfigurasi layanan tidak disertakan.</p>
     {!authorized && <p role="status" className="text-sm text-amber-800">Backup hanya tersedia untuk administrator yang ditetapkan.</p>}
     <Button size="lg" onClick={download} disabled={busy || !authorized}>{busy ? <LoaderCircle className="animate-spin" /> : <Download />}{busy ? progress === null ? "Menyiapkan backup..." : `Mengunduh ${progress}%...` : "Download backup ke komputer"}</Button>

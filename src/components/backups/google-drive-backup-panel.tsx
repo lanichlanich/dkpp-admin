@@ -55,7 +55,7 @@ export function GoogleDriveBackupPanel({ configured }: { configured: boolean }) 
     <section className="grid gap-4 md:grid-cols-2">
       <div className="rounded-2xl border border-zinc-200 bg-white p-5">
         <div className="flex items-center gap-2 font-semibold text-zinc-900"><Archive className="size-5 text-emerald-700" />Arsip tanpa enkripsi</div>
-        <p className="mt-2 text-sm leading-6 text-zinc-600">Lima arsip .tar.gz dapat diekstrak langsung: Kepegawaian, Persuratan, Umum, Perencanaan, dan Sistem. Folder Drive harus memakai Akses umum Dibatasi karena arsip memuat data aplikasi dan berkas asli.</p>
+        <p className="mt-2 text-sm leading-6 text-zinc-600">Enam arsip .tar.gz dapat diekstrak langsung: Kepegawaian, Persuratan, Umum, Perencanaan, Perpustakaan, dan Sistem. Folder Drive harus memakai Akses umum Dibatasi karena arsip memuat data aplikasi dan berkas asli.</p>
       </div>
       <div className="rounded-2xl border border-zinc-200 bg-white p-5">
         <div className="flex items-center gap-2 font-semibold text-zinc-900"><Info className="size-5 text-sky-700" />Data yang dicadangkan</div>

@@ -35,6 +35,7 @@ export default async function LoginPage() {
             <p className="mt-3 text-sm leading-6 text-zinc-500">Gunakan email atau username yang sudah terdaftar.</p>
           </div>
           <LoginForm />
+          <Link href="/perpustakaan" className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">Buka Perpustakaan DKPP <ArrowRight className="size-4" /></Link>
           <p className="mt-7 text-center text-sm text-zinc-500">Belum memiliki akun?{" "}<Link href="/register" className="inline-flex items-center gap-1 font-semibold text-indigo-600 hover:text-indigo-700">Daftar sekarang <ArrowRight className="size-3.5" /></Link></p>
         </div>
       </section>

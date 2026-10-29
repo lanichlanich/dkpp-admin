@@ -11,6 +11,8 @@ export const MENU_CATALOG = [
     .map(([id, label]) => ({ id, label, group: "Persuratan", path: `/dashboard/${id}` })),
   { id: "pembuatan-kak", label: "Pembuatan PO dan KAK", group: "Perencanaan", path: "/dashboard/pembuatan-kak" },
   { id: "simulasi-gaji-pns", label: "Simulasi Gaji PNS", group: "Keuangan", path: "/dashboard/simulasi-gaji-pns" },
+  ...[["buku", "Daftar Buku"], ["pengunjung", "Daftar Pengunjung"], ["peminjaman", "Daftar Peminjaman"]]
+    .map(([id, label]) => ({ id: `perpustakaan-${id}`, label, group: "Perpustakaan", path: `/dashboard/perpustakaan/${id}` })),
   { id: "backup-lokal", label: "Backup ke Lokal", group: "Sistem", path: "/dashboard/backup-lokal" },
   { id: "backup", label: "Backup Google Drive", group: "Sistem", path: "/dashboard/backup" },
   { id: "log-audit", label: "Log Audit Perubahan Data", group: "Sistem", path: "/dashboard/log-audit" },

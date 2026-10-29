@@ -6,7 +6,7 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Archive, Award, BriefcaseBusiness, Building2, Calculator, CalendarDays, ChevronDown, ClipboardList, CloudUpload, FileBarChart2, FileCheck2, FileSignature, FileText, FolderOpen, History, House, LayoutDashboard, ListTree, LoaderCircle, Network, PanelLeftClose, PanelLeftOpen, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, Wallet, X } from "lucide-react";
+import { BookOpen, Archive, Award, BriefcaseBusiness, Building2, Calculator, CalendarDays, ChevronDown, ClipboardList, CloudUpload, FileBarChart2, FileCheck2, FileSignature, FileText, FolderOpen, History, House, LayoutDashboard, ListTree, LoaderCircle, Network, PanelLeftClose, PanelLeftOpen, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, Wallet, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -37,6 +37,12 @@ const correspondenceNavigation = [
   { label: "Surat Pengantar", href: "/dashboard/surat-pengantar", icon: Send },
   { label: "Surat Perbantuan", href: "/dashboard/surat-perbantuan", icon: FileSignature },
   { label: "Surat Lupa Absen Pulang", href: "/dashboard/surat-lupa-absen-pulang", icon: FileSignature },
+];
+
+const libraryNavigation = [
+  { label: "Daftar Buku", href: "/dashboard/perpustakaan/buku", icon: BookOpen },
+  { label: "Daftar Pengunjung", href: "/dashboard/perpustakaan/pengunjung", icon: UsersRound },
+  { label: "Daftar Peminjaman", href: "/dashboard/perpustakaan/peminjaman", icon: ClipboardList },
 ];
 
 const navigation = [
@@ -78,6 +84,7 @@ function CompactSidebar({ onToggle }: { onToggle?: () => void }) {
   const generalItems = generalNavigation.filter(allowed);
   const correspondenceItems = correspondenceNavigation.filter(allowed);
   const navigationItems = navigation.filter(allowed);
+  const libraryItems = libraryNavigation.filter(allowed);
   const pathname = usePathname();
   return <div className="flex h-full flex-col bg-gradient-to-b from-emerald-600 via-green-700 to-sky-700 text-emerald-50">
     <div className="flex h-20 shrink-0 items-center justify-center border-b border-white/20 bg-white/[0.08]" title="DKPP-Admin · Administrasi DKPP"><span className="grid size-12 place-items-center rounded-xl bg-white p-1 shadow-lg ring-1 ring-amber-200/70"><Image src="/dkpp-admin-logo.png" alt="DKPP-Admin" width={44} height={44} className="size-11 object-contain" priority /></span></div>
@@ -89,6 +96,7 @@ function CompactSidebar({ onToggle }: { onToggle?: () => void }) {
       {correspondenceItems.length > 0 && <CompactGroup label="Persuratan" icon={FileText} items={correspondenceItems} />}
       {canAccessPath(access, "/dashboard/pembuatan-kak") && <CompactGroup label="Perencanaan" icon={ClipboardList} items={[{ label: "Pembuatan PO dan KAK", href: "/dashboard/pembuatan-kak", icon: FileSignature }]} />}
       {canAccessPath(access, "/dashboard/simulasi-gaji-pns") && <CompactGroup label="Keuangan" icon={Wallet} items={[{ label: "Simulasi Gaji PNS", href: "/dashboard/simulasi-gaji-pns", icon: Calculator }]} />}
+      {libraryItems.length > 0 && <CompactGroup label="Perpustakaan" icon={BookOpen} items={libraryItems} />}
       {navigationItems.map(item => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         return <Link key={item.href} href={item.href} title={item.label} aria-label={item.label} aria-current={active ? "page" : undefined} className={cn("grid size-12 shrink-0 place-items-center rounded-xl focus-visible:outline-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800" : "hover:bg-white/15")}><NavigationIcon icon={item.icon} className="size-5" /></Link>;
@@ -105,6 +113,7 @@ export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { on
   const generalItems = generalNavigation.filter(allowed);
   const correspondenceItems = correspondenceNavigation.filter(allowed);
   const navigationItems = navigation.filter(allowed);
+  const libraryItems = libraryNavigation.filter(allowed);
   const pathname = usePathname();
   const personnelActive = personnelNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
   const generalActive = generalNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -116,6 +125,8 @@ export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { on
   const [planningOpen, setPlanningOpen] = useState(planningActive);
   const financeActive = pathname.startsWith("/dashboard/simulasi-gaji-pns");
   const [financeOpen, setFinanceOpen] = useState(financeActive);
+  const libraryActive = pathname.startsWith("/dashboard/perpustakaan/");
+  const [libraryOpen, setLibraryOpen] = useState(libraryActive);
   if (collapsed) return <CompactSidebar onToggle={onToggle} />;
   return (
     <div className="flex h-full flex-col bg-gradient-to-b from-emerald-600 via-green-700 to-sky-700 text-emerald-50">
@@ -161,6 +172,8 @@ export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { on
             return <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={Icon} className="size-4 shrink-0" /><span className="min-w-0 leading-5">{item.label}</span></Link>;
           })}
         </div>}
+        {libraryItems.length > 0 && <button type="button" aria-expanded={libraryOpen} onClick={() => setLibraryOpen(open => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-white/15", libraryActive && "bg-white/15")}><BookOpen aria-hidden="true" className="size-5 shrink-0" /><span className="flex-1">Perpustakaan</span><ChevronDown className={cn("size-4 transition-transform", libraryOpen && "rotate-180")} /></button>}
+        {libraryItems.length > 0 && libraryOpen && <div className="ml-3 space-y-1 border-l border-amber-200/45 pl-3">{libraryItems.map(item => <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={pathname === item.href ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium hover:bg-white/15", pathname === item.href && "bg-white text-emerald-800 hover:bg-white")}><NavigationIcon icon={item.icon} className="size-4 shrink-0" />{item.label}</Link>)}</div>}
         {canAccessPath(access, "/dashboard/pembuatan-kak") && <button type="button" aria-expanded={planningOpen} onClick={() => setPlanningOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", planningActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
           <ClipboardList aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Perencanaan</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", planningOpen && "rotate-180")} />
         </button>}

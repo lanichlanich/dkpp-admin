@@ -21,6 +21,10 @@ const snapshot = { tables: {
   employee_documents: [{ id: "employee", storage_name: "employee.pdf", original_file_name: "pegawai.pdf" }],
   kak_documents: [{ id: "kak", storage_name: "kak.docx", file_name: "kak.docx", source_storage_name: "rka.pdf", source_name: "rka.pdf", draft_json: JSON.stringify({ poDocument: { storageName: poName, fileName: "po.docx", fileSize: 20, templateSha256: "a".repeat(64) } }) }],
   wfh_reports: [{ id: "report" }],
+  library_books: [{ id: "book-1", inventory_code: "000123", copies: 2 }],
+  library_visitors: [{ id: "visitor-1", name: "Pengunjung Uji" }],
+  library_visits: [{ id: "visit-1", visitor_id: "visitor-1" }],
+  library_loans: [{ id: "loan-1", book_id: "book-1", visitor_id: "visitor-1" }],
 }, storageObjects: [...contents.keys()].map(name => ({ name, metadata: { size: contents.get(name).length } })) };
 function setup(user = { id: "admin", username: "admin1" }, failure = false) {
   const state = { snapshots: 0, downloads: [] }, cache = new Map();
@@ -63,9 +67,11 @@ try {
   const bytes = Buffer.concat(chunks); assert(bytes.length > 4.5 * 1024 * 1024, "Exercise a backup above Vercel's buffered payload limit");
   assert.equal(bytes.length, Number(response.headers.get("x-backup-bytes"))); assert.equal(createHash("sha256").update(bytes).digest("hex"), response.headers.get("x-backup-sha256"));
   const files = extract(bytes), manifest = JSON.parse(files.get("manifest.json"));
-  assert.equal(manifest.tableCount, 6); assert.equal(manifest.documentCount, 5); assert.equal(manifest.unlinkedStorageObjectCount, 1);
+  assert.equal(manifest.tableCount, 10); assert.equal(manifest.documentCount, 5); assert.equal(manifest.unlinkedStorageObjectCount, 1);
   assert.deepEqual(JSON.parse(files.get("Kepegawaian/database/employees.json")), snapshot.tables.employees);
   assert.deepEqual(JSON.parse(files.get("Sistem/database/users.json")), snapshot.tables.users);
+  for (const table of ["library_books", "library_visitors", "library_visits", "library_loans"])
+    assert.deepEqual(JSON.parse(files.get(`Perpustakaan/database/${table}.json`)), snapshot.tables[table]);
   assert.deepEqual(JSON.parse(files.get("Sistem/database/app_roles.json")), snapshot.tables.app_roles);
   assert(![...files.keys()].some(name => /sessions|\.env/.test(name))); assert(files.has("PEMULIHAN.txt"));
   for (const entry of manifest.files) { assert.equal(files.get(entry.path).length, entry.size); assert.equal(createHash("sha256").update(files.get(entry.path)).digest("hex"), entry.sha256); }

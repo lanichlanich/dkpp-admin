@@ -25,6 +25,10 @@ const snapshot = {
     wfh_reports: [{ id: "report-1" }],
     surat_perbantuan_documents: [{ id: "perbantuan-1", storage_name: "perbantuan.docx", file_name: "Surat-Perbantuan.docx" }],
     users: [{ id: "user-1", username: "admin1" }],
+    library_books: [{ id: "book-1", inventory_code: "000123", copies: 2 }],
+    library_visitors: [{ id: "visitor-1", name: "Pengunjung Uji", phone: "kontak privat" }],
+    library_visits: [{ id: "visit-1", visitor_id: "visitor-1" }],
+    library_loans: [{ id: "loan-1", book_id: "book-1", visitor_id: "visitor-1", quantity: 1 }],
   },
   storageObjects: sourceNames.map(name => ({ name, metadata: { size: fixtureBytes(name).length } })),
 };
@@ -162,14 +166,14 @@ try {
   const result = await actions.runGoogleDriveBackupAction();
   assert.equal(result.status, "success"); assert.match(result.message, /\.tar\.gz/);
   assert.equal(state.snapshots, 1);
-  assert.equal(result.archiveCount, 5); assert.equal(result.tableCount, 8);
+  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 12);
   assert.equal(result.documentCount, 7); assert.equal(result.unlinkedStorageObjectCount, 1);
   assert.equal(state.tokenCalls, 1, "Reuse the access token across folder creation and uploads");
   assert.deepEqual([...state.downloads].sort(), [...sourceNames].sort());
-  assert.equal(state.folders.length, 6); assert.equal(state.uploads.length, 5);
+  assert.equal(state.folders.length, 7); assert.equal(state.uploads.length, 6);
   assert.deepEqual(state.folders[0].parents, ["fixture-root"]);
   assert.match(state.folders[0].name, /^Backup \d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/);
-  const categories = new Set(["Kepegawaian", "Persuratan", "Umum", "Perencanaan", "Sistem"]), archives = new Map();
+  const categories = new Set(["Kepegawaian", "Persuratan", "Umum", "Perencanaan", "Perpustakaan", "Sistem"]), archives = new Map();
   for (const upload of state.uploads) {
     const folder = state.folders.find(item => item.id === upload.parents[0]);
     assert(categories.delete(folder.name));
@@ -177,6 +181,8 @@ try {
     archives.set(folder.name, extract(upload.bytes));
   }
   assert.equal(categories.size, 0);
+  for (const table of ["library_books", "library_visitors", "library_visits", "library_loans"])
+    assert.deepEqual(JSON.parse(archives.get("Perpustakaan").get(`database/${table}.json`)), snapshot.tables[table]);
   assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/employees.json")), snapshot.tables.employees);
   assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/plt_assignments.json")), snapshot.tables.plt_assignments);
   assert.deepEqual(archives.get("Kepegawaian").get("files/plt_assignments/record-plt-1.pdf"), fixtureBytes("plt.pdf"));
@@ -192,7 +198,7 @@ try {
   assert.deepEqual(JSON.parse(system.get("database/app_roles.json")), snapshot.tables.app_roles);
   assert.equal(orphan.storageName, "orphan.pdf");
   assert.deepEqual(system.get(orphan.path), fixtureBytes("orphan.pdf"));
-  console.log("PASS Google Drive backup: plain gzip/tar extraction, 5 categories, database snapshots, KAK/RKA/PO, WFH and orphan bytes; OAuth diagnostics redact secrets and fail before snapshot; private writable folder enforced; encryption key unnecessary.");
+  console.log("PASS Google Drive backup: plain gzip/tar extraction, 6 categories, database snapshots, KAK/RKA/PO, WFH and orphan bytes; OAuth diagnostics redact secrets and fail before snapshot; private writable folder enforced; encryption key unnecessary.");
 } finally {
   globalThis.fetch = originalFetch;
 }

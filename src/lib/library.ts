@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { database as db } from "@/lib/database";
 import { requireMenuAccess } from "@/lib/authorization";
 import { jakartaToday } from "@/lib/plt-dates";
-import { bookSchema, visitorSchema, visitSchema, loanSchema, returnSchema, type LibraryBook, type PublicLibraryBook, type LibraryVisitor, type LibraryVisit, type LibraryLoan, type LibraryEmployee } from "@/lib/library-types";
+import { bookSchema, visitorSchema, visitSchema, loanSchema, returnSchema, libraryCardsSchema, type LibraryBook, type PublicLibraryBook, type LibraryVisitor, type LibraryCardVisitor, type LibraryVisit, type LibraryLoan, type LibraryEmployee } from "@/lib/library-types";
 
 export class LibraryError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -39,6 +39,15 @@ export async function getLibraryVisitor(id: string) {
   const row = await db.prepare(`${visitorsSelect} WHERE id = ?`).get<LibraryVisitor>(id);
   if (!row) throw new LibraryError("Pengunjung tidak ditemukan.", 404);
   return row;
+}
+export async function getLibraryCardVisitors(input: unknown) {
+  await requireMenuAccess("perpustakaan-pengunjung");
+  const { visitorIds } = libraryCardsSchema.parse(input);
+  const rows = await db.prepare(`SELECT id, card_number AS cardNumber, name, organization FROM library_visitors
+    WHERE id IN (${visitorIds.map(() => "?").join(", ")})`).all<LibraryCardVisitor>(...visitorIds);
+  if (rows.length !== visitorIds.length) throw new LibraryError("Sebagian pengunjung yang dipilih sudah tidak tersedia. Muat ulang daftar, lalu pilih kembali.", 409);
+  const byId = new Map(rows.map(row => [row.id, row]));
+  return visitorIds.map(id => byId.get(id)!);
 }
 export async function getLibraryVisits() {
   await requireMenuAccess("perpustakaan-pengunjung");

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import Module, {createRequire} from 'node:module';
 import path from 'node:path';
@@ -28,6 +29,7 @@ function load(file){
 db.exec(load('src/lib/library-schema.ts').LIBRARY_SCHEMA);
 const service=load('src/lib/library.ts'), types=load('src/lib/library-types.ts'), {jakartaToday}=load('src/lib/plt-dates.ts');
 const books=load('src/app/api/library/books/route.ts'), book=load('src/app/api/library/books/[id]/route.ts'), visitors=load('src/app/api/library/visitors/route.ts'), visitor=load('src/app/api/library/visitors/[id]/route.ts'), visits=load('src/app/api/library/visits/route.ts'), loans=load('src/app/api/library/loans/route.ts'), returns=load('src/app/api/library/loans/[id]/return/route.ts'), cards=load('src/app/api/library/visitors/[id]/card/route.ts');
+const batchCards=load('src/app/api/library/visitors/cards/route.ts');
 const request=(data,method='POST')=>new Request('http://localhost/api/library',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
 const ctx=id=>({params:Promise.resolve({id})});
 const today=jakartaToday(), yesterday=new Date(new Date(`${today}T00:00:00Z`).getTime()-86400000).toISOString().slice(0,10);
@@ -83,10 +85,41 @@ try {
  const card=await cards.GET(new Request('http://localhost'),ctx(employeeId));assert.equal(card.status,200);assert.equal(card.headers.get('cache-control'),'private, no-store');assert.match(card.headers.get('content-disposition'),/^attachment;/);
  const bytes=Buffer.from(await card.arrayBuffer());assert.equal(bytes.subarray(0,5).toString(),'%PDF-');fs.mkdirSync('.tmp/library',{recursive:true});fs.writeFileSync('.tmp/library/card.pdf',bytes);
  const longCard=await load('src/lib/library-card.ts').createLibraryCard({...e,name:'Nama Pengunjung Panjang '.repeat(8).trim(),organization:'Unit Organisasi dan Instansi yang Panjang '.repeat(7).trim()});fs.writeFileSync('.tmp/library/card-long.pdf',longCard);
+ const batchIds=[];
+ for(let i=1;i<=13;i++)batchIds.push(await created(visitors,{...baseVisitor,name:`Pengunjung Batch ${String(i).padStart(2,'0')}`}));
+ const orderedIds=[...batchIds].reverse();
+ const pdfjs=await import('pdfjs-dist/legacy/build/pdf.mjs');
+ for(const count of [1,6,7,13]){
+  const ids=orderedIds.slice(0,count),response=await batchCards.POST(request({visitorIds:ids,name:'FORGED NAME'}));assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'private, no-store');assert.equal(response.headers.get('content-type'),'application/pdf');assert.match(response.headers.get('content-disposition'),/^inline;/);
+  const bytes=Buffer.from(await response.arrayBuffer());fs.writeFileSync(`.tmp/library/cards-${count}.pdf`,bytes);
+  const loadingTask=pdfjs.getDocument({data:new Uint8Array(bytes),useSystemFonts:true,verbosity:0}),pdf=await loadingTask.promise;
+  assert.equal(pdf.numPages,Math.ceil(count/6));
+  const people=await service.getLibraryCardVisitors({visitorIds:ids});assert.deepEqual(people.map(p=>p.id),ids);assert(!people.some(p=>'phone'in p||'address'in p||'employeeNip'in p));
+  const extracted=[];
+  for(let pageNumber=1;pageNumber<=pdf.numPages;pageNumber++){
+   const page=await pdf.getPage(pageNumber),viewport=page.getViewport({scale:1});assert(Math.abs(viewport.width-595.28)<0.1);assert(Math.abs(viewport.height-841.89)<0.1);
+   const content=await page.getTextContent(),text=content.items.map(i=>i.str).join(' ');assert(!text.includes('FORGED NAME'));assert(!text.includes(baseVisitor.phone));assert(!text.includes(baseVisitor.address));
+   const pageCards=content.items.filter(item=>people.some(p=>p.cardNumber===item.str));assert.equal(pageCards.length,Math.min(6,count-(pageNumber-1)*6));
+   for(const item of pageCards){assert(item.transform[4]>30&&item.transform[4]<viewport.width-30);assert(item.transform[5]>30&&item.transform[5]<viewport.height-30);}
+   extracted.push(...pageCards.map(item=>item.str));
+  }
+  assert.deepEqual(extracted,people.map(p=>p.cardNumber));await loadingTask.destroy();
+ }
+ for(const input of [{visitorIds:[]},{visitorIds:['bad-id']},{visitorIds:[visitorId,visitorId]},{visitorIds:Array.from({length:1001},()=>randomUUID())}])assert.equal((await batchCards.POST(request(input))).status,400);
+ const batchPeople=await service.getLibraryCardVisitors({visitorIds:batchIds.slice(0,5)});
+ fs.writeFileSync('.tmp/library/cards-long.pdf',await load('src/lib/library-card.ts').createLibraryCards([{...e,name:'Nama Pengunjung Panjang '.repeat(8).trim(),organization:'Unit Organisasi dan Instansi yang Panjang '.repeat(7).trim()},...batchPeople]));
+ assert.equal((await batchCards.POST(request({visitorIds:[visitorId,randomUUID()]}))).status,409,'Missing selection must fail the entire PDF');
+ assert.equal((await batchCards.POST(request({visitorIds:Array.from({length:1000},()=>randomUUID())}))).status,409,'The supported maximum must fit the database parameter limit');
+ const maximumCards=Array.from({length:1000},(_,index)=>({...e,id:randomUUID(),cardNumber:`DKPP-${String(index).padStart(16,'0')}`,name:`${index} ${'Nama Pengunjung '.repeat(12)}`.slice(0,200),organization:'Unit Organisasi Pengujian '.repeat(12).slice(0,300)}));
+ const maximumPdf=await load('src/lib/library-card.ts').createLibraryCards(maximumCards);assert(maximumPdf.length<4.5*1024*1024,'Maximum batch must fit a buffered Vercel response');
+ assert.equal((await batchCards.POST(new Request('http://localhost',{method:'POST',body:'not json'}))).status,400);
+ assert.equal((await batchCards.POST(new Request('http://localhost',{method:'POST',body:' '.repeat(65537)}))).status,413);
  const publicBooks=await service.getPublicLibraryBooks();assert.equal(publicBooks.length,1);for(const key of ['notes','updatedAt','isActive','name','phone','address','employeeNip'])assert(!Object.hasOwn(publicBooks[0],key),`Public PII: ${key}`);
  permissions=new Set(['perpustakaan-peminjaman']);assert.equal((await books.GET()).status,403);assert.equal((await visitors.GET()).status,403);assert.equal((await cards.GET(new Request('http://localhost'),ctx(employeeId))).status,403);assert.equal((await loans.GET()).status,200);assert((await service.getLibraryLoanOptions()).visitors.every(v=>!('phone' in v)));
+ assert.equal((await batchCards.POST(request({visitorIds:batchIds}))).status,403);
  signedIn=false;for(const api of [books,visitors,visits,loans]){assert.equal((await api.GET()).status,401);assert.equal((await api.POST(request({}))).status,401);}assert.equal((await cards.GET(new Request('http://localhost'),ctx(employeeId))).status,401);
+ assert.equal((await batchCards.POST(request({visitorIds:batchIds}))).status,401);
  assert.equal((await service.getPublicLibraryBooks()).length,1,'Public catalog must work without login');
  assert.equal(db.pragma('foreign_key_check').length,0);
- console.log('PASS library: source 154/251, permissions, public privacy, manual/employee identity, cards, visits, atomic stock bounds, dates, inactive records, version checks, returns, deletion history.');
+ console.log('PASS library: source 154/251, permissions, public privacy, manual/employee identity, cards and selected-card A4 batches (1/6/7/13), six per page, order/privacy/bounds, visits, atomic stock bounds, dates, inactive records, version checks, returns, deletion history.');
 }finally{db.close();}

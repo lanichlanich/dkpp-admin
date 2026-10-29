@@ -3,6 +3,13 @@ import { z } from "zod";
 export type LibraryBook = { id: string; inventoryCode: string; title: string; publicationYear: string; publicationPlace: string; publisher: string; isbn: string; category: string; copies: number; borrowed: number; available: number; shelf: string; notes: string; isActive: number; updatedAt: string };
 export type PublicLibraryBook = Omit<LibraryBook, "notes" | "isActive" | "updatedAt">;
 export type LibraryVisitor = { id: string; cardNumber: string; employeeNip: string | null; name: string; organization: string; phone: string; address: string; isActive: number; createdAt: string; updatedAt: string };
+export type LibraryCardVisitor = Pick<LibraryVisitor, "id" | "cardNumber" | "name" | "organization">;
+export const LIBRARY_CARDS_PER_PAGE = 6;
+export const LIBRARY_CARD_BATCH_LIMIT = 1000;
+export const libraryCardsSchema = z.object({
+  visitorIds: z.array(z.string().uuid()).min(1, "Pilih minimal satu pengunjung.").max(LIBRARY_CARD_BATCH_LIMIT, "Maksimal 1.000 kartu per unduhan.")
+    .refine(ids => new Set(ids).size === ids.length, "Pengunjung yang dipilih tidak boleh berulang."),
+});
 export type LibraryVisit = { id: string; visitorId: string; name: string; cardNumber: string; visitDate: string; purpose: string };
 export type LibraryLoan = { id: string; bookId: string; visitorId: string; title: string; inventoryCode: string; name: string; cardNumber: string; quantity: number; loanDate: string; dueDate: string; returnDate: string | null; notes: string };
 export type LibraryEmployee = { nip: string; name: string; unit: string };

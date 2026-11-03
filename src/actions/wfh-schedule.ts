@@ -114,9 +114,9 @@ export async function continueScheduleMonth(period: string): Promise<ActionResul
   return { success: true, message: `Daftar ${monthLabel(targetPeriod)} ${targetMonth ? "diperbarui" : "dibuat"} sebagai kelanjutan ${monthLabel(period)}.` };
 }
 
-export async function addScheduleEmployee(period: string, nip: string): Promise<ActionResult> {
+export async function addScheduleEmployee(period: string, nip: string, status: WorkLocation = "WFO"): Promise<ActionResult> {
   const user = await requireMenuAccess("daftar-wfh");
-  if (!validPeriod(period) || !/^\d{18}$/.test(nip)) return { success: false, message: "Data pegawai atau bulan tidak valid." };
+  if (!validPeriod(period) || !/^\d{18}$/.test(nip) || !["WFH", "WFO"].includes(status)) return { success: false, message: "Data pegawai, bulan, atau status tidak valid." };
   const month = await db.prepare("SELECT period FROM wfh_schedule_months WHERE period = ?").get(period);
   if (!month) return { success: false, message: "Buat jadwal bulan terlebih dahulu." };
   const employee = await db.prepare(
@@ -134,10 +134,20 @@ export async function addScheduleEmployee(period: string, nip: string): Promise<
     `INSERT INTO wfh_schedule_entries
      (period, employee_nip, employee_name, position, unit, sort_order, friday_date, status, updated_by, updated_at)
      VALUES ${placeholders} ON CONFLICT DO NOTHING`,
-  ).run(...dates.flatMap((date) => [period, nip, employee.name, employee.position, employee.unit, sortOrder, date, "WFO", user.id, now]))).changes;
+  ).run(...dates.flatMap((date) => [period, nip, employee.name, employee.position, employee.unit, sortOrder, date, status, user.id, now]))).changes;
   if (!added) return { success: false, message: "Pegawai sudah ada di daftar bulan ini." };
   refreshSchedule();
-  return { success: true, message: `${employee.name} ditambahkan dengan status awal WFO.` };
+  return { success: true, message: `${employee.name} ditambahkan dengan status awal ${status}.` };
+}
+
+export async function removeScheduleEmployee(period: string, nip: string, confirmed = false): Promise<ActionResult> {
+  await requireMenuAccess("daftar-wfh");
+  if (!validPeriod(period) || !/^\d{18}$/.test(nip)) return { success: false, message: "Data pegawai atau bulan tidak valid." };
+  if (confirmed !== true) return { success: false, message: "Konfirmasi penghapusan pegawai dari jadwal diperlukan." };
+  const removed = await db.prepare("DELETE FROM wfh_schedule_entries WHERE period = ? AND employee_nip = ?").run(period, nip);
+  if (!removed.changes) return { success: false, message: "Pegawai tidak ditemukan pada jadwal bulan ini." };
+  refreshSchedule();
+  return { success: true, message: `Pegawai dihapus dari jadwal ${monthLabel(period)}.` };
 }
 
 export async function setScheduleStatus(period: string, nip: string, date: string, status: WorkLocation): Promise<ActionResult> {

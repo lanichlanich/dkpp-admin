@@ -31,6 +31,7 @@
     "smoke:dpcp": "node scripts/smoke-dpcp.mjs",
     "smoke:employee-documents": "node scripts/smoke-employee-documents.mjs",
     "smoke:wfh": "node scripts/smoke-wfh.mjs",
+    "smoke:wfh-schedule": "node scripts/smoke-wfh-schedule.mjs",
     "smoke:surat-pengantar": "node scripts/smoke-surat-pengantar.mjs",
     "smoke:surat-perbantuan": "node scripts/smoke-surat-perbantuan.mjs",
     "smoke:pembukaan-kerjaku": "node scripts/smoke-pembukaan-kerjaku.mjs",

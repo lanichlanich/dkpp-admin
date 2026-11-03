@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { ChevronLeft, ChevronRight, FileDown, LoaderCircle, Plus, RefreshCw, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileDown, LoaderCircle, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { addScheduleEmployee, continueScheduleMonth, createScheduleMonth, setScheduleStatus } from "@/actions/wfh-schedule";
+import { continueScheduleMonth, createScheduleMonth, removeScheduleEmployee, setScheduleStatus } from "@/actions/wfh-schedule";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DailyDownloads } from "@/components/wfh/daily-downloads";
+import { ScheduleEmployeeDialog } from "@/components/wfh/schedule-employee-dialog";
+import { TableHorizontalScroll } from "@/components/ui/table-horizontal-scroll";
 import type { ScheduleEmployee, ScheduleEntry, WorkLocation } from "@/lib/wfh-schedule";
 
 type Row = {
@@ -40,7 +42,8 @@ export function ScheduleBoard({
   const [pending, startTransition] = useTransition();
   const [busyCell, setBusyCell] = useState("");
   const [search, setSearch] = useState("");
-  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [toRemove, setToRemove] = useState<ScheduleEmployee | null>(null), [removeError, setRemoveError] = useState("");
   const [statusOverrides, setStatusOverrides] = useState<Record<string, WorkLocation>>({});
   const [continueOpen, setContinueOpen] = useState(false);
   const rows = useMemo(() => {
@@ -58,9 +61,7 @@ export function ScheduleBoard({
   }, [entries]);
   const selectedNips = new Set(rows.map((row) => row.employee.nip));
   const filtered = rows.filter((row) => `${row.employee.name} ${row.employee.nip} ${row.employee.unit}`.toLowerCase().includes(search.toLowerCase()));
-  const candidates = employeeSearch.trim()
-    ? activeEmployees.filter((employee) => !selectedNips.has(employee.nip) && `${employee.name} ${employee.nip}`.toLowerCase().includes(employeeSearch.toLowerCase())).slice(0, 8)
-    : [];
+  const availableEmployees = activeEmployees.filter(employee => !selectedNips.has(employee.nip));
   const counts = dates.map((date) => rows.reduce((count, row) => count + Number((statusOverrides[`${row.employee.nip}:${date}`] ?? row.statuses[date]) === "WFH"), 0));
 
   function createMonth() {
@@ -82,11 +83,20 @@ export function ScheduleBoard({
     });
   }
 
-  function addEmployee(nip: string) {
+  function clearEmployeeOverrides(nip: string) {
+    setStatusOverrides(current => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith(`${nip}:`))));
+  }
+
+  function removeEmployee() {
+    if (!toRemove || pending) return;
+    const employee = toRemove;
+    setRemoveError("");
     startTransition(async () => {
-      const result = await addScheduleEmployee(period, nip);
-      if (result.success) { toast.success(result.message); setEmployeeSearch(""); router.refresh(); }
-      else toast.error(result.message);
+      try {
+        const result = await removeScheduleEmployee(period, employee.nip, true);
+        if (!result.success) { setRemoveError(result.message); return; }
+        clearEmployeeOverrides(employee.nip); setToRemove(null); toast.success(result.message); router.refresh();
+      } catch { setRemoveError("Pegawai gagal dihapus dari jadwal. Silakan coba lagi."); }
     });
   }
 
@@ -127,23 +137,23 @@ export function ScheduleBoard({
         <div className="rounded-xl border bg-white p-4"><p className="text-xs text-zinc-500">Asal jadwal</p><p className="mt-1 text-sm font-semibold">{sourcePeriod ?? "Daftar awal Oktober 2026"}</p></div>
       </div>
 
-      <div className="grid gap-3 rounded-xl border bg-white p-4 lg:grid-cols-2">
-        <div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, NIP, atau unit..." className="pl-9" /></div>
-        <div className="relative"><Input value={employeeSearch} onChange={(event) => setEmployeeSearch(event.target.value)} placeholder="Tambahkan pegawai aktif berdasarkan nama atau NIP..." aria-label="Cari pegawai untuk ditambahkan" />
-          {candidates.length > 0 && <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded-lg border bg-white p-1 shadow-lg">{candidates.map((employee) => <button key={employee.nip} type="button" disabled={pending} onClick={() => addEmployee(employee.nip)} className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-emerald-50"><span>{employee.name}<span className="ml-2 text-xs text-zinc-500">{employee.nip}</span></span><Plus className="size-4 shrink-0" /></button>)}</div>}
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4">
+        <div className="relative w-full sm:max-w-md"><Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, NIP, atau unit..." aria-label="Cari pegawai dalam jadwal" className="pl-9" /></div>
+        <Button type="button" disabled={pending} onClick={() => setAddOpen(true)} className="bg-emerald-700 text-white hover:bg-emerald-800"><Plus aria-hidden="true" className="size-4" />Tambah pegawai</Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-white">
-        <div className="overflow-x-auto"><table className="w-full min-w-[980px] border-collapse text-left text-sm">
-          <thead className="bg-emerald-50 text-emerald-950"><tr><th className="p-3">No</th><th className="min-w-48 p-3">Nama</th><th className="p-3">NIP</th><th className="min-w-48 p-3">Jabatan</th><th className="min-w-56 p-3">Unit Organisasi</th>{dates.map((date) => <th key={date} className="min-w-24 p-3 text-center">Jumat<br />{shortDate(date)}</th>)}</tr></thead>
-          <tbody>{filtered.map((row, index) => <tr key={row.employee.nip} className="border-t hover:bg-zinc-50"><td className="p-3 text-zinc-500">{index + 1}</td><td className="p-3 font-medium">{row.employee.name}</td><td className="whitespace-nowrap p-3 font-mono text-xs">{row.employee.nip}</td><td className="p-3 text-xs">{row.employee.position}</td><td className="p-3 text-xs">{row.employee.unit}</td>{dates.map((date) => { const key = `${row.employee.nip}:${date}`; const status = statusOverrides[key] ?? row.statuses[date] ?? "WFO"; return <td key={date} className="p-2 text-center"><button type="button" disabled={pending} aria-label={`${row.employee.name}, ${shortDate(date)}: ${status}. Ubah menjadi ${status === "WFH" ? "WFO" : "WFH"}`} onClick={() => changeStatus(row.employee.nip, date, status === "WFH" ? "WFO" : "WFH")} className={`inline-flex min-w-16 items-center justify-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${status === "WFH" ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : "bg-sky-100 text-sky-800 hover:bg-sky-200"}`}>{busyCell === key ? <LoaderCircle className="size-3 animate-spin" /> : status === "WFH" ? "✓" : "✕"}{status}</button></td>; })}</tr>)}</tbody>
-          <tfoot className="border-t bg-zinc-50 font-semibold"><tr><td colSpan={5} className="p-3">Jumlah WFH / WFO</td>{counts.map((count, index) => <td key={dates[index]} className="p-3 text-center text-xs">{count} / {rows.length - count}</td>)}</tr></tfoot>
-        </table></div>
+      <div className="overflow-clip rounded-xl border bg-white">
+        <TableHorizontalScroll label="tabel WFH/WFO" aria-label="Daftar pegawai WFH/WFO" className="w-full min-w-[980px] border-collapse text-left text-sm">
+          <thead className="bg-emerald-50 text-emerald-950"><tr><th className="p-3">No</th><th className="min-w-48 p-3">Nama</th><th className="p-3">NIP</th><th className="min-w-48 p-3">Jabatan</th><th className="min-w-56 p-3">Unit Organisasi</th>{dates.map((date) => <th key={date} className="min-w-24 p-3 text-center">Jumat<br />{shortDate(date)}</th>)}<th className="min-w-28 p-3">Aksi</th></tr></thead>
+          <tbody>{filtered.map((row, index) => <tr key={row.employee.nip} className="border-t hover:bg-zinc-50"><td className="p-3 text-zinc-500">{index + 1}</td><td className="p-3 font-medium">{row.employee.name}</td><td className="whitespace-nowrap p-3 font-mono text-xs">{row.employee.nip}</td><td className="p-3 text-xs">{row.employee.position}</td><td className="p-3 text-xs">{row.employee.unit}</td>{dates.map((date) => { const key = `${row.employee.nip}:${date}`; const status = statusOverrides[key] ?? row.statuses[date] ?? "WFO"; return <td key={date} className="p-2 text-center"><button type="button" disabled={pending} aria-label={`${row.employee.name}, ${shortDate(date)}: ${status}. Ubah menjadi ${status === "WFH" ? "WFO" : "WFH"}`} onClick={() => changeStatus(row.employee.nip, date, status === "WFH" ? "WFO" : "WFH")} className={`inline-flex min-w-16 items-center justify-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${status === "WFH" ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : "bg-sky-100 text-sky-800 hover:bg-sky-200"}`}>{busyCell === key ? <LoaderCircle className="size-3 animate-spin" /> : status === "WFH" ? "✓" : "✕"}{status}</button></td>; })}<td className="p-3"><Button type="button" variant="destructive" size="sm" disabled={pending} aria-label={`Hapus ${row.employee.name} dari jadwal ${label}`} onClick={() => { setToRemove(row.employee); setRemoveError(""); }}><Trash2 aria-hidden="true" className="size-3.5" />Hapus</Button></td></tr>)}</tbody>
+          <tfoot className="border-t bg-zinc-50 font-semibold"><tr><td colSpan={5} className="p-3">Jumlah WFH / WFO</td>{counts.map((count, index) => <td key={dates[index]} className="p-3 text-center text-xs">{count} / {rows.length - count}</td>)}<td /></tr></tfoot>
+        </TableHorizontalScroll>
         {filtered.length === 0 && <p className="p-6 text-center text-sm text-zinc-500">Pegawai tidak ditemukan.</p>}
       </div>
       <DailyDownloads period={period} totals={dates.map((date, index) => ({ date, wfh: counts[index], wfo: rows.length - counts[index] }))} />
       <p className="text-xs text-zinc-500">Klik status pada tanggal Jumat untuk mengganti WFH ↔ WFO. Perubahan langsung disimpan untuk bulan yang dipilih.</p>
     </>}
+    {addOpen && <ScheduleEmployeeDialog period={period} label={label} employees={availableEmployees} onClose={() => setAddOpen(false)} onAdded={clearEmployeeOverrides} />}
+    <AlertDialog open={Boolean(toRemove)} onOpenChange={open => { if (!open && !pending) setToRemove(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Hapus pegawai dari jadwal?</AlertDialogTitle><AlertDialogDescription>{toRemove?.name} ({toRemove?.nip}) akan dihapus dari seluruh jadwal Jumat pada {label}. Data induk pegawai dan jadwal bulan lain tetap tersimpan.</AlertDialogDescription></AlertDialogHeader>{removeError && <p role="alert" className="text-sm text-rose-700">{removeError}</p>}<AlertDialogFooter><AlertDialogCancel disabled={pending}>Batal</AlertDialogCancel><AlertDialogAction onClick={event => { event.preventDefault(); removeEmployee(); }} disabled={pending} className="bg-rose-700 text-white hover:bg-rose-800">{pending ? <><LoaderCircle aria-hidden="true" className="size-4 animate-spin" />Menghapus…</> : "Ya, hapus dari jadwal"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </div>;
 }

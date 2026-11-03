@@ -17,7 +17,12 @@ import type { JobPosition } from "@/lib/job-positions";
 import type { OrganizationUnit } from "@/lib/organization-units";
 
 type PositionNode = JobPosition & { children: PositionNode[] };
-const positionTypeLabels: Record<string, string> = { JS: "Struktural", JF: "Fungsional", JFU: "Pelaksana" };
+const positionCategories: Record<string, { label: string; badge: string; icon: string; row: string; marker: string }> = {
+  JS: { label: "Struktural", badge: "bg-sky-100 text-sky-900 ring-sky-200", icon: "bg-sky-100 text-sky-800", row: "bg-sky-50/70 hover:bg-sky-100/70 has-aria-expanded:bg-sky-50/70", marker: "border-l-sky-600" },
+  JF: { label: "Fungsional", badge: "bg-violet-100 text-violet-900 ring-violet-200", icon: "bg-violet-100 text-violet-800", row: "bg-violet-50/70 hover:bg-violet-100/70 has-aria-expanded:bg-violet-50/70", marker: "border-l-violet-600" },
+  JFU: { label: "Pelaksana", badge: "bg-emerald-100 text-emerald-900 ring-emerald-200", icon: "bg-emerald-100 text-emerald-800", row: "bg-emerald-50/70 hover:bg-emerald-100/70 has-aria-expanded:bg-emerald-50/70", marker: "border-l-emerald-600" },
+};
+const otherPositionCategory = { badge: "bg-slate-100 text-slate-800 ring-slate-200", icon: "bg-slate-100 text-slate-700", row: "bg-slate-50/70 hover:bg-slate-100/70 has-aria-expanded:bg-slate-50/70", marker: "border-l-slate-400" };
 
 function makeTree(positions: JobPosition[]) {
   const byId = new Map<string, PositionNode>(positions.map((position) => [position.id, { ...position, children: [] }]));
@@ -75,21 +80,22 @@ function PositionNodeRow({ node, depth, expandedIds, forceExpanded, onToggle, on
 }) {
   const hasChildren = node.children.length > 0;
   const expanded = forceExpanded || expandedIds.has(node.id);
+  const category = positionCategories[node.positionType] ?? otherPositionCategory;
   return <>
     <TableRow
       onDragOver={(event) => { if (dragDisabled || !draggedId || draggedId === node.id) return; event.preventDefault(); event.dataTransfer.dropEffect = "move"; onDragOver(node.id); }}
       onDrop={(event) => { if (dragDisabled || !draggedId) return; event.preventDefault(); event.stopPropagation(); onDrop(node.id); }}
-      className={dropTargetId === node.id ? "bg-indigo-50 ring-2 ring-inset ring-indigo-400" : draggedId === node.id ? "opacity-50" : undefined}
+      className={`${dropTargetId === node.id ? "bg-indigo-50 hover:bg-indigo-50 has-aria-expanded:bg-indigo-50 ring-2 ring-inset ring-indigo-400" : category.row} ${draggedId === node.id ? "opacity-50" : ""}`}
     >
-      <TableCell className="min-w-[26rem] py-3" style={{ paddingLeft: `${16 + Math.min(depth, 10) * 22}px` }}>
+      <TableCell className={`min-w-[26rem] border-l-4 py-3 ${category.marker}`} style={{ paddingLeft: `${16 + Math.min(depth, 10) * 22}px` }}>
         <div className="flex items-start gap-2">
           <button type="button" draggable={!dragDisabled} disabled={dragDisabled} aria-label={`Seret ${node.name} untuk mengubah atasan`} title={dragDisabled ? "Kosongkan pencarian untuk mengaktifkan drag-and-drop" : "Seret ke jabatan atasan"} onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.setData("text/plain", node.id); event.dataTransfer.effectAllowed = "move"; onDragStart(node.id); }} onDragEnd={onDragEnd} className="mt-0.5 grid size-6 shrink-0 cursor-grab place-items-center rounded-md text-zinc-400 hover:bg-indigo-50 hover:text-indigo-600 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"><GripVertical className="size-4" /></button>
           <button type="button" aria-label={`${expanded ? "Ciutkan" : "Buka"} bawahan ${node.name}`} aria-expanded={expanded} onClick={() => onToggle(node.id)} className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-md text-zinc-500 hover:bg-zinc-100 disabled:opacity-30" disabled={!hasChildren}>{hasChildren ? expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" /> : <span className="size-1.5 rounded-full bg-zinc-300" />}</button>
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-600"><BriefcaseBusiness className="size-4" /></span>
+          <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${category.icon}`}><BriefcaseBusiness className="size-4" /></span>
           <div className="min-w-0"><p className="font-medium text-zinc-900">{node.name}</p><p className="mt-0.5 text-xs text-zinc-500">{node.unit}</p></div>
         </div>
       </TableCell>
-      <TableCell className="min-w-28"><span className="block text-sm">{positionTypeLabels[node.positionType] ?? node.positionType}</span><span className="text-xs text-zinc-500">{node.positionType} · {node.echelon}</span></TableCell>
+      <TableCell className="min-w-28"><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${category.badge}`}>{positionCategories[node.positionType]?.label ?? node.positionType}</span><span className="mt-1 block text-xs text-zinc-500">{node.positionType} · {node.echelon}</span></TableCell>
       <TableCell className="min-w-44 text-sm">{node.parentName ?? <span className="text-zinc-400">Belum ada atasan</span>}</TableCell>
       <TableCell className="min-w-32"><span className="inline-flex items-center gap-1.5 text-sm text-zinc-700"><UsersRound className="size-4 text-zinc-400" />{node.employeeCount} pegawai</span>{node.activeEmployeeCount !== node.employeeCount && <span className="mt-1 block pl-5 text-xs text-zinc-500">{node.activeEmployeeCount} aktif</span>}</TableCell>
       <TableCell className="min-w-24 pr-4"><div className="flex justify-end gap-1"><Button type="button" variant="ghost" size="icon-sm" onClick={() => onEdit(node)} aria-label={`Edit ${node.name} di ${node.unit}`}><Pencil className="size-3.5" /></Button><Button type="button" variant="ghost" size="icon-sm" onClick={() => onDelete(node)} disabled={node.employeeCount > 0 || node.children.length > 0} aria-label={`Hapus ${node.name} di ${node.unit}`} title={node.employeeCount || node.children.length ? "Masih ada pegawai atau bawahan" : "Hapus jabatan"}><Trash2 className="size-3.5" /></Button></div></TableCell>
@@ -161,6 +167,7 @@ export function PositionTree({ positions, units }: { positions: JobPosition[]; u
         <div className="relative w-full sm:max-w-md"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="pl-9" placeholder="Cari nama jabatan, unit, atau atasan" aria-label="Cari jabatan" /></div>
         <div className="flex gap-2"><Button variant="outline" size="sm" type="button" onClick={expandAll}>Buka semua</Button><Button variant="outline" size="sm" type="button" onClick={() => setExpanded(new Set())}>Ciutkan semua</Button></div>
       </div>
+      <div className="flex flex-wrap gap-2 border-b bg-white px-4 py-3" role="list" aria-label="Legenda jenis jabatan">{Object.entries(positionCategories).map(([type, category]) => <span key={type} role="listitem" className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${category.badge}`}>{type} · {category.label}</span>)}</div>
       {!positions.length ? <div className="grid min-h-56 place-items-center p-6 text-center"><div><span className="mx-auto grid size-12 place-items-center rounded-full bg-indigo-50 text-indigo-600"><Network className="size-5" /></span><p className="mt-3 font-medium text-zinc-900">Belum ada jabatan</p><p className="mt-1 text-sm text-zinc-500">Tambahkan jabatan pertama untuk mulai membentuk hirarki.</p></div></div> : <>
         <div onDragOver={(event) => { if (!draggedId || normalizedQuery) return; event.preventDefault(); event.dataTransfer.dropEffect = "move"; setDropTargetId("__root__"); }} onDragLeave={() => setDropTargetId((current) => current === "__root__" ? null : current)} onDrop={(event) => { if (!draggedId || normalizedQuery) return; event.preventDefault(); movePosition(null); }} className={`mx-4 mt-4 rounded-xl border border-dashed px-4 py-3 text-sm transition-colors sm:mx-5 ${dropTargetId === "__root__" ? "border-indigo-500 bg-indigo-50 text-indigo-800" : "border-zinc-300 bg-zinc-50 text-zinc-500"}`}>
           {normalizedQuery ? "Kosongkan pencarian untuk menggunakan drag-and-drop." : draggedId ? "Lepaskan di sini untuk menjadikan jabatan ini sebagai jabatan tertinggi." : "Area lepas: jadikan jabatan sebagai jabatan tertinggi."}

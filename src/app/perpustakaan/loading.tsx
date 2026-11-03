@@ -1,5 +1,5 @@
 import { PageLoading } from "@/components/ui/page-loading";
 
-export default function Loading() {
+export default function PublicLibraryLoading() {
   return <PageLoading />;
 }

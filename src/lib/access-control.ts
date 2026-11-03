@@ -11,13 +11,17 @@ export const MENU_CATALOG = [
     .map(([id, label]) => ({ id, label, group: "Persuratan", path: `/dashboard/${id}` })),
   { id: "pembuatan-kak", label: "Pembuatan PO dan KAK", group: "Perencanaan", path: "/dashboard/pembuatan-kak" },
   { id: "simulasi-gaji-pns", label: "Simulasi Gaji PNS", group: "Keuangan", path: "/dashboard/simulasi-gaji-pns" },
-  ...[["buku", "Daftar Buku"], ["pengunjung", "Daftar Pengunjung"], ["peminjaman", "Daftar Peminjaman"]]
+  ...[["statistik", "Dashboard Statistik"], ["buku", "Daftar Buku"], ["pengunjung", "Daftar Pengunjung"], ["peminjaman", "Daftar Peminjaman"]]
     .map(([id, label]) => ({ id: `perpustakaan-${id}`, label, group: "Perpustakaan", path: `/dashboard/perpustakaan/${id}` })),
   { id: "backup-lokal", label: "Backup ke Lokal", group: "Sistem", path: "/dashboard/backup-lokal" },
   { id: "backup", label: "Backup Google Drive", group: "Sistem", path: "/dashboard/backup" },
   { id: "log-audit", label: "Log Audit Perubahan Data", group: "Sistem", path: "/dashboard/log-audit" },
 ];
-export type AccessUser = { isAdministrator: boolean; menuPermissions: string[] };
+export type AccessUser = { isAdministrator: boolean; menuPermissions: string[]; roleName?: string };
+export function canViewLibraryStatistics(user: AccessUser) {
+  // roleName comes from app_roles through the server session, never profile input.
+  return user.isAdministrator || user.roleName?.trim().toLocaleLowerCase("id-ID") === "perpustakaan";
+}
 export function parseMenuPermissions(value: string | null | undefined): string[] {
   try {
     const parsed: unknown = JSON.parse(value ?? "[]");
@@ -25,6 +29,7 @@ export function parseMenuPermissions(value: string | null | undefined): string[]
   } catch { return []; }
 }
 export function canAccessMenu(user: AccessUser, menu: string) {
+  if (menu === "perpustakaan-statistik") return canViewLibraryStatistics(user);
   return MENU_CATALOG.some(item => item.id === menu) && (user.isAdministrator || user.menuPermissions.includes(menu));
 }
 export function canAccessPath(user: AccessUser, path: string) {

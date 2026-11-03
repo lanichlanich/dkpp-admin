@@ -17,7 +17,7 @@ const visitorsSelect = `SELECT id, card_number AS cardNumber, employee_nip AS em
   is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt FROM library_visitors`;
 function refresh() {
   revalidatePath("/perpustakaan");
-  for (const path of ["buku", "pengunjung", "peminjaman"]) revalidatePath(`/dashboard/perpustakaan/${path}`);
+  for (const path of ["statistik", "buku", "pengunjung", "peminjaman"]) revalidatePath(`/dashboard/perpustakaan/${path}`);
 }
 export async function getPublicLibraryBooks(): Promise<PublicLibraryBook[]> {
   // Deliberate allowlist: this public query never reads visitors, employees, or loan identities.

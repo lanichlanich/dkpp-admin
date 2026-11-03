@@ -65,6 +65,10 @@ SQLite membuat tabel dan memperbarui kolom otomatis. PostgreSQL menggunakan migr
 
 ## Perpustakaan DKPP
 
+**Perpustakaan → Dashboard Statistik** (`/dashboard/perpustakaan/statistik`) hanya dapat dibuka administrator (`is_administrator`) dan pengguna dengan nama role **Perpustakaan** pada data role server. Aturan ini berlaku pada sidebar, halaman, layanan data, dan `/api/library/statistics`; izin menu tambahan pada role lain tidak dapat membuka statistik. Role Perpustakaan mendapatkan akses statistik otomatis. Katalog publik tetap dapat dibuka tanpa login.
+
+Dashboard menampilkan kondisi koleksi/stok saat ini, pengunjung terdaftar, eksemplar yang belum kembali, dan jumlah transaksi terlambat berdasarkan WIB. Filter bulan mengatur jumlah kunjungan, pengunjung unik, transaksi dan eksemplar peminjaman/pengembalian, buku paling banyak dipinjam, serta tren 12 bulan yang berakhir pada periode terpilih. Eksemplar tersedia hanya berasal dari koleksi aktif. Pengembalian dihitung pada tanggal kembali, termasuk pinjaman dari bulan sebelumnya; jatuh tempo hari ini belum dianggap terlambat. Statistik hanya mengirim ringkasan, kategori, dan judul buku, tanpa nama/kontak/NIP pengunjung. Gunakan `npm.cmd run smoke:library-statistics` untuk uji hitungan dan pembatasan role.
+
 Katalog publik tersedia di **`/perpustakaan`**, tanpa login. Katalog memuat pencarian judul/pengarang, kode inventaris, ISBN, penerbit, filter kategori, stok tersedia, serta detail lokasi rak. Tautan tersedia pada halaman login dan menu admin. Data kontak pengunjung, NIP, catatan internal, serta identitas peminjam tidak ditampilkan di halaman publik.
 
 Menu **Perpustakaan** pada sidebar admin mempunyai tiga submenu, masing-masing dengan izin terpisah pada Manajemen User:

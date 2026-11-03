@@ -40,6 +40,7 @@ const correspondenceNavigation = [
 ];
 
 const libraryNavigation = [
+  { label: "Dashboard Statistik", href: "/dashboard/perpustakaan/statistik", icon: FileBarChart2 },
   { label: "Daftar Buku", href: "/dashboard/perpustakaan/buku", icon: BookOpen },
   { label: "Daftar Pengunjung", href: "/dashboard/perpustakaan/pengunjung", icon: UsersRound },
   { label: "Daftar Peminjaman", href: "/dashboard/perpustakaan/peminjaman", icon: ClipboardList },

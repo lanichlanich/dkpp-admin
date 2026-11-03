@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableHorizontalScroll } from "@/components/ui/table-horizontal-scroll";
 import type { JobPosition } from "@/lib/job-positions";
 import type { OrganizationUnit } from "@/lib/organization-units";
 
@@ -87,16 +88,16 @@ function PositionNodeRow({ node, depth, expandedIds, forceExpanded, onToggle, on
       onDrop={(event) => { if (dragDisabled || !draggedId) return; event.preventDefault(); event.stopPropagation(); onDrop(node.id); }}
       className={`${dropTargetId === node.id ? "bg-indigo-50 hover:bg-indigo-50 has-aria-expanded:bg-indigo-50 ring-2 ring-inset ring-indigo-400" : category.row} ${draggedId === node.id ? "opacity-50" : ""}`}
     >
-      <TableCell className={`min-w-[26rem] border-l-4 py-3 ${category.marker}`} style={{ paddingLeft: `${16 + Math.min(depth, 10) * 22}px` }}>
+      <TableCell className={`w-[28rem] min-w-[26rem] whitespace-normal border-l-4 py-3 ${category.marker}`} style={{ paddingLeft: `${16 + Math.min(depth, 10) * 22}px` }}>
         <div className="flex items-start gap-2">
           <button type="button" draggable={!dragDisabled} disabled={dragDisabled} aria-label={`Seret ${node.name} untuk mengubah atasan`} title={dragDisabled ? "Kosongkan pencarian untuk mengaktifkan drag-and-drop" : "Seret ke jabatan atasan"} onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.setData("text/plain", node.id); event.dataTransfer.effectAllowed = "move"; onDragStart(node.id); }} onDragEnd={onDragEnd} className="mt-0.5 grid size-6 shrink-0 cursor-grab place-items-center rounded-md text-zinc-400 hover:bg-indigo-50 hover:text-indigo-600 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"><GripVertical className="size-4" /></button>
           <button type="button" aria-label={`${expanded ? "Ciutkan" : "Buka"} bawahan ${node.name}`} aria-expanded={expanded} onClick={() => onToggle(node.id)} className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-md text-zinc-500 hover:bg-zinc-100 disabled:opacity-30" disabled={!hasChildren}>{hasChildren ? expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" /> : <span className="size-1.5 rounded-full bg-zinc-300" />}</button>
           <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${category.icon}`}><BriefcaseBusiness className="size-4" /></span>
-          <div className="min-w-0"><p className="font-medium text-zinc-900">{node.name}</p><p className="mt-0.5 text-xs text-zinc-500">{node.unit}</p></div>
+          <div className="min-w-0 break-words"><p className="font-medium text-zinc-900">{node.name}</p><p className="mt-0.5 text-xs text-zinc-500">{node.unit}</p></div>
         </div>
       </TableCell>
       <TableCell className="min-w-28"><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${category.badge}`}>{positionCategories[node.positionType]?.label ?? node.positionType}</span><span className="mt-1 block text-xs text-zinc-500">{node.positionType} · {node.echelon}</span></TableCell>
-      <TableCell className="min-w-44 text-sm">{node.parentName ?? <span className="text-zinc-400">Belum ada atasan</span>}</TableCell>
+      <TableCell className="min-w-56 max-w-72 whitespace-normal break-words text-sm">{node.parentName ?? <span className="text-zinc-400">Belum ada atasan</span>}</TableCell>
       <TableCell className="min-w-32"><span className="inline-flex items-center gap-1.5 text-sm text-zinc-700"><UsersRound className="size-4 text-zinc-400" />{node.employeeCount} pegawai</span>{node.activeEmployeeCount !== node.employeeCount && <span className="mt-1 block pl-5 text-xs text-zinc-500">{node.activeEmployeeCount} aktif</span>}</TableCell>
       <TableCell className="min-w-24 pr-4"><div className="flex justify-end gap-1"><Button type="button" variant="ghost" size="icon-sm" onClick={() => onEdit(node)} aria-label={`Edit ${node.name} di ${node.unit}`}><Pencil className="size-3.5" /></Button><Button type="button" variant="ghost" size="icon-sm" onClick={() => onDelete(node)} disabled={node.employeeCount > 0 || node.children.length > 0} aria-label={`Hapus ${node.name} di ${node.unit}`} title={node.employeeCount || node.children.length ? "Masih ada pegawai atau bawahan" : "Hapus jabatan"}><Trash2 className="size-3.5" /></Button></div></TableCell>
     </TableRow>
@@ -158,7 +159,7 @@ export function PositionTree({ positions, units }: { positions: JobPosition[]; u
   }
 
   return <>
-    <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+    <section className="overflow-clip rounded-2xl border bg-white shadow-sm">
       <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div><h2 className="font-semibold text-zinc-950">Struktur jabatan</h2><p className="mt-1 text-sm text-zinc-500">Seret ikon pegangan ke jabatan yang akan menjadi atasan langsung. Klik Edit untuk pengaturan lainnya.</p></div>
         <Button type="button" onClick={() => edit(null)} className="bg-indigo-600 text-white hover:bg-indigo-700"><Plus className="size-4" />Tambah jabatan</Button>
@@ -172,7 +173,7 @@ export function PositionTree({ positions, units }: { positions: JobPosition[]; u
         <div onDragOver={(event) => { if (!draggedId || normalizedQuery) return; event.preventDefault(); event.dataTransfer.dropEffect = "move"; setDropTargetId("__root__"); }} onDragLeave={() => setDropTargetId((current) => current === "__root__" ? null : current)} onDrop={(event) => { if (!draggedId || normalizedQuery) return; event.preventDefault(); movePosition(null); }} className={`mx-4 mt-4 rounded-xl border border-dashed px-4 py-3 text-sm transition-colors sm:mx-5 ${dropTargetId === "__root__" ? "border-indigo-500 bg-indigo-50 text-indigo-800" : "border-zinc-300 bg-zinc-50 text-zinc-500"}`}>
           {normalizedQuery ? "Kosongkan pencarian untuk menggunakan drag-and-drop." : draggedId ? "Lepaskan di sini untuk menjadikan jabatan ini sebagai jabatan tertinggi." : "Area lepas: jadikan jabatan sebagai jabatan tertinggi."}
         </div>
-        <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead className="pl-4">Jabatan / unit</TableHead><TableHead>Jenis / eselon</TableHead><TableHead>Atasan langsung</TableHead><TableHead>Pengisian</TableHead><TableHead className="pr-4 text-right">Aksi</TableHead></TableRow></TableHeader><TableBody>{visibleRoots.map((root) => <PositionNodeRow key={root.id} node={root} depth={0} expandedIds={expanded} forceExpanded={Boolean(normalizedQuery)} onToggle={toggle} onEdit={edit} onDelete={setToDelete} draggedId={draggedId} dropTargetId={dropTargetId} dragDisabled={Boolean(normalizedQuery) || moving} onDragStart={(id) => { setDraggedId(id); setDropTargetId(null); }} onDragEnd={() => { setDraggedId(null); setDropTargetId(null); }} onDragOver={setDropTargetId} onDrop={movePosition} />)}</TableBody></Table></div>
+        <TableHorizontalScroll label="tabel jabatan"><TableHeader><TableRow><TableHead className="pl-4">Jabatan / unit</TableHead><TableHead>Jenis / eselon</TableHead><TableHead>Atasan langsung</TableHead><TableHead>Pengisian</TableHead><TableHead className="pr-4 text-right">Aksi</TableHead></TableRow></TableHeader><TableBody>{visibleRoots.map((root) => <PositionNodeRow key={root.id} node={root} depth={0} expandedIds={expanded} forceExpanded={Boolean(normalizedQuery)} onToggle={toggle} onEdit={edit} onDelete={setToDelete} draggedId={draggedId} dropTargetId={dropTargetId} dragDisabled={Boolean(normalizedQuery) || moving} onDragStart={(id) => { setDraggedId(id); setDropTargetId(null); }} onDragEnd={() => { setDraggedId(null); setDropTargetId(null); }} onDragOver={setDropTargetId} onDrop={movePosition} />)}</TableBody></TableHorizontalScroll>
       </>}
       {normalizedQuery && !visibleRoots.length && <div className="p-10 text-center text-sm text-zinc-500">Tidak ada jabatan yang cocok dengan pencarian.</div>}
       <div className="flex items-center gap-2 border-t bg-zinc-50/60 px-4 py-3 text-xs text-zinc-500"><Network className="size-4 shrink-0" />Data pegawai dan hirarki jabatan tersimpan dalam satu katalog penempatan.</div>

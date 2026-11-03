@@ -86,6 +86,25 @@ try {
   }
   const feb={...snapshot,period:'2027-02',documentDate:'2027-02-28',days:cal.spjCalendar('2027-02',rule,seed)}; fs.writeFileSync('.tmp/spj/attendance-february.pdf',await pdf.createSpjPdf(feb,'attendance'));
   const jan={...snapshot,period:'2026-01',documentDate:'2026-01-31',days:cal.spjCalendar('2026-01',rule,seed)}; fs.writeFileSync('.tmp/spj/attendance-january.pdf',await pdf.createSpjPdf(jan,'attendance'));
+  const {DOMMatrix,ImageData,Path2D}=await import('@napi-rs/canvas');Object.assign(globalThis,{DOMMatrix,ImageData,Path2D});
+  const {getDocument}=await import('pdfjs-dist/legacy/build/pdf.mjs');
+  async function pdfItems(kind) { const task=getDocument({data:new Uint8Array(fs.readFileSync(`.tmp/spj/${kind}.pdf`)),useSystemFonts:true,isEvalSupported:false});const doc=await task.promise,page=await doc.getPage(1),items=(await page.getTextContent()).items.filter(i=>'str'in i);await task.destroy();return items; }
+  for(const kind of ['attendance','receipt']){
+    const items=await pdfItems(kind),strings=items.map(i=>i.str),text=strings.join(' '),find=part=>items.find(i=>i.str.includes(part));
+    assert(text.includes(kind==='receipt'?'DAFTAR PENERIMAAN JASA TENAGA PELAYANAN UMUM':'DAFTAR HADIR JASA TENAGA PELAYANAN UMUM'));
+    for(const extra of ['KEPALA DINAS','Plt.','Tenaga Penyemprot','Hari aktif','Hari nonaktif','Halaman'])assert(!text.includes(extra),`Unexpected PDF addition: ${extra}`);
+    for(const [name,number]of [['RORY FIRMANSYAH','19780101'],['MUHAMMAD IQBAL','19751218'],['UFI NAJARUDIN','19740109']]){
+      const gap=find(name).transform[5]-find(number).transform[5];assert(Math.abs(gap-(kind==='receipt'?14.5:9.6))<.35,`${kind}: name/NIP row gap ${gap}`);
+    }
+    if(kind==='receipt'){
+      assert(strings.includes('Pengguna Anggaran')&&strings.includes('PPTK'));assert(!text.includes('Kuasa Pengguna Anggaran'));
+      const rp=items.find(i=>i.str==='Rp'),amount=items.find(i=>i.str==='2.500.000'&&Math.abs(i.transform[5]-rp.transform[5])<.2);
+      assert(rp&&amount);assert(Math.abs(rp.transform[4]-53)<2&&amount.transform[4]>180&&amount.transform[4]<200,'A8:B8 accounting amount alignment');
+      assert(Math.abs(find('PPTK').transform[4]-428.15)<2,'Latest receipt PPTK block E:H');
+      assert(text.includes('Dua Juta Lima Ratus Ribu Rupiah'));assert(!text.includes('Indramayu,'));
+      for(const header of ['Besarnya','Honor (Rp)','Jumlah','Diterima (Rp)'])assert(strings.includes(header),header);
+    }
+  }
   await json(await download.GET(new Request('http://local/download?kind=wrong'),{params:Promise.resolve({id})}),400);
   await json(await download.GET(new Request('http://local/download'),{params:Promise.resolve({id:'absent'})}),404);
   for(const status of [401,403]) { signedIn=status!==401; allowed=false; assert.equal((await root.GET()).status,status); assert.equal((await post('reports',{})).status,status); assert.equal((await change('DELETE','workers','id',{})).status,status); assert.equal((await download.GET(new Request('http://local/download'),{params:Promise.resolve({id})})).status,status); }

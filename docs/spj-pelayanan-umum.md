@@ -2,6 +2,8 @@
 
 Menu **Umum → SPJ Pelayanan Umum Kantor** menghasilkan dua PDF A4 lanskap dari satu SPJ tersimpan: daftar hadir dan daftar penerimaan honor.
 
+Format cetak mengikuti lampiran, tanpa subjudul jenis tenaga, legenda, nomor halaman, atau jabatan tambahan pada penandatangan. Penerimaan memakai lampiran revisi terakhir (SHA-256 `14ede9c779fec23d08e089f8bd0ffc56447bde671be05b674da525ed4a88ce3f`): nominal memakai posisi accounting dengan `Rp` di kiri dan angka di kanan area A8:B8; PA pada B:D, PPTK pada E:H, dan Bendahara pada I:K; nama digarisbawahi dan NIP berada pada baris berikutnya. Label PA adalah **Pengguna Anggaran**, sesuai revisi terakhir. Setiap lembar penerimaan yang memuat sebagian petugas memiliki nominal dan terbilang yang sama dengan jumlah baris pada lembar tersebut.
+
 ## Penggunaan
 
 1. Atur jenis tenaga pada tab **Jenis tenaga**: kuota hari per bulan atau seluruh hari kerja, pilihan Senin–Jumat, serta honor per hari.

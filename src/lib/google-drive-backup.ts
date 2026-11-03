@@ -13,6 +13,9 @@ type Category = "Kepegawaian" | "Persuratan" | "Umum" | "Perencanaan" | "Perpust
 type ArchiveFile = { path: string; bytes: Buffer };
 
 const TABLE_CATEGORY: Record<string, Category> = {
+  spj_service_types: "Umum",
+  spj_service_workers: "Umum",
+  spj_service_reports: "Umum",
   library_books: "Perpustakaan",
   library_visitors: "Perpustakaan",
   library_visits: "Perpustakaan",

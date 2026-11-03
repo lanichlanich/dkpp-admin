@@ -25,6 +25,7 @@ const personnelNavigation = [
 ];
 
 const generalNavigation = [
+  { label: "SPJ Pelayanan Umum Kantor", href: "/dashboard/spj-pelayanan-umum", icon: FileSignature },
   { label: "Daftar WFH/WFO", href: "/dashboard/daftar-wfh", icon: CalendarDays },
   { label: "Laporan Pegawai WFH/WFO", href: "/dashboard/laporan-pegawai-wfh-wfo", icon: FileBarChart2 },
   { label: "Surat Tugas WFH", href: "/dashboard/wfh", icon: House },

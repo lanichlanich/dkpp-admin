@@ -6,6 +6,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { pltFileName } from "@/lib/plt-filename";
 import { LIBRARY_SCHEMA } from "@/lib/library-schema";
+import { SPJ_SCHEMA, SPJ_SEED } from "@/lib/spj-schema";
 import librarySeed from "@/data/library-books.json";
 export { mapPublicUser } from "@/lib/db-types";
 export type { Employee, PublicUser } from "@/lib/db-types";
@@ -793,6 +794,9 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 db.transaction(() => {
+  const spjExists = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'spj_service_types'").get();
+  db.exec(SPJ_SCHEMA);
+  if (!spjExists) db.exec(SPJ_SEED);
   const libraryExists = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'library_books'").get();
   db.exec(LIBRARY_SCHEMA);
   if (!libraryExists) {

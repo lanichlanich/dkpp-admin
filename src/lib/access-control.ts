@@ -5,7 +5,7 @@ export const MENU_CATALOG = [
     ["hukdis", "Daftar Hukdis"], ["surat-hukdis-hukda", "Surat HUKDIS & HUKDA"], ["dpcp", "DPCP"],
     ["pak", "PAK"], ["kgb", "SK KGB"], ["pembukaan-kerjaku", "Pembukaan Kerjaku"],
   ].map(([id, label]) => ({ id, label, group: "Kepegawaian", path: `/dashboard/${id}` })),
-  ...[["daftar-wfh", "Daftar WFH/WFO"], ["laporan-pegawai-wfh-wfo", "Laporan Pegawai WFH/WFO"], ["wfh", "Surat Tugas WFH"], ["laporan-wfh", "Laporan WFH"]]
+  ...[["daftar-wfh", "Daftar WFH/WFO"], ["laporan-pegawai-wfh-wfo", "Laporan Pegawai WFH/WFO"], ["wfh", "Surat Tugas WFH"], ["laporan-wfh", "Laporan WFH"], ["spj-pelayanan-umum", "SPJ Pelayanan Umum Kantor"]]
     .map(([id, label]) => ({ id, label, group: "Umum", path: `/dashboard/${id}` })),
   ...[["klasifikasi-surat", "Klasifikasi Surat"], ["arsip-dinas", "Arsip Dinas"], ["surat-pengantar", "Surat Pengantar"], ["surat-perbantuan", "Surat Perbantuan"], ["surat-lupa-absen-pulang", "Surat Lupa Absen Pulang"]]
     .map(([id, label]) => ({ id, label, group: "Persuratan", path: `/dashboard/${id}` })),

@@ -62,6 +62,23 @@ try {
   const input=await makeInput(), id=(await json(await post('reports',{...input,paName:'FORGED'}),201)).result.id;
   const snapshot=await svc.getSpjReport(id); assert.equal(snapshot.total,2500000); assert.equal(snapshot.activeCount,10); assert.equal(snapshot.signers.pa.name,'RORY FIRMANSYAH, S.STP, M.Si.');
   assert.equal((await json(await post('reports',input),201)).result.id,id); assert.equal(db.prepare('SELECT count(*) n FROM spj_service_reports').get().n,1);
+  const archiveIds=Array.from({length:105},(_,i)=>`archive-${String(i).padStart(3,'0')}`);
+  try{
+    for(const[i,key]of archiveIds.entries())db.prepare('INSERT INTO spj_service_reports(id,type_id,type_name,period,snapshot_json,active_count,worker_count,total,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(key,'penyemprot',i===0?'Arsip Terlama 000':i===1?'Diskon 100%_! khusus':i%2===0?'Tenaga Penyemprot':'Tenaga Kebersihan',i%2===0?'2026-10':'2026-11',JSON.stringify(snapshot),10,2,2500000,'spj-test','2000-01-01T00:00:00.000Z');
+    const first=await svc.getSpjReports(),second=await svc.getSpjReports({page:'2'}),last=await svc.getSpjReports({page:'99999'});
+    assert.equal(first.total,106);assert.equal(first.items.length,20);assert.equal(first.totalPages,6);assert.equal(last.page,6);assert.equal(last.items.length,6);assert.equal(last.items.at(-1).id,'archive-000');
+    assert(!second.items.some(item=>first.items.some(other=>item.id===other.id)));
+    assert.deepEqual(second.items.map(r=>r.id),[...second.items.map(r=>r.id)].sort().reverse(),'Stable ordering when timestamps tie');
+    const byMonth=await svc.getSpjReports({search:'PENYEMPROT oktober 2026',pageSize:'100'});assert.equal(byMonth.total,52);assert.equal(byMonth.items.length,52);
+    assert.equal((await svc.getSpjReports({search:'2026-10'})).total,53);
+    assert.equal((await svc.getSpjReports({search:'%_!'})).total,1,'LIKE special characters are literal');
+    assert.equal((await svc.getSpjReports({search:"' OR 1=1 --"})).total,0);
+    const older=(await json(await root.GET(new Request('http://local/api/spj-pelayanan-umum?search=terlama')))).result.reports;assert.equal(older.total,1);assert.equal(older.items[0].id,'archive-000');
+    const empty=await svc.getSpjReports({search:'tidakada',page:'99'});assert.equal(empty.page,1);assert.equal(empty.totalPages,1);assert.deepEqual(empty.items,[]);
+    const bounded=await svc.getSpjReports({page:'-4',pageSize:'99999'});assert.equal(bounded.page,1);assert.equal(bounded.pageSize,20);
+    for(const row of last.items)if(archiveIds.includes(row.id))db.prepare('DELETE FROM spj_service_reports WHERE id=?').run(row.id);
+    const afterDelete=await svc.getSpjReports({page:'6'});assert.equal(afterDelete.total,100);assert.equal(afterDelete.page,5);assert.equal(afterDelete.items.length,20);
+  }finally{for(const key of archiveIds)db.prepare('DELETE FROM spj_service_reports WHERE id=?').run(key);}
   const oldWorker=o.workers[0]; await json(await change('PATCH','workers',oldWorker.id,{...oldWorker,name:'DARYONO DIUBAH'}));
   await json(await change('PATCH','workers',oldWorker.id,{...oldWorker,name:'STALE'}),409);
   await json(await post('reports',{...input,requestId:randomUUID()}),409);

@@ -32,4 +32,5 @@ export type SpjSnapshot = {
   dailyRate: number; activeCount: number; total: number; signers: SpjSigners;
 };
 export type SpjReport = { id: string; typeName: string; period: string; activeCount: number; workerCount: number; total: number; createdAt: string };
-export type SpjOptions = { types: SpjType[]; workers: SpjWorker[]; employees: SpjEmployee[]; defaults: { paNip: string; paStatus: "definitif" | "plt"; pptkNip: string; treasurerNip: string }; reports: SpjReport[] };
+export type SpjReportPage = { items: SpjReport[]; total: number; page: number; pageSize: number; totalPages: number; search: string };
+export type SpjOptions = { types: SpjType[]; workers: SpjWorker[]; employees: SpjEmployee[]; defaults: { paNip: string; paStatus: "definitif" | "plt"; pptkNip: string; treasurerNip: string }; reports: SpjReportPage };

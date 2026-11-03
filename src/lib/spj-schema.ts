@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS spj_service_reports (
   created_by TEXT REFERENCES users(id) ON DELETE SET NULL, created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS spj_service_reports_period_idx ON spj_service_reports(period, created_at);
+CREATE INDEX IF NOT EXISTS spj_service_reports_archive_idx ON spj_service_reports(created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS spj_service_reports_type_idx ON spj_service_reports(type_id);
 CREATE INDEX IF NOT EXISTS spj_service_reports_creator_idx ON spj_service_reports(created_by);
 `;

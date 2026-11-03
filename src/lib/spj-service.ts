@@ -5,7 +5,8 @@ import { database as db } from "@/lib/database";
 import { requireMenuAccess } from "@/lib/authorization";
 import { jakartaToday } from "@/lib/plt-dates";
 import { spjCalendar } from "@/lib/spj-calendar";
-import { spjDeleteSchema, spjReportSchema, spjTypeSchema, spjVersionSchema, spjWorkerSchema, type SpjEmployee, type SpjOptions, type SpjReport, type SpjSnapshot, type SpjType, type SpjWorker } from "@/lib/spj-types";
+import { spjArchiveQuery } from "@/lib/spj-archive";
+import { spjDeleteSchema, spjReportSchema, spjTypeSchema, spjVersionSchema, spjWorkerSchema, type SpjEmployee, type SpjOptions, type SpjReport, type SpjReportPage, type SpjSnapshot, type SpjType, type SpjWorker } from "@/lib/spj-types";
 
 export class SpjError extends Error { constructor(message: string, public status = 400) { super(message); } }
 const menu = "spj-pelayanan-umum";
@@ -19,7 +20,21 @@ function changed(): never { throw new SpjError("Data telah berubah atau dihapus.
 const nextStamp = (previous?: string) => new Date(Math.max(Date.now(), (Date.parse(previous ?? "") || 0) + 1)).toISOString();
 const mapWorker = (row: Omit<SpjWorker, "isActive"> & { isActive: number }): SpjWorker => ({ ...row, isActive: Boolean(row.isActive) });
 
-export async function getSpjOptions(): Promise<SpjOptions> {
+export async function getSpjReports(input: Record<string, unknown> = {}): Promise<SpjReportPage> {
+  await requireMenuAccess(menu);
+  const query = spjArchiveQuery(input);
+  const months = ["januari", "februari", "maret", "april", "mei", "juni", "juli", "agustus", "september", "oktober", "november", "desember"];
+  const monthSql = `CASE substr(period,6,2) ${months.map((name, i) => `WHEN '${String(i + 1).padStart(2, "0")}' THEN '${name}'`).join(" ")} ELSE '' END`;
+  const searchable = `lower(type_name || ' ' || period || ' ' || ${monthSql} || ' ' || substr(period,1,4))`;
+  const tokens = query.search.toLocaleLowerCase("id-ID").split(" ").filter(Boolean);
+  const where = tokens.length ? ` WHERE ${tokens.map(() => `${searchable} LIKE ? ESCAPE '!'`).join(" AND ")}` : "";
+  const values = tokens.map(token => `%${token.replace(/[!%_]/g, value => `!${value}`)}%`);
+  const total = (await db.prepare(`SELECT COUNT(*) AS count FROM spj_service_reports${where}`).get<{ count: number }>(...values))?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / query.pageSize)), page = Math.min(query.page, totalPages);
+  const items = await db.prepare(`${reportSelect}${where} ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?`).all<SpjReport>(...values, query.pageSize, (page - 1) * query.pageSize);
+  return { items, total, page, pageSize: query.pageSize, totalPages, search: query.search };
+}
+export async function getSpjOptions(archive: Record<string, unknown> = {}): Promise<SpjOptions> {
   await requireMenuAccess(menu);
   const today = jakartaToday();
   const [types, workers, employees, actingHeads, reports] = await Promise.all([
@@ -27,7 +42,7 @@ export async function getSpjOptions(): Promise<SpjOptions> {
     db.prepare(`${workerSelect} ORDER BY name COLLATE NOCASE`).all<Omit<SpjWorker, "isActive"> & { isActive: number }>(),
     db.prepare("SELECT nip,name,position FROM employees WHERE status='Aktif' ORDER BY name COLLATE NOCASE").all<SpjEmployee>(),
     db.prepare(`SELECT employee_nip AS nip FROM plt_assignments WHERE lower(acting_position) LIKE '%kepala dinas%' AND closed_at IS NULL AND start_date <= ? AND end_date >= ? ORDER BY start_date DESC`).all<{ nip: string }>(today, today),
-    db.prepare(`${reportSelect} ORDER BY created_at DESC LIMIT 100`).all<SpjReport>(),
+    getSpjReports(archive),
   ]);
   const actingHead = actingHeads.map(row => employees.find(e => e.nip === row.nip)).find(Boolean);
   const head = actingHead ?? employees.find(e => /kepala dinas/i.test(e.position)) ?? employees.find(e => /rory\s+firmansyah/i.test(e.name));

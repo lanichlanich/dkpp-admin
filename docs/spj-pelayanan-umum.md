@@ -30,12 +30,13 @@ Cuti bersama tidak otomatis dikecualikan karena permintaan adalah libur nasional
 - Izin menu: `spj-pelayanan-umum`. Administrator memiliki akses; role/pengguna lain harus mendapat izin menu melalui manajemen pengguna. Semua page dan API dilindungi server.
 - Tiga tabel: `spj_service_types`, `spj_service_workers`, `spj_service_reports`; SQLite lokal dan PostgreSQL produksi memakai skema yang sepadan.
 - Migrasi `20261103033127_add_spj_pelayanan_umum.sql` memasang tabel di skema privat `adminflow`, RLS, pencabutan hak Data API, dan kebijakan penolakan eksplisit bagi `anon`/`authenticated`. Versi berkas disesuaikan dengan versi aktual yang dicatat Supabase setelah penerapan.
+- Migrasi `20261103043537_index_spj_archive_pagination.sql` menambahkan indeks urutan arsip tanpa mengubah data SPJ.
 - Data awal: Tenaga Penyemprot, 10 hari/bulan, Senin–Jumat, Rp125.000/hari, serta dua nama petugas pada contoh. Angka 10 mengikuti instruksi pengguna, menggantikan volume 12 hari pada contoh penerimaan.
 - Rekening asli lampiran diimpor langsung ke database privat, bukan disertakan dalam kode/migrasi GitHub. Database lokal lama tetap menyimpan nilai yang telah diimpor; instalasi baru dapat mengisi melalui Edit petugas.
 - Arsip menyimpan salinan identitas, rekening, aturan, jadwal, honor, dan penandatangan saat pembuatan. Kedua PDF dirender dari salinan ini, bukan data master terbaru. Unduhan memerlukan sesi dan izin menu serta memakai `private, no-store`.
 - Versi data master diperiksa saat penyimpanan dan pada perintah INSERT arsip untuk mencegah pratinjau lama disimpan ketika master berubah. ID permintaan mencegah penyimpanan ganda ketika permintaan diulang.
 - Tabel masuk log audit dan kategori **Umum** pada backup lokal/Google Drive. Arsip PDF dapat dirender kembali dari data JSON setelah pemulihan.
-- Maksimal 500 petugas/SPJ; halaman PDF berulang memuat header dan penandatangan. Arsip menampilkan 100 SPJ terbaru.
+- Maksimal 500 petugas/SPJ; halaman PDF berulang memuat header dan penandatangan. Arsip memiliki kolom jenis tenaga tersendiri, pencarian seluruh riwayat berdasarkan jenis tenaga/bulan/tahun, dan pagination bernomor dengan 10/20/50/100 baris per halaman (default 20). Filter dan halaman disimpan pada URL; hasil diurutkan berdasarkan `created_at DESC, id DESC` agar tetap konsisten ketika waktu pembuatan sama. Halaman yang sudah tidak tersedia setelah penghapusan otomatis dibatasi ke halaman terakhir. Indeks `spj_service_reports_archive_idx` mendukung urutan tersebut; pagination bernomor memakai LIMIT/OFFSET untuk akses langsung ke halaman yang dipilih.
 
 ## Validasi
 

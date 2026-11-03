@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SPJ_HOLIDAY_SOURCES, spjCalendar, spjMonthDays, spjPeriodLabel, type SpjDay } from "@/lib/spj-calendar";
 import type { SpjOptions } from "@/lib/spj-types";
-import { SpjDownloads, SpjEmployeePicker, spjMoney, spjRequest, spjSelectClass } from "./shared";
+import { SpjDownloads, SpjEmployeePicker, spjActionClass, spjMoney, spjRequest, spjSelectClass } from "./shared";
 
 export function SpjReportForm({ options, today, initialSeed }: { options: SpjOptions; today: string; initialSeed: string }) {
   const router = useRouter();
@@ -36,7 +36,7 @@ export function SpjReportForm({ options, today, initialSeed }: { options: SpjOpt
     <fieldset disabled={busy} className="grid gap-4 md:grid-cols-3"><div className="space-y-2"><Label htmlFor="spj-type">Jenis daftar hadir</Label><select required id="spj-type" className={spjSelectClass} value={typeId} onChange={e => { setTypeId(e.target.value); setSeed(crypto.randomUUID()); changed(); }}><option value="">Pilih jenis tenaga</option>{options.types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
       <div className="space-y-2"><Label htmlFor="spj-period">Bulan SPJ</Label><Input required id="spj-period" type="month" min="2026-01" max="2027-12" value={period} onChange={e => { const next = e.target.value; setPeriod(next); if (/^\d{4}-(0[1-9]|1[0-2])$/.test(next)) setDocumentDate(`${next}-${spjMonthDays(next)}`); setSeed(crypto.randomUUID()); changed(); }} /></div>
       <div className="space-y-2"><Label htmlFor="spj-document-date">Tanggal dokumen</Label><Input required id="spj-document-date" type="date" value={documentDate} onChange={e => { setDocumentDate(e.target.value); changed(); }} /></div></fieldset>
-    {type && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 p-4 text-sm"><p><strong>{active} hari aktif</strong> · {workers.length} petugas · {spjMoney(type.dailyRate)}/hari · Total <strong>{spjMoney(total)}</strong></p><Button type="button" size="sm" variant="outline" disabled={busy || !!calendarError} onClick={() => { setSeed(crypto.randomUUID()); changed(); }}><Shuffle className="size-4" />Acak ulang hari aktif</Button></div>}
+    {type && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 p-4 text-sm"><p><strong>{active} hari aktif</strong> · {workers.length} petugas · {spjMoney(type.dailyRate)}/hari · Total <strong>{spjMoney(total)}</strong></p><Button type="button" size="sm" variant="outline" className={spjActionClass.edit} disabled={busy || !!calendarError} onClick={() => { setSeed(crypto.randomUUID()); changed(); }}><Shuffle className="size-4" />Acak ulang hari aktif</Button></div>}
     {calendarError && <p role="alert" className="text-sm text-rose-700">{calendarError}</p>}
     {type && !workers.length && <p role="alert" className="text-sm text-amber-800">Belum ada petugas aktif. Tambahkan melalui tab Petugas.</p>}
     <p className="text-xs text-zinc-500">Kalender libur nasional tersedia untuk <a className="underline" href={SPJ_HOLIDAY_SOURCES["2026"]} target="_blank" rel="noreferrer">2026</a> dan <a className="underline" href={SPJ_HOLIDAY_SOURCES["2027"]} target="_blank" rel="noreferrer">2027</a> sesuai SKB. Cuti bersama tidak dihitung sebagai libur nasional.</p>
@@ -51,7 +51,7 @@ export function SpjReportForm({ options, today, initialSeed }: { options: SpjOpt
     <SpjEmployeePicker label="Bendahara Pengeluaran" employees={options.employees} value={signers.treasurerNip} onChange={v => selectSigner("treasurerNip", v)} disabled={busy} />
   </div><div className="max-w-xs space-y-2"><Label htmlFor="spj-pa-status">Status Kepala Dinas / Pengguna Anggaran</Label><select id="spj-pa-status" disabled={busy} value={signers.paStatus} className={spjSelectClass} onChange={e => selectSigner("paStatus", e.target.value)}><option value="definitif">Definitif</option><option value="plt">Plt. (Pelaksana Tugas)</option></select></div></CardContent></Card>
   {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
-  {savedId ? <div role="status" className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-5"><p className="font-medium text-emerald-900">SPJ tersimpan. Unduh kedua dokumen berikut.</p><SpjDownloads id={savedId} /><Button type="button" variant="ghost" onClick={changed}>Buat SPJ baru</Button></div>
-    : <Button type="submit" disabled={busy || !type || !workers.length || !active || !!calendarError || !signers.paNip || !signers.pptkNip || !signers.treasurerNip}><FilePlus2 className="size-4" />{busy ? "Menyimpan SPJ…" : "Simpan SPJ dan siapkan PDF"}</Button>}
+  {savedId ? <div role="status" className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-5"><p className="font-medium text-emerald-900">SPJ tersimpan. Unduh kedua dokumen berikut.</p><SpjDownloads id={savedId} /><Button type="button" variant="outline" className={spjActionClass.primary} onClick={changed}>Buat SPJ baru</Button></div>
+    : <Button type="submit" className={spjActionClass.primary} disabled={busy || !type || !workers.length || !active || !!calendarError || !signers.paNip || !signers.pptkNip || !signers.treasurerNip}><FilePlus2 className="size-4" />{busy ? "Menyimpan SPJ…" : "Simpan SPJ dan siapkan PDF"}</Button>}
   </form>;
 }

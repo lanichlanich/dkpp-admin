@@ -79,7 +79,7 @@ function drawAttendance(pdf: PDFKit.PDFDocument, d: SpjSnapshot, workers: SpjSna
   ["Pengguna Anggaran", "Pejabat Pelaksana Teknis Kegiatan", "Bendahara Pengeluaran"].forEach((value, i) => text(pdf, value, boxes[i], y + 5 * row, row, size));
   const nameRow = nameHeight(pdf, d, boxes, size, row);
   people.forEach((person, i) => {
-    text(pdf, person.name, { x: boxes[i].x + 1.5, width: boxes[i].width - 3 }, y + 10 * row, nameRow, size, { bold: true, underline: true, align: i === 2 ? "center" : "left" });
+    text(pdf, person.name, { x: boxes[i].x + 1.5, width: boxes[i].width - 3 }, y + 10 * row, nameRow, size, { bold: true, underline: true, align: "center" });
     text(pdf, nip(person.nip, i === 1), boxes[i], y + 10 * row + nameRow, row, size);
   });
 }

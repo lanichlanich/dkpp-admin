@@ -96,6 +96,13 @@ try {
     for(const [name,number]of [['RORY FIRMANSYAH','19780101'],['MUHAMMAD IQBAL','19751218'],['UFI NAJARUDIN','19740109']]){
       const gap=find(name).transform[5]-find(number).transform[5];assert(Math.abs(gap-(kind==='receipt'?14.5:9.6))<.35,`${kind}: name/NIP row gap ${gap}`);
     }
+    if(kind==='attendance'){
+      const center=item=>item.transform[4]+item.width/2;
+      for(const [role,name,number]of [['Pengguna Anggaran','RORY FIRMANSYAH','19780101'],['Pejabat Pelaksana Teknis Kegiatan','MUHAMMAD IQBAL','19751218'],['Bendahara Pengeluaran','UFI NAJARUDIN','19740109']]){
+        assert(Math.abs(center(find(role))-center(find(name)))<.35,`${role}: name must be centered under role`);
+        assert(Math.abs(center(find(role))-center(find(number)))<.35,`${role}: NIP must share the role center`);
+      }
+    }
     if(kind==='receipt'){
       assert(strings.includes('Pengguna Anggaran')&&strings.includes('PPTK'));assert(!text.includes('Kuasa Pengguna Anggaran'));
       const rp=items.find(i=>i.str==='Rp'),amount=items.find(i=>i.str==='2.500.000'&&Math.abs(i.transform[5]-rp.transform[5])<.2);

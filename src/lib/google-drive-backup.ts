@@ -36,6 +36,7 @@ const TABLE_CATEGORY: Record<string, Category> = {
   wfh_reports: "Umum",
   wfh_schedule_months: "Umum",
   wfh_schedule_entries: "Umum",
+  wfh_schedule_letters: "Umum",
   surat_pengantar_documents: "Persuratan",
   surat_perbantuan_documents: "Persuratan",
   surat_lupa_absen_documents: "Persuratan",
@@ -61,6 +62,7 @@ const DOCUMENT_TABLES = new Set([
   "official_statement_documents",
   "service_archive_documents",
   "wfh_reports",
+  "wfh_schedule_letters",
 ]);
 
 const LOCAL_DOCUMENT_DIRECTORIES: Record<string, string> = {
@@ -78,6 +80,7 @@ const LOCAL_DOCUMENT_DIRECTORIES: Record<string, string> = {
   official_statement_documents: "official-statement-documents",
   service_archive_documents: "service-archive-documents",
   wfh_reports: "wfh-reports",
+  wfh_schedule_letters: "wfh-schedule-letters",
 };
 
 function requiredEnvironment(name: string) {

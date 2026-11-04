@@ -35,6 +35,9 @@ const tables = [
     key: (row) => `${row.employee_nip}\u001f${row.report_period}`,
   },
   { name: "wfh_reports", key: (row) => row.id, json: ["payload"] },
+  { name: "wfh_schedule_months", key: (row) => row.period },
+  { name: "wfh_schedule_entries", key: (row) => `${row.period}\u001f${row.employee_nip}\u001f${row.friday_date}` },
+  { name: "wfh_schedule_letters", key: (row) => row.id },
 ];
 
 const exists = database.prepare(

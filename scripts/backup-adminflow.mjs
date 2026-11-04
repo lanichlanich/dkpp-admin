@@ -42,6 +42,7 @@ const documentStores = [
   { table: "kak_documents", directory: "kak-documents", storedName: (row) => readKakPoFile(row.draft_json)?.storageName, recordedSize: (row) => readKakPoFile(row.draft_json)?.fileSize, originalName: (row) => readKakPoFile(row.draft_json)?.fileName },
   { table: "official_statement_documents", directory: "official-statement-documents", storedName: (row) => row.storage_name },
   { table: "wfh_reports", directory: "wfh-reports", storedName: (row) => `${row.id}.docx` },
+  { table: "wfh_schedule_letters", directory: "wfh-schedule-letters", storedName: (row) => row.storage_name },
 ];
 
 function quoteIdentifier(value) {

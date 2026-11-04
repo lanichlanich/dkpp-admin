@@ -17,3 +17,13 @@ Unduhan **Excel bulanan** mengikuti format `Daftar-WFH-WFO-2026-11.xlsx` yang di
 Profil `src/data/wfh-monthly-format.json` hanya menyimpan ukuran dan gaya dari lampiran. Nama, NIP, jabatan, unit, status, dan jumlah WFH/WFO tetap diambil dari jadwal bulan yang diunduh. Bulan dengan lima Jumat menambah satu kolom tanggal dengan lebar yang sama serta menggeser legenda secara otomatis. Perubahan format tidak memerlukan migrasi database.
 
 Validasi format: `npm.cmd run smoke:wfh-schedule-export` memeriksa ukuran, warna, font, NIP, tanggal, rekap, bulan dengan empat/lima Jumat dan daftar kosong. Hasil unduhan juga dibandingkan dengan lampiran menggunakan render Microsoft Excel.
+
+## Surat tugas bertanda tangan dan lampiran
+
+Pada **Laporan Pegawai WFH/WFO**, pilih bulan lalu gunakan bagian **Surat tugas WFH/WFO** untuk mengunggah PDF yang sudah ditandatangani (maksimal 2 MB). Setiap unggahan dicatat pada bulan tersebut; unggahan berikutnya tetap mempertahankan surat sebelumnya. PDF harus dapat dibaca dan tidak dilindungi kata sandi.
+
+**Unduh surat asli** mengembalikan berkas persis seperti yang diunggah. **Unduh surat + daftar pegawai** membuat satu PDF berisi seluruh halaman surat, diikuti PDF daftar pegawai bulan yang sama. Ukuran dan orientasi halaman surat dipertahankan. Lampiran menggunakan jadwal terbaru saat diunduh, termasuk perubahan pegawai dan status WFH/WFO. Gunakan surat asli untuk verifikasi TTE; PDF gabungan merupakan salinan dan tidak mempertahankan validitas kriptografis tanda tangan surat asli.
+
+Unggah dan kedua unduhan memerlukan akses menu `laporan-pegawai-wfh-wfo`. ID surat dibatasi oleh bulan pada URL, nama objek Storage tidak diterima dari klien, dan unduhan memakai `private, no-store`. Surat disimpan dalam Storage privat atau direktori lokal yang diabaikan Git. Kegagalan penyimpanan metadata membersihkan objek unggahan. Metadata dan berkas tercakup dalam backup lokal/Google Drive dan utilitas migrasi Storage.
+
+Migrasi `20261104031850_add_wfh_schedule_letters.sql` menambahkan tabel surat, foreign key dan indeks tanpa mengubah jadwal yang ada. RLS diaktifkan dan akses Data API dicabut sesuai pola sesi aplikasi. Validasi: `npm.cmd run smoke:wfh-schedule-letters`, uji browser unggah/riwayat/unduh/pergantian bulan, serta pemeriksaan halaman PDF hasil gabungan.

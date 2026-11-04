@@ -128,6 +128,19 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS wfh_schedule_entries_period_date_idx
     ON wfh_schedule_entries(period, friday_date, status);
 
+  CREATE TABLE IF NOT EXISTS wfh_schedule_letters (
+    id TEXT PRIMARY KEY,
+    period TEXT NOT NULL REFERENCES wfh_schedule_months(period) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    original_file_name TEXT NOT NULL,
+    storage_name TEXT NOT NULL UNIQUE,
+    file_size INTEGER NOT NULL CHECK (file_size > 0 AND file_size <= 2097152),
+    page_count INTEGER NOT NULL CHECK (page_count > 0),
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS wfh_schedule_letters_period_created_idx ON wfh_schedule_letters(period, created_at DESC, id DESC);
+  CREATE INDEX IF NOT EXISTS wfh_schedule_letters_user_idx ON wfh_schedule_letters(user_id);
+
   CREATE TABLE IF NOT EXISTS notifications (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

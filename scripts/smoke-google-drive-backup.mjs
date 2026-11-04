@@ -7,7 +7,7 @@ import ts from "typescript";
 
 const require = createRequire(import.meta.url);
 const poName = "12345678-1234-1234-1234-123456789abc.docx";
-const sourceNames = ["employee.pdf", "kak.docx", "rka.pdf", poName, "report-1.docx", "perbantuan.docx", "plt.pdf", "orphan.pdf"];
+const sourceNames = ["employee.pdf", "kak.docx", "rka.pdf", poName, "report-1.docx", "perbantuan.docx", "plt.pdf", "wfh-letter.pdf", "orphan.pdf"];
 const fixtureBytes = name => Buffer.from(`Fixture content: ${name}`);
 const snapshot = {
   tables: {
@@ -23,6 +23,7 @@ const snapshot = {
       } }),
     }],
     wfh_reports: [{ id: "report-1" }],
+    wfh_schedule_letters: [{ id: "letter-1", storage_name: "wfh-letter.pdf", original_file_name: "Surat-Tugas.pdf", period: "2026-11" }],
     surat_perbantuan_documents: [{ id: "perbantuan-1", storage_name: "perbantuan.docx", file_name: "Surat-Perbantuan.docx" }],
     users: [{ id: "user-1", username: "admin1" }],
     library_books: [{ id: "book-1", inventory_code: "000123", copies: 2 }],
@@ -166,8 +167,8 @@ try {
   const result = await actions.runGoogleDriveBackupAction();
   assert.equal(result.status, "success"); assert.match(result.message, /\.tar\.gz/);
   assert.equal(state.snapshots, 1);
-  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 12);
-  assert.equal(result.documentCount, 7); assert.equal(result.unlinkedStorageObjectCount, 1);
+  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 13);
+  assert.equal(result.documentCount, 8); assert.equal(result.unlinkedStorageObjectCount, 1);
   assert.equal(state.tokenCalls, 1, "Reuse the access token across folder creation and uploads");
   assert.deepEqual([...state.downloads].sort(), [...sourceNames].sort());
   assert.equal(state.folders.length, 7); assert.equal(state.uploads.length, 6);
@@ -192,6 +193,8 @@ try {
     assert.deepEqual(planning.get(`files/kak_documents/record-kak-1${suffix}.${extension}`), fixtureBytes(source));
   }
   assert.deepEqual(archives.get("Umum").get("files/wfh_reports/record-report-1.docx"), fixtureBytes("report-1.docx"));
+  assert.deepEqual(archives.get("Umum").get("files/wfh_schedule_letters/record-letter-1.pdf"), fixtureBytes("wfh-letter.pdf"));
+  assert.deepEqual(JSON.parse(archives.get("Umum").get("database/wfh_schedule_letters.json")), snapshot.tables.wfh_schedule_letters);
   assert.deepEqual(JSON.parse(archives.get("Persuratan").get("database/surat_perbantuan_documents.json")), snapshot.tables.surat_perbantuan_documents);
   assert.deepEqual(archives.get("Persuratan").get("files/surat_perbantuan_documents/record-perbantuan-1.docx"), fixtureBytes("perbantuan.docx"));
   const system = archives.get("Sistem"), orphan = JSON.parse(system.get("database/unlinked-storage-index.json"))[0];

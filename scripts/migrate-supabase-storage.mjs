@@ -24,6 +24,7 @@ for (const directory of [
   "kak-documents",
   "wfh-documents",
   "wfh-reports",
+  "wfh-schedule-letters",
 ]) {
   const directoryPath = path.join(root, "data", directory);
   try {

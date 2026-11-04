@@ -2,6 +2,7 @@ import "server-only";
 
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
+import monthlyFormat from "@/data/wfh-monthly-format.json";
 import { fridayDates, groupScheduleEntries, monthLabel, type ScheduleEntry, type WorkLocation } from "@/lib/wfh-schedule";
 
 function dateHeading(date: string) {
@@ -114,43 +115,82 @@ export async function createScheduleExcel(period: string, entries: ScheduleEntry
   workbook.creator = "DKPP-Admin";
   workbook.created = new Date();
   const sheet = workbook.addWorksheet(`WFH WFO ${period}`, {
+    properties: { defaultRowHeight: monthlyFormat.rowHeight },
     views: [{ state: "frozen", xSplit: 5, ySplit: 3 }],
     pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
-  const widths = [6, 31, 22, 43, 55, ...dates.map(() => 16), 27, 7];
+  // Formatting-only profile from the user's monthly workbook; roster data stays live.
+  const style = (name: keyof typeof monthlyFormat.styles) =>
+    structuredClone(monthlyFormat.styles[name]) as Partial<ExcelJS.Style>;
+  const widths = [...monthlyFormat.identityWidths, ...dates.map(() => monthlyFormat.fridayWidth), ...monthlyFormat.legendWidths];
   widths.forEach((width, index) => { sheet.getColumn(index + 1).width = width; });
   for (const [index, label] of ["No", "Nama", "NIP", "Jabatan", "Unit Organisasi"].entries()) {
     const column = String.fromCharCode(65 + index);
     sheet.mergeCells(`${column}1:${column}2`);
     sheet.getCell(`${column}1`).value = label;
+    sheet.getCell(1, index + 1).style = style("identityTop");
+    sheet.getCell(2, index + 1).style = style("identityBottom");
+    if (index === 2) sheet.getCell(1, 3).numFmt = "@";
   }
   if (dates.length) {
     const lastDateColumn = String.fromCharCode(69 + dates.length);
     sheet.mergeCells(`F1:${lastDateColumn}1`);
     sheet.getCell("F1").value = `Jadwal Jumat ${monthLabel(period)}`;
+    dates.forEach((_, index) => {
+      sheet.getCell(1, 6 + index).style = style(index === 0 ? "scheduleTopFirst" : index === dates.length - 1 ? "scheduleTopLast" : "scheduleTopMiddle");
+    });
   }
-  dates.forEach((date, index) => { sheet.getCell(2, 6 + index).value = new Date(`${date}T00:00:00Z`); sheet.getCell(2, 6 + index).numFmt = "dd mmmm yyyy"; });
+  dates.forEach((date, index) => {
+    sheet.getCell(2, 6 + index).value = new Date(`${date}T00:00:00Z`);
+    sheet.getCell(2, 6 + index).style = style("date");
+  });
   const legendColumn = 6 + dates.length;
   sheet.getCell(1, legendColumn).value = "Work From Home (WFH)";
   sheet.getCell(1, legendColumn + 1).value = "✓";
   sheet.getCell(2, legendColumn).value = "Work From Office (WFO)";
   sheet.getCell(2, legendColumn + 1).value = "✖";
-  for (let column = 1; column <= 5 + dates.length; column++) sheet.getCell(3, column).value = column;
-  sheet.getRow(1).height = 25;
-  sheet.getRow(2).height = 25;
+  for (const row of [1, 2]) {
+    for (const column of [legendColumn, legendColumn + 1]) sheet.getCell(row, column).style = style("legend");
+    sheet.getRow(row).height = monthlyFormat.headerHeight;
+  }
+  const endColumn = 5 + dates.length;
+  for (let column = 1; column <= endColumn; column++) {
+    sheet.getCell(3, column).value = column;
+    sheet.getCell(3, column).style = style(column <= 5 ? "identityIndex" : "fridayIndex");
+  }
+  sheet.getRow(3).height = monthlyFormat.rowHeight;
 
   for (const [index, row] of rows.entries()) {
     const excelRow = sheet.getRow(index + 4);
     excelRow.values = [index + 1, row.employee.name, row.employee.nip, row.employee.position, row.employee.unit,
       ...dates.map((date) => row.statuses.get(date) === "WFH" ? "✓" : "✖")];
-    excelRow.height = 25;
-    excelRow.getCell(3).numFmt = "@";
-    excelRow.alignment = { vertical: "middle", wrapText: true };
+    excelRow.height = monthlyFormat.rowHeight;
+    for (let column = 1; column <= 5; column++) {
+      excelRow.getCell(column).style = style(column === 1 ? "number" : column === 3 ? "nip" : "identity");
+    }
     for (let column = 6; column < 6 + dates.length; column++) {
       const cell = excelRow.getCell(column);
-      cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.font = { name: "Calibri", size: 12, bold: true, color: { argb: row.statuses.get(dates[column - 6]) === "WFH" ? "FF047857" : "FF1D4ED8" } };
+      cell.style = style(row.statuses.get(dates[column - 6]) === "WFH" ? "wfh" : "wfo");
     }
+  }
+  if (rows.length) {
+    sheet.addConditionalFormatting({
+      ref: `F4:${sheet.getColumn(endColumn).letter}${rows.length + 3}`,
+      rules: (["WFO", "WFH"] as const).map((status, index) => ({
+        type: "expression",
+        formulae: [`NOT(ISERROR(SEARCH("${status === "WFH" ? "✓" : "✖"}",F4)))`],
+        priority: index + 1,
+        style: {
+          font: { color: { argb: monthlyFormat.statusColors[status].font } },
+          fill: {
+            type: "pattern", pattern: "solid",
+            fgColor: { argb: monthlyFormat.statusColors[status].fill },
+            // Excel's differential fill also needs the background color to render.
+            bgColor: { argb: monthlyFormat.statusColors[status].fill },
+          },
+        },
+      })),
+    });
   }
   const lastRow = rows.length + 4;
   sheet.getCell(lastRow, 2).value = "Jumlah WFH";
@@ -160,14 +200,12 @@ export async function createScheduleExcel(period: string, entries: ScheduleEntry
     sheet.getCell(lastRow, 6 + index).value = wfh;
     sheet.getCell(lastRow + 1, 6 + index).value = rows.length - wfh;
   });
-  const endColumn = 5 + dates.length;
-  for (let row = 1; row <= lastRow + 1; row++) {
+  for (let row = lastRow; row <= lastRow + 1; row++) {
+    sheet.getRow(row).height = monthlyFormat.rowHeight;
     for (let column = 1; column <= endColumn; column++) {
       const cell = sheet.getCell(row, column);
-      cell.border = { top: { style: "thin", color: { argb: "FFD1D5DB" } }, left: { style: "thin", color: { argb: "FFD1D5DB" } }, bottom: { style: "thin", color: { argb: "FFD1D5DB" } }, right: { style: "thin", color: { argb: "FFD1D5DB" } } };
-      if (row <= 3) { cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCFCE7" } }; cell.font = { name: "Calibri", size: 11, bold: true, color: { argb: "FF064E3B" } }; cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true }; }
-      else if (row >= lastRow) { cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } }; cell.font = { name: "Calibri", size: 11, bold: true }; }
-      else if (row % 2 === 0) { cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFAFAFA" } }; }
+      cell.style = style("identityIndex");
+      if (column === 2) cell.alignment = { horizontal: "left", vertical: "middle" };
     }
   }
   sheet.pageSetup.printTitlesRow = "1:3";

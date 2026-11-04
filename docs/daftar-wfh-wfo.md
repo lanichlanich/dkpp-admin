@@ -9,3 +9,11 @@ Penambahan menolak pegawai nonaktif, NIP/bulan/status tidak valid, dan duplikat 
 Tabel menyediakan penggeser kolom yang tetap terlihat saat menggulir, sehingga kolom Aksi dapat dijangkau pada layar sempit. Perubahan memakai tabel jadwal yang sudah ada dan tidak memerlukan migrasi skema.
 
 Validasi: `npm.cmd run smoke:wfh-schedule`, pemeriksaan izin menu, build, serta uji browser tambah/pencarian/status/hapus/konfirmasi/batal/tambah ulang dan laporan. Smoke jadwal memakai database memori terpisah.
+
+## Format Excel bulanan
+
+Unduhan **Excel bulanan** mengikuti format `Daftar-WFH-WFO-2026-11.xlsx` yang diberikan pengguna: header abu-abu, baris header 24,95 pt, baris isi 15 pt, serta lebar kolom identitas dan tanggal sesuai lampiran. Font, perataan dan garis tabel mengikuti contoh; NIP tetap berupa teks 18 digit. Sel bertanda ✓ berwarna hijau dan ✖ merah melalui conditional formatting, sehingga warnanya ikut berubah jika simbol diedit di Excel.
+
+Profil `src/data/wfh-monthly-format.json` hanya menyimpan ukuran dan gaya dari lampiran. Nama, NIP, jabatan, unit, status, dan jumlah WFH/WFO tetap diambil dari jadwal bulan yang diunduh. Bulan dengan lima Jumat menambah satu kolom tanggal dengan lebar yang sama serta menggeser legenda secara otomatis. Perubahan format tidak memerlukan migrasi database.
+
+Validasi format: `npm.cmd run smoke:wfh-schedule-export` memeriksa ukuran, warna, font, NIP, tanggal, rekap, bulan dengan empat/lima Jumat dan daftar kosong. Hasil unduhan juga dibandingkan dengan lampiran menggunakan render Microsoft Excel.

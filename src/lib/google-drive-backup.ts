@@ -37,6 +37,7 @@ const TABLE_CATEGORY: Record<string, Category> = {
   wfh_schedule_months: "Umum",
   wfh_schedule_entries: "Umum",
   wfh_schedule_letters: "Umum",
+  anjab_abk_plans: "Kepegawaian",
   surat_pengantar_documents: "Persuratan",
   surat_perbantuan_documents: "Persuratan",
   surat_lupa_absen_documents: "Persuratan",

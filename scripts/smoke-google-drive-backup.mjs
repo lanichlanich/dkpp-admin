@@ -24,6 +24,7 @@ const snapshot = {
     }],
     wfh_reports: [{ id: "report-1" }],
     wfh_schedule_letters: [{ id: "letter-1", storage_name: "wfh-letter.pdf", original_file_name: "Surat-Tugas.pdf", period: "2026-11" }],
+    anjab_abk_plans: [{ year: 2026, data_json: { version: 1, reviewed: true }, revision: 2 }],
     surat_perbantuan_documents: [{ id: "perbantuan-1", storage_name: "perbantuan.docx", file_name: "Surat-Perbantuan.docx" }],
     users: [{ id: "user-1", username: "admin1" }],
     library_books: [{ id: "book-1", inventory_code: "000123", copies: 2 }],
@@ -167,7 +168,7 @@ try {
   const result = await actions.runGoogleDriveBackupAction();
   assert.equal(result.status, "success"); assert.match(result.message, /\.tar\.gz/);
   assert.equal(state.snapshots, 1);
-  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 13);
+  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 14);
   assert.equal(result.documentCount, 8); assert.equal(result.unlinkedStorageObjectCount, 1);
   assert.equal(state.tokenCalls, 1, "Reuse the access token across folder creation and uploads");
   assert.deepEqual([...state.downloads].sort(), [...sourceNames].sort());
@@ -185,6 +186,7 @@ try {
   for (const table of ["library_books", "library_visitors", "library_visits", "library_loans"])
     assert.deepEqual(JSON.parse(archives.get("Perpustakaan").get(`database/${table}.json`)), snapshot.tables[table]);
   assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/employees.json")), snapshot.tables.employees);
+  assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/anjab_abk_plans.json")), snapshot.tables.anjab_abk_plans);
   assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/plt_assignments.json")), snapshot.tables.plt_assignments);
   assert.deepEqual(archives.get("Kepegawaian").get("files/plt_assignments/record-plt-1.pdf"), fixtureBytes("plt.pdf"));
   assert.deepEqual(archives.get("Kepegawaian").get("files/employee_documents/record-doc-1.pdf"), fixtureBytes("employee.pdf"));

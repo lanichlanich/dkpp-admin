@@ -38,6 +38,7 @@ const tables = [
   { name: "wfh_schedule_months", key: (row) => row.period },
   { name: "wfh_schedule_entries", key: (row) => `${row.period}\u001f${row.employee_nip}\u001f${row.friday_date}` },
   { name: "wfh_schedule_letters", key: (row) => row.id },
+  { name: "anjab_abk_plans", key: (row) => row.year, json: ["data_json"] },
 ];
 
 const exists = database.prepare(

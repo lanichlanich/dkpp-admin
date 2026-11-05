@@ -16,6 +16,8 @@ if (!dryRun && (!baseUrl || !secretKey)) {
 const files = [];
 for (const directory of [
   "dpcp-documents",
+  "kgb-documents",
+  "kgb-signed-documents",
   "employee-documents",
   "official-statement-documents",
   "pak-documents",

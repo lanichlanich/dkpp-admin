@@ -12,12 +12,14 @@ delete process.env.BACKUP_ADMIN_USERNAMES;
 process.env.GOOGLE_DRIVE_BACKUP_ADMIN_USERNAMES = "admin1";
 delete process.env.GOOGLE_DRIVE_CLIENT_ID; delete process.env.GOOGLE_DRIVE_CLIENT_SECRET; delete process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
 const poName = "12345678-1234-1234-1234-123456789abc.docx";
-const contents = new Map(["employee.pdf", "kak.docx", "rka.pdf", poName, "report.docx"].map(name => [name, Buffer.from(`Original bytes for ${name}`)]));
+const contents = new Map(["employee.pdf", "kak.docx", "rka.pdf", poName, "report.docx", "kgb.docx", "kgb-signed.pdf"].map(name => [name, Buffer.from(`Original bytes for ${name}`)]));
 contents.set("orphan.pdf", randomBytes(5 * 1024 * 1024));
 const snapshot = { tables: {
   app_roles: [{ id: "administrator", name: "Administrator", is_administrator: 1, menu_permissions: "[]" }],
   employees: [{ nip: "198001012005011001", name: "Pegawai Uji" }],
   users: [{ id: "admin", username: "admin1", password_hash: "restore-hash" }],
+  kgb_documents: [{ id: "kgb", storage_name: "kgb.docx", file_name: "KGB.docx", input_json: { revision: 1 } }],
+  kgb_signed_documents: [{ id: "kgb-signed", document_id: "kgb", storage_name: "kgb-signed.pdf", file_name: "KGB-TTD.pdf", document_revision: 1 }],
   employee_documents: [{ id: "employee", storage_name: "employee.pdf", original_file_name: "pegawai.pdf" }],
   kak_documents: [{ id: "kak", storage_name: "kak.docx", file_name: "kak.docx", source_storage_name: "rka.pdf", source_name: "rka.pdf", draft_json: JSON.stringify({ poDocument: { storageName: poName, fileName: "po.docx", fileSize: 20, templateSha256: "a".repeat(64) } }) }],
   wfh_reports: [{ id: "report" }],
@@ -67,7 +69,7 @@ try {
   const bytes = Buffer.concat(chunks); assert(bytes.length > 4.5 * 1024 * 1024, "Exercise a backup above Vercel's buffered payload limit");
   assert.equal(bytes.length, Number(response.headers.get("x-backup-bytes"))); assert.equal(createHash("sha256").update(bytes).digest("hex"), response.headers.get("x-backup-sha256"));
   const files = extract(bytes), manifest = JSON.parse(files.get("manifest.json"));
-  assert.equal(manifest.tableCount, 10); assert.equal(manifest.documentCount, 5); assert.equal(manifest.unlinkedStorageObjectCount, 1);
+  assert.equal(manifest.tableCount, 12); assert.equal(manifest.documentCount, 7); assert.equal(manifest.unlinkedStorageObjectCount, 1);
   assert.deepEqual(JSON.parse(files.get("Kepegawaian/database/employees.json")), snapshot.tables.employees);
   assert.deepEqual(JSON.parse(files.get("Sistem/database/users.json")), snapshot.tables.users);
   for (const table of ["library_books", "library_visitors", "library_visits", "library_loans"])

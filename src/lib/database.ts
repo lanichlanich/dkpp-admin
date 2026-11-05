@@ -22,6 +22,7 @@ const TABLE_NAMES = [
   "job_positions",
   "notifications",
   "kgb_documents",
+  "kgb_signed_documents",
   "dpcp_documents",
   "pak_documents",
   "wfh_documents",

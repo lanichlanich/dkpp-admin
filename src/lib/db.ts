@@ -235,6 +235,21 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS kgb_documents_employee_idx
     ON kgb_documents(employee_nip, created_at DESC);
 
+  CREATE TABLE IF NOT EXISTS kgb_signed_documents (
+    id TEXT PRIMARY KEY,
+    document_id TEXT NOT NULL REFERENCES kgb_documents(id) ON DELETE CASCADE,
+    document_revision INTEGER NOT NULL CHECK(document_revision >= 1),
+    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    original_file_name TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    storage_name TEXT NOT NULL UNIQUE,
+    file_size INTEGER NOT NULL CHECK(file_size > 0),
+    page_count INTEGER NOT NULL CHECK(page_count > 0),
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS kgb_signed_document_idx ON kgb_signed_documents(document_id, created_at DESC, id);
+  CREATE INDEX IF NOT EXISTS kgb_signed_user_idx ON kgb_signed_documents(user_id);
+
   CREATE TABLE IF NOT EXISTS dpcp_documents (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -479,6 +494,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS hukdis_records_period_idx
     ON hukdis_records(report_period);
 `);
+
+const kgbColumns = db.prepare("PRAGMA table_info(kgb_documents)").all() as Array<{ name: string }>;
+for (const [name, definition] of Object.entries({ input_json: "TEXT", revision: "INTEGER NOT NULL DEFAULT 1 CHECK(revision >= 1)", updated_at: "TEXT", updated_by: "TEXT REFERENCES users(id) ON DELETE SET NULL" })) {
+  if (!kgbColumns.some(column => column.name === name)) db.exec(`ALTER TABLE kgb_documents ADD COLUMN ${name} ${definition}`);
+}
+db.exec("CREATE INDEX IF NOT EXISTS kgb_documents_updated_by_idx ON kgb_documents(updated_by)");
 
 const pltColumns = db.prepare("PRAGMA table_info(plt_assignments)").all() as Array<{ name: string }>;
 for (const [name, definition] of [["file_name", "TEXT"], ["storage_name", "TEXT"], ["file_size", "INTEGER CHECK (file_size BETWEEN 1 AND 2097152)"], ["mime_type", "TEXT"]]) {

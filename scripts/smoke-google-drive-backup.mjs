@@ -7,12 +7,14 @@ import ts from "typescript";
 
 const require = createRequire(import.meta.url);
 const poName = "12345678-1234-1234-1234-123456789abc.docx";
-const sourceNames = ["employee.pdf", "kak.docx", "rka.pdf", poName, "report-1.docx", "perbantuan.docx", "plt.pdf", "wfh-letter.pdf", "orphan.pdf"];
+const sourceNames = ["employee.pdf", "kak.docx", "rka.pdf", poName, "report-1.docx", "perbantuan.docx", "plt.pdf", "wfh-letter.pdf", "kgb.docx", "kgb-signed.pdf", "orphan.pdf"];
 const fixtureBytes = name => Buffer.from(`Fixture content: ${name}`);
 const snapshot = {
   tables: {
     app_roles: [{ id: "administrator", name: "Administrator", is_administrator: 1, menu_permissions: "[]" }],
     employees: [{ id: "employee-1", name: "Pegawai Contoh" }],
+    kgb_documents: [{ id: "kgb-1", storage_name: "kgb.docx", file_name: "SK-KGB.docx", input_json: { nomorSurat: "UJI/1" }, revision: 2 }],
+    kgb_signed_documents: [{ id: "kgb-signed-1", document_id: "kgb-1", document_revision: 1, storage_name: "kgb-signed.pdf", file_name: "SK-KGB-TTD.pdf" }],
     plt_assignments: [{ id: "plt-1", storage_name: "plt.pdf", file_name: "SK-Plt.pdf", employee_nip: "199001012020121001", start_date: "2026-10-27", end_date: "2027-01-26" }, { id: "plt-legacy", storage_name: null }],
     employee_documents: [{ id: "doc-1", storage_name: "employee.pdf", original_file_name: "scan.pdf" }],
     kak_documents: [{
@@ -168,8 +170,8 @@ try {
   const result = await actions.runGoogleDriveBackupAction();
   assert.equal(result.status, "success"); assert.match(result.message, /\.tar\.gz/);
   assert.equal(state.snapshots, 1);
-  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 14);
-  assert.equal(result.documentCount, 8); assert.equal(result.unlinkedStorageObjectCount, 1);
+  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 16);
+  assert.equal(result.documentCount, 10); assert.equal(result.unlinkedStorageObjectCount, 1);
   assert.equal(state.tokenCalls, 1, "Reuse the access token across folder creation and uploads");
   assert.deepEqual([...state.downloads].sort(), [...sourceNames].sort());
   assert.equal(state.folders.length, 7); assert.equal(state.uploads.length, 6);
@@ -187,6 +189,9 @@ try {
     assert.deepEqual(JSON.parse(archives.get("Perpustakaan").get(`database/${table}.json`)), snapshot.tables[table]);
   assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/employees.json")), snapshot.tables.employees);
   assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/anjab_abk_plans.json")), snapshot.tables.anjab_abk_plans);
+  assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/kgb_documents.json")), snapshot.tables.kgb_documents);
+  assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/kgb_signed_documents.json")), snapshot.tables.kgb_signed_documents);
+  assert.deepEqual(archives.get("Kepegawaian").get("files/kgb_signed_documents/record-kgb-signed-1.pdf"), fixtureBytes("kgb-signed.pdf"));
   assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/plt_assignments.json")), snapshot.tables.plt_assignments);
   assert.deepEqual(archives.get("Kepegawaian").get("files/plt_assignments/record-plt-1.pdf"), fixtureBytes("plt.pdf"));
   assert.deepEqual(archives.get("Kepegawaian").get("files/employee_documents/record-doc-1.pdf"), fixtureBytes("employee.pdf"));

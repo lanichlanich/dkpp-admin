@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { LetterNumberField } from "@/components/letters/letter-number-field";
 import { letterClassificationDefaults } from "@/lib/letter-classification";
+import type { KgbInput } from "@/lib/kgb-validation";
 
 type FormValues = {
   nomorSurat: string;
@@ -95,6 +96,7 @@ function ReadOnlyField({ id, label, value, placeholder = "Terisi otomatis" }: { 
 function NumberSelect({ id, value, values, disabled, onChange }: { id: string; value: string; values: number[]; disabled: boolean; onChange: (value: string) => void }) {
   return (
     <select id={id} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50">
+      {value === "" && <option value="">Pilih</option>}
       {values.map((item) => <option key={item} value={item}>{item}</option>)}
     </select>
   );
@@ -129,10 +131,10 @@ function EmployeeSelect({ employees, value, disabled, invalid, onChange }: { emp
   );
 }
 
-export function KgbForm({ employees, signatories }: { employees: KgbEmployee[]; signatories: SignatoryOption[] }) {
+export function KgbForm({ employees, signatories, initialInput, editing }: { employees: KgbEmployee[]; signatories: SignatoryOption[]; initialInput?: Partial<KgbInput>; editing?: { id: string; revision: number } }) {
   const router = useRouter();
-  const [signatory, setSignatory] = useState<Signatory>(signatories[0] ?? DEFAULT_SIGNATORY);
-  const [values, setValues] = useState(initialValues);
+  const [signatory, setSignatory] = useState<Signatory>(initialInput?.signatory ?? signatories[0] ?? DEFAULT_SIGNATORY);
+  const [values, setValues] = useState<FormValues>(() => Object.fromEntries(Object.entries(initialValues).map(([key, value]) => [key, String(initialInput?.[key as keyof FormValues] ?? (editing ? "" : value))])) as FormValues);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [submitting, setSubmitting] = useState(false);
   const employee = useMemo(() => employees.find((item) => item.nip === values.nip), [employees, values.nip]);
@@ -151,10 +153,10 @@ export function KgbForm({ employees, signatories }: { employees: KgbEmployee[]; 
     setErrors({});
     toast.info("Dokumen sedang disusun...");
     try {
-      const response = await fetch("/api/kgb/generate", {
-        method: "POST",
+      const response = await fetch(editing ? `/api/kgb/${editing.id}` : "/api/kgb/generate", {
+        method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...values, signatory }),
+        body: JSON.stringify({ ...values, signatory, ...(editing ? { revision: editing.revision } : {}) }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({ message: "Dokumen gagal dibuat." }));
@@ -170,7 +172,8 @@ export function KgbForm({ employees, signatories }: { employees: KgbEmployee[]; 
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
-      toast.success("SK KGB berhasil dibuat dan diunduh.");
+      toast.success(editing ? "SK KGB berhasil diperbarui dan diunduh." : "SK KGB berhasil dibuat dan diunduh.");
+      if (editing) router.push("/dashboard/kgb");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Dokumen gagal dibuat.");
@@ -200,7 +203,7 @@ export function KgbForm({ employees, signatories }: { employees: KgbEmployee[]; 
           </Field>
           <div className="md:col-span-2">
             <Field id="nip" label="Nama pegawai" error={errors.nip?.[0]} description="Hanya pegawai PNS dengan status Aktif yang ditampilkan.">
-              <EmployeeSelect employees={employees} value={values.nip} disabled={submitting} invalid={Boolean(errors.nip?.length)} onChange={(value) => setValue("nip", value)} />
+              <EmployeeSelect employees={employees} value={values.nip} disabled={submitting || !!editing} invalid={Boolean(errors.nip?.length)} onChange={(value) => setValue("nip", value)} />
             </Field>
           </div>
           <ReadOnlyField id="nipOtomatis" label="NIP" value={employee?.nip ?? ""} />
@@ -254,7 +257,7 @@ export function KgbForm({ employees, signatories }: { employees: KgbEmployee[]; 
       <div className="sticky bottom-4 z-10 flex items-center justify-between gap-4 rounded-xl border bg-white/95 p-4 shadow-lg backdrop-blur">
         <p className="hidden text-xs leading-5 text-zinc-500 sm:block">Semua kolom bertanda <span className="text-destructive">*</span> wajib diisi.</p>
         <Button type="submit" size="lg" disabled={submitting || employees.length === 0} className="ml-auto min-w-44">
-          {submitting ? <><LoaderCircle className="animate-spin" />Membuat dokumen...</> : <><Download />Buat dan unduh DOCX</>}
+          {submitting ? <><LoaderCircle className="animate-spin" />Menyusun dokumen...</> : <><Download />{editing ? "Simpan dan unduh DOCX" : "Buat dan unduh DOCX"}</>}
         </Button>
       </div>
     </form>

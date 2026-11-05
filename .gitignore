@@ -45,6 +45,7 @@ next-env.d.ts
 /data/*.db
 /data/*.db-*
 /data/kgb-documents/
+/data/kgb-signed-documents/
 /data/dpcp-documents/
 /data/pak-documents/
 /data/wfh-documents/

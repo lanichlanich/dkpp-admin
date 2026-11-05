@@ -37,6 +37,7 @@
     "smoke:anjab-abk": "node scripts/smoke-anjab-abk.mjs",
     "smoke:anjab-abk-pdf": "node scripts/smoke-anjab-abk-pdf.mjs",
     "smoke:kgb-archive": "node scripts/smoke-kgb-archive.mjs",
+    "smoke:kgb-links": "node scripts/smoke-kgb-links.mjs",
     "smoke:surat-pengantar": "node scripts/smoke-surat-pengantar.mjs",
     "smoke:surat-perbantuan": "node scripts/smoke-surat-perbantuan.mjs",
     "smoke:pembukaan-kerjaku": "node scripts/smoke-pembukaan-kerjaku.mjs",

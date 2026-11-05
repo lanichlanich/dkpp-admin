@@ -18,9 +18,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!(file instanceof File) || !file.size) throw new KgbArchiveError("Pilih PDF SK KGB yang sudah ditandatangani.", 400);
     if (file.size > MAX_UPLOAD_SIZE_BYTES) throw new KgbArchiveError(`Ukuran PDF maksimal ${MAX_UPLOAD_SIZE_MB} MB.`, 413);
     if (file.type && !["application/pdf", "application/octet-stream"].includes(file.type)) throw new KgbArchiveError("File SK harus berupa PDF.");
-    const signed = await saveSignedKgb((await params).id, Number(form.get("revision")), user.id, file.name, Buffer.from(await file.arrayBuffer()));
+    const suppliedTmt = form.get("tmtKgb");
+    if (suppliedTmt !== null && typeof suppliedTmt !== "string") throw new KgbArchiveError("TMT KGB tidak valid.");
+    const signed = await saveSignedKgb((await params).id, Number(form.get("revision")), user.id, file.name, Buffer.from(await file.arrayBuffer()), suppliedTmt || undefined);
     revalidatePath("/dashboard/kgb");
-    return Response.json({ signed, message: "SK KGB bertanda tangan berhasil diunggah." }, { status: 201, headers });
+    revalidatePath("/dashboard/pegawai"); revalidatePath("/dashboard", "layout");
+    return Response.json({ signed, message: "SK KGB bertanda tangan tersimpan dan tersedia di dokumen pegawai. Pengingat KGB berikutnya diperbarui." }, { status: 201, headers });
   } catch (error) {
     if (error instanceof KgbArchiveError) return Response.json({ message: error.message }, { status: error.status, headers });
     console.error("Unggahan SK KGB gagal.", error);

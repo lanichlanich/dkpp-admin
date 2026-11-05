@@ -5,13 +5,17 @@ import { KgbForm } from "@/components/kgb/kgb-form";
 import { KgbHistory } from "@/components/kgb/kgb-history";
 import { getKgbEmployeeOptions } from "@/lib/employees";
 import { getKgbHistory } from "@/lib/kgb-documents";
+import { getKgbReminders } from "@/lib/kgb-reminders";
+import { jakartaToday } from "@/lib/plt-dates";
+import { KgbReminders } from "@/components/kgb/kgb-reminders";
 
 export const metadata: Metadata = { title: "Pembuatan SK KGB" };
 
 export default async function KgbPage() {
   await requireMenuAccess("kgb");
   const signatories = await getSignatoryOptions();
-  const [employees, documents] = await Promise.all([getKgbEmployeeOptions(), getKgbHistory()]);
+  const today = jakartaToday();
+  const [employees, documents, reminders] = await Promise.all([getKgbEmployeeOptions(), getKgbHistory(), getKgbReminders(today)]);
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
@@ -21,6 +25,7 @@ export default async function KgbPage() {
           Lengkapi data Kenaikan Gaji Berkala. Gaji baru dihitung otomatis untuk pegawai PNS berdasarkan golongan dan masa kerja sesuai PP No. 5 Tahun 2024.
         </p>
       </div>
+      <KgbReminders reminders={reminders} initialToday={today} />
       <KgbForm signatories={signatories} employees={employees} />
       <KgbHistory documents={documents} />
     </div>

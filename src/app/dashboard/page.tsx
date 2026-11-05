@@ -10,17 +10,21 @@ import { canAccessMenu } from "@/lib/access-control";
 import { getPltAssignments } from "@/lib/plt-assignments";
 import { jakartaToday } from "@/lib/plt-dates";
 import { PltReminderPanel } from "@/components/plt/plt-list";
+import { getKgbReminders } from "@/lib/kgb-reminders";
+import { KgbReminders } from "@/components/kgb/kgb-reminders";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const user = await requireMenuAccess("dashboard");
   const showPlt = canAccessMenu(user, "daftar-plt");
-  const [statistics, upcomingRetirements, upcomingBirthdays, pltAssignments] = await Promise.all([
+  const showKgb = canAccessMenu(user, "kgb") || canAccessMenu(user, "pegawai"), today = jakartaToday();
+  const [statistics, upcomingRetirements, upcomingBirthdays, pltAssignments, kgbReminders] = await Promise.all([
     getEmployeeStatistics(),
     getUpcomingRetirements(),
     getUpcomingBirthdays(),
     showPlt ? getPltAssignments() : Promise.resolve([]),
+    showKgb ? getKgbReminders(today) : Promise.resolve([]),
   ]);
   const cards = [
     { label: "Pegawai Aktif", value: statistics.active, description: "Status aktif saja", icon: UserCheck, color: "bg-emerald-50 text-emerald-600" },
@@ -61,6 +65,7 @@ export default async function DashboardPage() {
       </div>
 
       {showPlt && <PltReminderPanel assignments={pltAssignments} initialToday={jakartaToday()} />}
+      {showKgb && <KgbReminders reminders={kgbReminders} initialToday={today} compact downloadMode={canAccessMenu(user, "kgb") ? "kgb" : "pegawai"} />}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="min-w-0 shadow-sm">

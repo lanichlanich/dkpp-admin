@@ -239,6 +239,10 @@ db.exec(`
     id TEXT PRIMARY KEY,
     document_id TEXT NOT NULL REFERENCES kgb_documents(id) ON DELETE CASCADE,
     document_revision INTEGER NOT NULL CHECK(document_revision >= 1),
+    employee_nip TEXT NOT NULL,
+    nomor_surat TEXT,
+    tgl_surat TEXT,
+    tmt_kgb TEXT,
     user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     original_file_name TEXT NOT NULL,
     file_name TEXT NOT NULL,
@@ -500,6 +504,26 @@ for (const [name, definition] of Object.entries({ input_json: "TEXT", revision: 
   if (!kgbColumns.some(column => column.name === name)) db.exec(`ALTER TABLE kgb_documents ADD COLUMN ${name} ${definition}`);
 }
 db.exec("CREATE INDEX IF NOT EXISTS kgb_documents_updated_by_idx ON kgb_documents(updated_by)");
+
+const signedKgbColumns = db.prepare("PRAGMA table_info(kgb_signed_documents)").all() as Array<{ name: string }>;
+const addSignedKgbMetadata = !signedKgbColumns.some(column => column.name === "employee_nip");
+for (const name of ["employee_nip", "nomor_surat", "tgl_surat", "tmt_kgb"]) {
+  if (!signedKgbColumns.some(column => column.name === name)) db.exec(`ALTER TABLE kgb_signed_documents ADD COLUMN ${name} TEXT`);
+}
+if (addSignedKgbMetadata) {
+  const parents = db.prepare("SELECT id, employee_nip, nomor_surat, tgl_surat, revision, input_json FROM kgb_documents").all() as Array<{ id: string; employee_nip: string; nomor_surat: string; tgl_surat: string; revision: number; input_json: string | null }>;
+  const signed = db.prepare("SELECT id, document_id, document_revision, file_name FROM kgb_signed_documents").all() as Array<{ id: string; document_id: string; document_revision: number; file_name: string }>;
+  const update = db.prepare("UPDATE kgb_signed_documents SET employee_nip=?, nomor_surat=?, tgl_surat=?, tmt_kgb=? WHERE id=?");
+  for (const item of signed) {
+    const parent = parents.find(p => p.id === item.document_id); if (!parent) continue;
+    let tmt: string | null = null;
+    try { tmt = parent.input_json ? JSON.parse(parent.input_json).tmtKgbBaru ?? null : null; } catch { /* Unknown legacy metadata stays empty. */ }
+    const current = item.document_revision === parent.revision;
+    const date = item.file_name.match(/(\d{4}-\d{2}-\d{2})-v\d+\.pdf$/)?.[1] ?? (current ? parent.tgl_surat : null);
+    update.run(parent.employee_nip, current ? parent.nomor_surat : null, date, current ? tmt : null, item.id);
+  }
+}
+db.exec("CREATE INDEX IF NOT EXISTS kgb_signed_employee_tmt_idx ON kgb_signed_documents(employee_nip, tmt_kgb DESC, created_at DESC)");
 
 const pltColumns = db.prepare("PRAGMA table_info(plt_assignments)").all() as Array<{ name: string }>;
 for (const [name, definition] of [["file_name", "TEXT"], ["storage_name", "TEXT"], ["file_size", "INTEGER CHECK (file_size BETWEEN 1 AND 2097152)"], ["mime_type", "TEXT"]]) {

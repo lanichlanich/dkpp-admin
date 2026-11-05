@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import { cache } from "react";
 import { database as db } from "@/lib/database";
 import { requireUser } from "@/lib/session";
+import { canAccessMenu } from "@/lib/access-control";
+import { syncKgbReminderNotifications } from "@/lib/kgb-reminders";
 
 export type NotificationType = "success" | "warning" | "error" | "info";
 
@@ -30,6 +32,7 @@ export async function createNotification(
 
 export const getNotificationCenter = cache(async () => {
   const user = await requireUser();
+  await syncKgbReminderNotifications(user.id, canAccessMenu(user, "kgb") || canAccessMenu(user, "pegawai"));
   const rows = await db
     .prepare(
       `SELECT id, type, title, description, read_at, created_at

@@ -14,6 +14,7 @@ import type {
 } from "@/lib/employee-document-types";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 import { downloadStorageObject, isStorageConfigured, uploadStorageObject } from "@/lib/storage";
+import { getEmployeeKgbDocuments, getEmployeeKgbFile } from "@/lib/kgb-employee-documents";
 
 const storageDirectory = path.join(process.cwd(), "data", "employee-documents");
 const storageNamePattern = /^[0-9a-f-]{36}\.(pdf|doc|docx)$/i;
@@ -28,6 +29,7 @@ const fileNamePrefixes: Record<EmployeeDocumentType, string> = {
   sk_kontrak_pppk: "SK-KONTRAK-PPPK",
   dokumen_lainnya: "DOKUMEN-LAINNYA",
   sasaran_kinerja_pegawai: "SKP",
+  sk_kgb: "SK-KGB",
 };
 
 function databaseDate(value: string) {
@@ -54,6 +56,7 @@ export type EmployeeDocument = {
   mimeType: string;
   createdAt: string;
   createdBy: string;
+  kgbSource?: { documentId: string; signedId: string; revision: number; currentWordVersion: boolean };
 };
 
 type EmployeeDocumentRow = {
@@ -158,7 +161,8 @@ export async function getEmployeeDocuments(employeeNip: string): Promise<Employe
      WHERE documents.employee_nip = ?
      ORDER BY documents.created_at DESC`,
   ).all(employeeNip) as EmployeeDocumentRow[];
-  return rows.map(mapEmployeeDocument);
+  const kgb = await getEmployeeKgbDocuments(employeeNip);
+  return [...rows.map(mapEmployeeDocument), ...kgb].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || b.id.localeCompare(a.id));
 }
 
 export async function saveEmployeeDocument({
@@ -260,6 +264,7 @@ export async function updateEmployeeDocument(employeeNip: string, id: string, in
 }
 
 export async function getEmployeeDocumentForDownload(employeeNip: string, id: string) {
+  if (id.startsWith("kgb-")) return getEmployeeKgbFile(employeeNip, id);
   const row = await db.prepare(
     `SELECT original_file_name, storage_name, mime_type, file_size
      FROM employee_documents
@@ -291,7 +296,7 @@ export async function getEmployeeDocumentsForArchive(employeeNip: string) {
     storage_name: string;
   }>;
 
-  return Promise.all(rows.map(async (row) => {
+  const regular = await Promise.all(rows.map(async (row) => {
     if (!storageNamePattern.test(row.storage_name)) {
       throw new Error("Invalid employee document storage name");
     }
@@ -300,6 +305,13 @@ export async function getEmployeeDocumentsForArchive(employeeNip: string) {
       file: await downloadStorageObject(row.storage_name, path.join(storageDirectory, row.storage_name)),
     };
   }));
+  const linked = await getEmployeeKgbDocuments(employeeNip);
+  const kgb = await Promise.all(linked.map(async item => {
+    const file = await getEmployeeKgbFile(employeeNip, item.id);
+    if (!file) throw new Error("Arsip KGB pegawai tidak tersedia.");
+    return { fileName: file.fileName, file: file.file };
+  }));
+  return [...regular, ...kgb];
 }
 
 export async function deleteEmployeeDocument(employeeNip: string, id: string) {

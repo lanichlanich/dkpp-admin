@@ -6,7 +6,7 @@ export const EMPLOYEE_DOCUMENT_TYPES = [
   "sasaran_kinerja_pegawai",
 ] as const;
 
-export type EmployeeDocumentType = (typeof EMPLOYEE_DOCUMENT_TYPES)[number];
+export type EmployeeDocumentType = (typeof EMPLOYEE_DOCUMENT_TYPES)[number] | "sk_kgb";
 
 export const EMPLOYEE_DOCUMENT_TYPE_LABELS: Record<EmployeeDocumentType, string> = {
   sk_cpns: "SK CPNS",
@@ -14,6 +14,7 @@ export const EMPLOYEE_DOCUMENT_TYPE_LABELS: Record<EmployeeDocumentType, string>
   sk_kontrak_pppk: "SK Kontrak PPPK",
   dokumen_lainnya: "Dokumen Lainnya",
   sasaran_kinerja_pegawai: "Sasaran Kinerja Pegawai",
+  sk_kgb: "SK KGB Bertanda Tangan",
 };
 
 export const SKP_ASSESSMENT_VALUES = [

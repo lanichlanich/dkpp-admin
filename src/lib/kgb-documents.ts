@@ -10,6 +10,7 @@ import { kgbSchema, type KgbInput } from "@/lib/kgb-validation";
 import { recoverKgbInput } from "@/lib/kgb-input-recovery";
 import { buildKgbDocument, KgbArchiveError } from "@/lib/kgb-service";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
+import { validPltDate } from "@/lib/plt-dates";
 
 const wordDirectory = path.join(process.cwd(), "data", "kgb-documents");
 const signedDirectory = path.join(process.cwd(), "data", "kgb-signed-documents");
@@ -17,8 +18,8 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const storedWord = (name: string) => uuid.test(name.slice(0, -5)) && name.endsWith(".docx");
 const contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-export type KgbSignedDocument = { id: string; documentId: string; documentRevision: number; originalName: string; fileName: string; fileSize: number; pageCount: number; createdAt: string };
-export type KgbDocumentHistory = { id: string; employeeNip: string; employeeName: string; nomorSurat: string; tglSurat: string; fileName: string; fileSize: number; createdAt: string; createdBy: string; revision: number; updatedAt: string | null; signedDocuments: KgbSignedDocument[] };
+export type KgbSignedDocument = { id: string; documentId: string; documentRevision: number; originalName: string; fileName: string; fileSize: number; pageCount: number; createdAt: string; employeeNip: string; nomorSurat: string | null; tglSurat: string | null; tmtKgb: string | null };
+export type KgbDocumentHistory = { id: string; employeeNip: string; employeeName: string; nomorSurat: string; tglSurat: string; fileName: string; fileSize: number; createdAt: string; createdBy: string; revision: number; updatedAt: string | null; tmtKgb: string | null; signedDocuments: KgbSignedDocument[] };
 
 async function writeArchive(name: string, bytes: Buffer, directory: string, type: string) {
   if (isStorageConfigured()) await uploadStorageObject(name, bytes, type);
@@ -49,16 +50,21 @@ export async function saveKgbDocument(data: { userId: string; employeeNip: strin
 export async function getKgbHistory(): Promise<KgbDocumentHistory[]> {
   await requireUser();
   const rows = await db.prepare(`SELECT documents.id, employee_nip, employee_name, nomor_surat, CAST(tgl_surat AS TEXT) AS tgl_surat, file_name, file_size,
-    CAST(documents.created_at AS TEXT) AS created_at, users.name AS created_by, revision, CAST(documents.updated_at AS TEXT) AS updated_at
+    CAST(documents.created_at AS TEXT) AS created_at, users.name AS created_by, revision, CAST(documents.updated_at AS TEXT) AS updated_at, CAST(input_json AS TEXT) AS input_json
     FROM kgb_documents AS documents INNER JOIN users ON users.id = documents.user_id ORDER BY documents.created_at DESC`)
-    .all<{ id: string; employee_nip: string; employee_name: string; nomor_surat: string; tgl_surat: string; file_name: string; file_size: number; created_at: string; created_by: string; revision: number; updated_at: string | null }>();
+    .all<{ id: string; employee_nip: string; employee_name: string; nomor_surat: string; tgl_surat: string; file_name: string; file_size: number; created_at: string; created_by: string; revision: number; updated_at: string | null; input_json: string | null }>();
   const signed = await db.prepare(`SELECT id, document_id AS documentId, document_revision AS documentRevision, original_file_name AS originalName,
-    file_name AS fileName, file_size AS fileSize, page_count AS pageCount, CAST(created_at AS TEXT) AS createdAt
+    file_name AS fileName, file_size AS fileSize, page_count AS pageCount, CAST(created_at AS TEXT) AS createdAt,
+    employee_nip AS employeeNip, nomor_surat AS nomorSurat, CAST(tgl_surat AS TEXT) AS tglSurat, CAST(tmt_kgb AS TEXT) AS tmtKgb
     FROM kgb_signed_documents ORDER BY created_at DESC, id DESC`).all<KgbSignedDocument>();
   const byDocument = new Map<string, KgbSignedDocument[]>();
   for (const file of signed) byDocument.set(file.documentId, [...(byDocument.get(file.documentId) ?? []), file]);
-  return rows.map(r => ({ id: r.id, employeeNip: r.employee_nip, employeeName: r.employee_name, nomorSurat: r.nomor_surat, tglSurat: r.tgl_surat, fileName: r.file_name,
-    fileSize: r.file_size, createdAt: r.created_at, createdBy: r.created_by, revision: r.revision, updatedAt: r.updated_at, signedDocuments: byDocument.get(r.id) ?? [] }));
+  return rows.map(r => {
+    let tmt: string | null = null;
+    try { const value = r.input_json ? JSON.parse(r.input_json).tmtKgbBaru : null; if (typeof value === "string" && validPltDate(value)) tmt = value; } catch { /* Legacy data is recovered when the form opens. */ }
+    return { id: r.id, employeeNip: r.employee_nip, employeeName: r.employee_name, nomorSurat: r.nomor_surat, tglSurat: r.tgl_surat, fileName: r.file_name,
+      fileSize: r.file_size, createdAt: r.created_at, createdBy: r.created_by, revision: r.revision, updatedAt: r.updated_at, tmtKgb: tmt, signedDocuments: byDocument.get(r.id) ?? [] };
+  });
 }
 
 export async function getKgbDocumentForDownload(id: string) {
@@ -110,13 +116,19 @@ export async function updateKgbDocument(id: string, input: KgbInput, revision: n
   return { document, fileName, revision: revision + 1 };
 }
 
-export async function saveSignedKgb(id: string, revision: number, userId: string, originalName: string, bytes: Buffer) {
+export async function saveSignedKgb(id: string, revision: number, userId: string, originalName: string, bytes: Buffer, suppliedTmt?: string) {
   expectedRevision(revision);
   if (!uuid.test(id)) throw new KgbArchiveError("Dokumen tidak ditemukan.", 404);
   const row = await db.prepare("SELECT employee_nip, CAST(tgl_surat AS TEXT) AS tgl_surat, revision FROM kgb_documents WHERE id = ?")
     .get<{ employee_nip: string; tgl_surat: string; revision: number }>(id);
   if (!row) throw new KgbArchiveError("Dokumen tidak ditemukan.", 404);
   if (row.revision !== revision) throw conflict();
+  const metadata = await getKgbEditData(id);
+  if (!metadata || metadata.revision !== revision) throw conflict();
+  const sourceTmt = metadata.input.tmtKgbBaru && validPltDate(metadata.input.tmtKgbBaru) ? metadata.input.tmtKgbBaru : "";
+  if (suppliedTmt && (!validPltDate(suppliedTmt) || (sourceTmt && suppliedTmt !== sourceTmt))) throw new KgbArchiveError("TMT harus sesuai TMT KGB pada dokumen yang ditandatangani.");
+  const tmt = sourceTmt || suppliedTmt;
+  if (!tmt || !validPltDate(tmt)) throw new KgbArchiveError("Isi TMT KGB pada SK yang sudah ditandatangani agar pengingat dapat dibuat.");
   if (!bytes.length || bytes.length > MAX_UPLOAD_SIZE_BYTES) throw new KgbArchiveError(`Ukuran PDF maksimal ${MAX_UPLOAD_SIZE_MB} MB.`, 413);
   if (!/\.pdf$/i.test(originalName) || bytes.subarray(0, 5).toString("ascii") !== "%PDF-") throw new KgbArchiveError("SK bertanda tangan harus berupa PDF yang valid.");
   let pageCount: number;
@@ -128,12 +140,22 @@ export async function saveSignedKgb(id: string, revision: number, userId: string
   try {
     // Preserve the uploaded PDF bytes, including any existing electronic signature.
     await writeArchive(storageName, bytes, signedDirectory, "application/pdf");
-    const inserted = await db.prepare(`INSERT INTO kgb_signed_documents (id, document_id, document_revision, user_id, original_file_name, file_name, storage_name, file_size, page_count, created_at)
-      SELECT ?, id, revision, ?, ?, ?, ?, ?, ?, ? FROM kgb_documents WHERE id = ? AND revision = ?`)
-      .run(signedId, userId, safeName, fileName, storageName, bytes.length, pageCount, now, id, revision);
+    const inserted = await db.prepare(`INSERT INTO kgb_signed_documents (id, document_id, document_revision, user_id, original_file_name, file_name, storage_name, file_size, page_count, created_at, employee_nip, nomor_surat, tgl_surat, tmt_kgb)
+      SELECT ?, id, revision, ?, ?, ?, ?, ?, ?, ?, employee_nip, nomor_surat, tgl_surat, ? FROM kgb_documents WHERE id = ? AND revision = ?`)
+      .run(signedId, userId, safeName, fileName, storageName, bytes.length, pageCount, now, tmt, id, revision);
     if (!inserted.changes) throw conflict();
   } catch (error) { await cleanArchive(storageName, signedDirectory); throw error; }
-  return { id: signedId, documentId: id, documentRevision: revision, originalName: safeName, fileName, fileSize: bytes.length, pageCount, createdAt: now } satisfies KgbSignedDocument;
+  return { id: signedId, documentId: id, documentRevision: revision, originalName: safeName, fileName, fileSize: bytes.length, pageCount, createdAt: now, employeeNip: row.employee_nip, nomorSurat: metadata.input.nomorSurat, tglSurat: row.tgl_surat, tmtKgb: tmt } satisfies KgbSignedDocument;
+}
+
+export async function completeSignedKgbTmt(documentId: string, signedId: string, tmt: string) {
+  if (!uuid.test(documentId) || !uuid.test(signedId)) throw new KgbArchiveError("SK tidak ditemukan.", 404);
+  if (!validPltDate(tmt)) throw new KgbArchiveError("TMT KGB tidak valid.");
+  const row = await db.prepare("SELECT tmt_kgb FROM kgb_signed_documents WHERE id=? AND document_id=?").get<{ tmt_kgb: string | null }>(signedId, documentId);
+  if (!row) throw new KgbArchiveError("SK tidak ditemukan.", 404);
+  if (row.tmt_kgb) throw new KgbArchiveError("TMT sudah terisi. Muat ulang untuk melihat data terbaru.", 409);
+  const result = await db.prepare("UPDATE kgb_signed_documents SET tmt_kgb=? WHERE id=? AND document_id=? AND tmt_kgb IS NULL").run(tmt, signedId, documentId);
+  if (!result.changes) throw conflict();
 }
 
 export async function readSignedKgb(documentId: string, id: string) {

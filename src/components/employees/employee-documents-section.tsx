@@ -32,6 +32,7 @@ import type { LocalDocumentExtractionResult } from "@/lib/local-document-ai-type
 import { fillEmptyDocumentFields } from "@/lib/document-ai-fields";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 import { cn } from "@/lib/utils";
+import { nextKgbDate } from "@/lib/kgb-reminder-dates";
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "UTC" });
 const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
@@ -96,6 +97,7 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
   const busy = submitting || extracting;
   const isSkp = employeeDocumentIsSkp(documentType);
   const totalFileSize = useMemo(() => documents?.reduce((total, document) => total + document.fileSize, 0) ?? 0, [documents]);
+  const currentKgb = useMemo(() => documents?.filter(d => d.kgbSource && nextKgbDate(d.tmtSurat)).sort((a, b) => b.tmtSurat.localeCompare(a.tmtSurat))[0], [documents]);
   const availableDocumentTypes = useMemo(
     () => Array.from(new Set(documents?.map((document) => document.documentType) ?? [])),
     [documents],
@@ -276,6 +278,7 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
 
   return (
     <div className="space-y-5">
+      {currentKgb && <section aria-label="KGB pegawai" className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm"><h4 className="font-semibold text-indigo-950">KGB berdasarkan SK bertanda tangan terakhir</h4><p className="mt-2 text-indigo-900">TMT sekarang: <strong>{formatDate(currentKgb.tmtSurat)}</strong> · KGB berikutnya: <strong>{formatDate(nextKgbDate(currentKgb.tmtSurat))}</strong></p><p className="mt-1 text-xs text-indigo-800">Dihitung 2 tahun dari TMT SK. Pengingat otomatis berlaku untuk PNS aktif.</p></section>}
       <section className="overflow-hidden rounded-2xl border bg-white shadow-sm shadow-zinc-100" aria-labelledby={`arsip-dokumen-${employee.nip}`}>
         <div className="flex flex-col gap-4 border-b bg-gradient-to-br from-white to-indigo-50/70 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
           <div className="flex min-w-0 gap-3">
@@ -437,26 +440,26 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
               <div className="flex min-w-0 gap-3">
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600"><FileText className="size-5" /></span>
                 <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{EMPLOYEE_DOCUMENT_TYPE_LABELS[document.documentType]}</Badge>{document.documentType === "sasaran_kinerja_pegawai" && <Badge variant="secondary">{document.predikatSkp}</Badge>}</div>
+                <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{EMPLOYEE_DOCUMENT_TYPE_LABELS[document.documentType]}</Badge>{document.kgbSource && <Badge variant="secondary">Terhubung dari arsip KGB</Badge>}{document.documentType === "sasaran_kinerja_pegawai" && <Badge variant="secondary">{document.predikatSkp}</Badge>}</div>
                 <p className="mt-2 break-words font-semibold text-zinc-950">{document.namaDokumen}</p>
                 {document.nomorSurat && <p className="mt-1 text-xs text-zinc-500">Nomor: {document.nomorSurat}</p>}
                 {document.documentType === "sasaran_kinerja_pegawai" ? (
                   <dl className="mt-2 grid gap-x-5 gap-y-1 text-xs text-zinc-500 sm:grid-cols-2"><div><dt className="inline">Kinerja: </dt><dd className="inline font-medium text-zinc-700">{document.penilaianKinerja}</dd></div><div><dt className="inline">Perilaku: </dt><dd className="inline font-medium text-zinc-700">{document.penilaianPerilaku}</dd></div></dl>
                 ) : (
-                  <p className="mt-1 text-xs leading-5 text-zinc-500">Tanggal {formatDate(document.tglSurat)} · TMT {formatDate(document.tmtSurat)}{document.masaKerja ? ` · Masa kerja ${document.masaKerja}` : ""}</p>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">Tanggal {document.tglSurat ? formatDate(document.tglSurat) : "belum tersedia"} · TMT {document.tmtSurat ? formatDate(document.tmtSurat) : "belum diisi"}{document.masaKerja ? ` · Masa kerja ${document.masaKerja}` : ""}</p>
                 )}
                 <p className="mt-3 truncate text-sm font-medium text-zinc-700" title={document.fileName}>{document.fileName} <span className="font-normal text-zinc-400">· {formatFileSize(document.fileSize)}</span></p>
                 <p className="mt-1 text-xs text-zinc-400">Diunggah {dateTimeFormatter.format(new Date(document.createdAt))} oleh {document.createdBy}</p>
                 </div>
               </div>
               <div className="flex shrink-0 flex-wrap gap-2 border-t pt-3 sm:border-0 sm:pt-0">
-                <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => editDocument(document)} aria-label={`Edit ${document.namaDokumen}`}><Pencil />Edit</Button>
+                {!document.kgbSource && <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => editDocument(document)} aria-label={`Edit ${document.namaDokumen}`}><Pencil />Edit</Button>}
                 <a href={`/api/employees/${encodeURIComponent(employee.nip)}/documents/${encodeURIComponent(document.id)}/download`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1 sm:flex-none")}>
                   <Download />Unduh
                 </a>
-                <Button type="button" variant="destructive" size="sm" disabled={busy || deleting} className="flex-1 sm:flex-none" onClick={() => setDocumentToDelete(document)} aria-label={`Hapus ${document.fileName}`}>
+                {!document.kgbSource && <Button type="button" variant="destructive" size="sm" disabled={busy || deleting} className="flex-1 sm:flex-none" onClick={() => setDocumentToDelete(document)} aria-label={`Hapus ${document.fileName}`}>
                   <Trash2 />Hapus
-                </Button>
+                </Button>}
               </div>
             </div>
           </article>

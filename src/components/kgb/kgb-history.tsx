@@ -57,7 +57,7 @@ export function KgbHistory({ documents }: { documents: KgbDocumentHistory[] }) {
                   <TableCell><p>{dateTimeFormatter.format(new Date(document.createdAt))}</p><p className="text-xs text-zinc-500">oleh {document.createdBy}</p>{document.updatedAt && <p className="mt-1 text-xs text-amber-800">Diedit {dateTimeFormatter.format(new Date(document.updatedAt))} · v{document.revision}</p>}</TableCell>
                   <TableCell><p className="max-w-52 truncate" title={document.fileName}>{document.fileName}</p><p className="text-xs text-zinc-500">{formatFileSize(document.fileSize)} · Word v{document.revision}</p><Badge variant="outline" className={document.signedDocuments.some(file => file.documentRevision === document.revision) ? "mt-1 border-emerald-200 text-emerald-700" : "mt-1 text-zinc-500"}>{document.signedDocuments.some(file => file.documentRevision === document.revision) ? "SK TTD tersedia" : document.signedDocuments.length ? "SK TTD versi lama" : "Belum upload SK TTD"}</Badge></TableCell>
                   <TableCell className="pr-4 text-right">
-                    <KgbDocumentActions document={document} />
+                    <KgbDocumentActions key={document.revision} document={document} />
                   </TableCell>
                 </TableRow>
               ))}

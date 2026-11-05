@@ -1,5 +1,17 @@
 # Anjab-ABK jabatan fungsional
 
+## Unduhan PDF
+
+Menu **Download dokumen PDF** menyediakan rekap variabel dinas (PERHITUNGAN), usulan kebutuhan/bezetting (Usulan), penempatan, rincian satu jenjang atau seluruh jenjang satu jabatan, dan **Download gabungan semua PDF**. Gabungan berurutan tiga rekap dahulu, lalu seluruh 23 jenjang sesuai urutan aplikasi. Kolom H pada ketiga sheet Analis PSP disertakan sebagai lampiran hasil kerja agar keterangannya tidak hilang.
+
+PDF menggunakan snapshot nilai form pada saat tombol ditekan, termasuk perubahan yang belum disimpan. Proses ini tidak menyimpan atau mengubah rencana. Tahun pada PDF dan nama berkas mengikuti tahun perhitungan yang sedang dibuka. Seluruh input divalidasi kembali pada server. Unduhan memerlukan izin menu `anjab-abk`, memakai `Cache-Control: private, no-store`, dan menolak payload di atas 512 KB.
+
+`src/data/anjab-abk-pdf-template.json` menyimpan format seluruh 26 sheet dari enam lampiran: lebar kolom, tinggi baris, penggabungan sel, judul, kelompok kegiatan, format angka, warna, ketebalan huruf, dan garis tabel. Reproduksi snapshot: `python scripts/extract-anjab-abk-pdf-template.py <direktori-enam-xlsx>`. Font PDF menggunakan Helvetica; ukuran baris dapat bertambah agar teks tetap lengkap. Rincian A-F memakai A4 portrait, rekap lebar memakai A4 landscape. Header tabel diulang di halaman lanjutan dan sel gabungan tidak dipotong di tengah. Ringkasan total ditambahkan setelah tabel rekap.
+
+Semua input, hasil per kegiatan, total AK (termasuk baris yang terlewat SUM sumber), pembagi, rasio, hasil pembulatan, subtotal, dan penempatan dihitung ulang dari snapshot form. Angka hasil cache Excel tidak digunakan sebagai hasil unduhan. Label pembagi/jabatan yang keliru pada sumber disesuaikan dengan input dan identitas jenjang aplikasi.
+
+Verifikasi `npm run smoke:anjab-abk-pdf` mencakup isi seluruh 465 kegiatan dan 51 keterangan hasil kerja, penggantian nilai perhitungan dan rekap, jumlah halaman gabungan, halaman tidak kosong, batas halaman teks, validasi tahun/izin/isian/ukuran, serta ekspor tanpa mutasi database. Tidak ada perubahan skema untuk fitur unduhan ini; migrasi penyimpanan perhitungan tetap `add_anjab_abk_plans`.
+
 ## Hasil analisis lampiran
 
 Enam workbook dibaca seluruhnya: 26 sheet, 23 jenjang dan 465 butir kegiatan. Kelima file rinci menggunakan pendekatan angka kredit: volume satu tahun dikali angka kredit per butir, dijumlahkan per jenjang, lalu dibagi pembagi jenjang dan dibulatkan dengan ROUND ke bilangan bulat terdekat.

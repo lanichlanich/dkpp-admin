@@ -8,6 +8,7 @@ import { calculateAnjab, createAnjabPlanSchema, defaultAnjabPlan, validAnjabYear
 import { AnjabSummary } from "./summary";
 import { AnjabFamily } from "./family";
 import { AnjabSources } from "./sources";
+import { AnjabDownloads } from "./downloads";
 import { inputClass } from "./shared";
 
 export function AnjabAbkAdmin({ initial, catalog }: { initial: AnjabPlanRecord; catalog: SourceCatalog }) {
@@ -61,6 +62,7 @@ export function AnjabAbkAdmin({ initial, catalog }: { initial: AnjabPlanRecord; 
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4"><form onSubmit={changeYear} className="flex flex-wrap items-center gap-2"><label htmlFor="anjab-year" className="text-sm font-medium">Tahun perhitungan</label><input id="anjab-year" type="number" min={2000} max={2099} step={1} required value={Number.isFinite(year) ? year : ""} onChange={event => setYear(event.target.value === "" ? NaN : Number(event.target.value))} className={`${inputClass} !w-28`} /><button type="submit" disabled={pending} className="rounded-lg border px-3 py-2 text-sm hover:bg-zinc-50">Buka tahun</button></form><div className="text-xs text-zinc-500">{record.updatedAt ? `Tersimpan ${new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(record.updatedAt))}` : `Nilai awal dari lampiran ${catalog.baseYear}; belum disimpan untuk tahun ${record.year}.`}</div></div>
     {message && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p>}{error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {!validation.success && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{validation.error.issues[0]?.code === "custom" ? validation.error.issues[0].message : "Lengkapi angka yang valid. Volume/AK tidak negatif, pembagi lebih besar dari nol, dan jumlah pegawai harus bilangan bulat."}</p>}
+    <AnjabDownloads year={record.year} plan={plan} catalog={catalog} disabled={pending || !validation.success} />
     <fieldset disabled={pending} className="min-w-0 space-y-5">
       <nav aria-label="Menu Anjab-ABK" className="overflow-x-auto rounded-xl border bg-white p-2"><div role="tablist" aria-label="Perhitungan Anjab-ABK" className="flex min-w-max gap-1">{tabs.map((item, index) => <button key={item.id} id={`anjab-tab-${item.id}`} type="button" role="tab" tabIndex={tab === item.id ? 0 : -1} onKeyDown={event => navigateTab(event, index)} aria-selected={tab === item.id} aria-controls="anjab-panel" onClick={() => setTab(item.id)} className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${tab === item.id ? "bg-emerald-700 text-white" : "text-zinc-600 hover:bg-zinc-100"}`}>{item.id === "total" ? <Calculator className="size-4" /> : item.id === "sumber" ? <FileSpreadsheet className="size-4" /> : null}{item.label}</button>)}</div></nav>
       <div id="anjab-panel" role="tabpanel" aria-labelledby={`anjab-tab-${tab}`}>

@@ -1,33 +1,23 @@
 import { requireMenuAccess } from "@/lib/authorization";
 import { getSignatoryOptions } from "@/lib/signatory-options";
 import type { Metadata } from "next";
-import { KgbForm } from "@/components/kgb/kgb-form";
-import { KgbHistory } from "@/components/kgb/kgb-history";
+import { KgbWorkspace } from "@/components/kgb/kgb-workspace";
 import { getKgbEmployeeOptions } from "@/lib/employees";
 import { getKgbHistory } from "@/lib/kgb-documents";
 import { getKgbReminders } from "@/lib/kgb-reminders";
 import { jakartaToday } from "@/lib/plt-dates";
-import { KgbReminders } from "@/components/kgb/kgb-reminders";
 
-export const metadata: Metadata = { title: "Pembuatan SK KGB" };
+export const metadata: Metadata = { title: "SK KGB" };
 
-export default async function KgbPage() {
+export default async function KgbPage({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
   await requireMenuAccess("kgb");
-  const signatories = await getSignatoryOptions();
   const today = jakartaToday();
-  const [employees, documents, reminders] = await Promise.all([getKgbEmployeeOptions(), getKgbHistory(), getKgbReminders(today)]);
+  const [employees, signatories, documents, reminders, params] = await Promise.all([
+    getKgbEmployeeOptions(), getSignatoryOptions(), getKgbHistory(), getKgbReminders(today), searchParams,
+  ]);
+  const initialTab = params.tab === "pengingat" ? "pengingat" : "arsip";
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <p className="text-sm font-medium text-indigo-600">Administrasi kepegawaian</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-950 md:text-3xl">Pembuatan SK KGB</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">
-          Lengkapi data Kenaikan Gaji Berkala. Gaji baru dihitung otomatis untuk pegawai PNS berdasarkan golongan dan masa kerja sesuai PP No. 5 Tahun 2024.
-        </p>
-      </div>
-      <KgbReminders reminders={reminders} initialToday={today} />
-      <KgbForm signatories={signatories} employees={employees} />
-      <KgbHistory documents={documents} />
-    </div>
+    <KgbWorkspace key={initialTab} initialTab={initialTab} employees={employees} signatories={signatories}
+      documents={documents} reminders={reminders} today={today} />
   );
 }

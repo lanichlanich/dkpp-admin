@@ -3,7 +3,7 @@
 import { SignatoryField } from "@/components/letters/signatory-field";
 import { DEFAULT_SIGNATORY, type Signatory, type SignatoryOption } from "@/lib/signatory";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronsUpDown, Download, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -93,9 +93,9 @@ function ReadOnlyField({ id, label, value, placeholder = "Terisi otomatis" }: { 
   );
 }
 
-function NumberSelect({ id, value, values, disabled, onChange }: { id: string; value: string; values: number[]; disabled: boolean; onChange: (value: string) => void }) {
+function NumberSelect({ id, value, values, disabled, invalid, onChange }: { id: string; value: string; values: number[]; disabled: boolean; invalid: boolean; onChange: (value: string) => void }) {
   return (
-    <select id={id} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50">
+    <select id={id} value={value} disabled={disabled} aria-invalid={invalid} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50">
       {value === "" && <option value="">Pilih</option>}
       {values.map((item) => <option key={item} value={item}>{item}</option>)}
     </select>
@@ -131,27 +131,51 @@ function EmployeeSelect({ employees, value, disabled, invalid, onChange }: { emp
   );
 }
 
-export function KgbForm({ employees, signatories, initialInput, editing }: { employees: KgbEmployee[]; signatories: SignatoryOption[]; initialInput?: Partial<KgbInput>; editing?: { id: string; revision: number } }) {
+export function KgbForm({ employees, signatories, initialInput, editing, modal }: {
+  employees: KgbEmployee[];
+  signatories: SignatoryOption[];
+  initialInput?: Partial<KgbInput>;
+  editing?: { id: string; revision: number };
+  modal?: {
+    onDirty: () => void;
+    onCancel: () => void;
+    onSubmittingChange: (submitting: boolean) => void;
+    onSaved: () => void;
+  };
+}) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const requestInFlight = useRef(false);
   const [signatory, setSignatory] = useState<Signatory>(initialInput?.signatory ?? signatories[0] ?? DEFAULT_SIGNATORY);
   const [values, setValues] = useState<FormValues>(() => Object.fromEntries(Object.entries(initialValues).map(([key, value]) => [key, String(initialInput?.[key as keyof FormValues] ?? (editing ? "" : value))])) as FormValues);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const employee = useMemo(() => employees.find((item) => item.nip === values.nip), [employees, values.nip]);
   const gajiLama = Number(values.gajiLama);
   const gajiBaru = employee ? salaryForRankAndYears(employee.rank, Number(values.mkgTahunBaru)) : null;
   const tmtDepan = values.mkgTahunBaru === "32" ? "" : addYearsToDate(values.tmtKgbBaru, 2);
 
+  useEffect(() => {
+    if (!submitError || submitting) return;
+    const firstInvalid = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]:not([disabled]), [data-signatory-error]');
+    firstInvalid?.focus();
+  }, [submitError, submitting]);
+
   const setValue = (key: keyof FormValues, value: string) => {
+    modal?.onDirty();
     setValues((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: [] }));
   };
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
     setSubmitting(true);
+    modal?.onSubmittingChange(true);
     setErrors({});
-    toast.info("Dokumen sedang disusun...");
+    setSubmitError("");
     try {
       const response = await fetch(editing ? `/api/kgb/${editing.id}` : "/api/kgb/generate", {
         method: editing ? "PATCH" : "POST",
@@ -174,11 +198,14 @@ export function KgbForm({ employees, signatories, initialInput, editing }: { emp
       URL.revokeObjectURL(url);
       toast.success(editing ? "SK KGB berhasil diperbarui dan diunduh." : "SK KGB berhasil dibuat dan diunduh.");
       if (editing) router.push("/dashboard/kgb");
+      modal?.onSaved();
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Dokumen gagal dibuat.");
+      setSubmitError(error instanceof Error ? error.message : "Dokumen gagal dibuat.");
     } finally {
+      requestInFlight.current = false;
       setSubmitting(false);
+      modal?.onSubmittingChange(false);
     }
   }
 
@@ -189,76 +216,89 @@ export function KgbForm({ employees, signatories, initialInput, editing }: { emp
   });
 
   return (
-    <form onSubmit={submit} className="space-y-6" noValidate>
-      <SignatoryField value={signatory} onChange={(value) => { setSignatory(value); setErrors({}); }} options={signatories} disabled={submitting} error={errors.signatory?.[0]} />
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle>Data surat dan pegawai</CardTitle>
-          <CardDescription>Pilih kode pengurusan KGB dan isi nomor urut beserta kode unit yang digunakan.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-5 md:grid-cols-2">
-          <div className="md:col-span-2"><LetterNumberField value={values.nomorSurat} onChange={(value) => setValue("nomorSurat", value)} defaultCode={letterClassificationDefaults.kgb} disabled={submitting} error={errors.nomorSurat?.[0]} /></div>
-          <Field id="tglSurat" label="Tanggal surat" error={errors.tglSurat?.[0]}>
-            <Input id="tglSurat" type="date" value={values.tglSurat} onChange={(e) => setValue("tglSurat", e.target.value)} {...inputProps("tglSurat")} />
-          </Field>
-          <div className="md:col-span-2">
-            <Field id="nip" label="Nama pegawai" error={errors.nip?.[0]} description="Hanya pegawai PNS dengan status Aktif yang ditampilkan.">
-              <EmployeeSelect employees={employees} value={values.nip} disabled={submitting || !!editing} invalid={Boolean(errors.nip?.length)} onChange={(value) => setValue("nip", value)} />
+    <form ref={formRef} onSubmit={submit} className={modal ? "flex min-h-0 flex-1 flex-col" : ""} noValidate>
+      <div className={cn("space-y-5", modal && "min-h-0 flex-1 overflow-y-auto overscroll-contain bg-zinc-50 px-4 py-5 sm:px-6")}>
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle>1. Pegawai dan surat</CardTitle>
+            <CardDescription>Pilih pegawai, lalu isi nomor dan tanggal surat KGB.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-5 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <Field id="nip" label="Nama pegawai" error={errors.nip?.[0]} description="Hanya pegawai PNS dengan status Aktif yang ditampilkan.">
+                <EmployeeSelect employees={employees} value={values.nip} disabled={submitting || !!editing} invalid={Boolean(errors.nip?.length)} onChange={(value) => setValue("nip", value)} />
+              </Field>
+            </div>
+            <ReadOnlyField id="nipOtomatis" label="NIP" value={employee?.nip ?? ""} />
+            <ReadOnlyField id="tanggalLahirOtomatis" label="Tanggal lahir" value={employee ? birthDateFromNip(employee.nip) : ""} />
+            <div className="md:col-span-2"><ReadOnlyField id="pangkatGolonganOtomatis" label="Pangkat / golongan" value={employee?.rank ?? ""} /></div>
+            <div className="md:col-span-2"><LetterNumberField value={values.nomorSurat} onChange={(value) => setValue("nomorSurat", value)} defaultCode={letterClassificationDefaults.kgb} disabled={submitting} error={errors.nomorSurat?.[0]} /></div>
+            <Field id="tglSurat" label="Tanggal surat" error={errors.tglSurat?.[0]}>
+              <Input id="tglSurat" type="date" value={values.tglSurat} onChange={(e) => setValue("tglSurat", e.target.value)} {...inputProps("tglSurat")} />
             </Field>
-          </div>
-          <ReadOnlyField id="nipOtomatis" label="NIP" value={employee?.nip ?? ""} />
-          <ReadOnlyField id="tanggalLahirOtomatis" label="Tanggal lahir" value={employee ? birthDateFromNip(employee.nip) : ""} />
-          <div className="md:col-span-2"><ReadOnlyField id="pangkatGolonganOtomatis" label="Pangkat / golongan" value={employee?.rank ?? ""} /></div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="border-b"><CardTitle>Dasar KGB lama</CardTitle><CardDescription>Data keputusan yang menjadi dasar kenaikan gaji berkala berikutnya.</CardDescription></CardHeader>
-        <CardContent className="grid gap-5 md:grid-cols-2">
-          <Field id="gajiLama" label="Gaji lama" error={errors.gajiLama?.[0]} description={gajiLama > 0 ? `${formatRupiah(gajiLama)} — ${terbilangRupiah(gajiLama)}` : "Masukkan nominal tanpa tanda titik atau koma."}>
-            <Input id="gajiLama" type="number" min="1" step="1" value={values.gajiLama} onChange={(e) => setValue("gajiLama", e.target.value)} {...inputProps("gajiLama")} />
-          </Field>
-          <Field id="pejabatKgbLama" label="Pejabat penandatangan SK KGB lama" error={errors.pejabatKgbLama?.[0]} description="Isi sesuai keputusan KGB lama yang menjadi dasar, terpisah dari penandatangan dokumen baru.">
-            <Input id="pejabatKgbLama" list="pejabat-kgb-options" value={values.pejabatKgbLama} onChange={(e) => setValue("pejabatKgbLama", e.target.value)} {...inputProps("pejabatKgbLama")} />
-            <datalist id="pejabat-kgb-options">{officialSuggestions.map((option) => <option key={option} value={option} />)}</datalist>
-          </Field>
-          <Field id="nomorKgbLama" label="Nomor SK KGB lama" error={errors.nomorKgbLama?.[0]} description="Kolom ini ditambahkan untuk memperbaiki tag Nomor yang terduplikasi pada template.">
-            <Input id="nomorKgbLama" value={values.nomorKgbLama} onChange={(e) => setValue("nomorKgbLama", e.target.value)} {...inputProps("nomorKgbLama")} />
-          </Field>
-          <Field id="tglKgbLama" label="Tanggal SK KGB lama" error={errors.tglKgbLama?.[0]}>
-            <Input id="tglKgbLama" type="date" value={values.tglKgbLama} onChange={(e) => setValue("tglKgbLama", e.target.value)} {...inputProps("tglKgbLama")} />
-          </Field>
-          <Field id="tmtKgbLama" label="TMT KGB lama" error={errors.tmtKgbLama?.[0]}>
-            <Input id="tmtKgbLama" type="date" value={values.tmtKgbLama} onChange={(e) => setValue("tmtKgbLama", e.target.value)} {...inputProps("tmtKgbLama")} />
-          </Field>
-          <div className="grid grid-cols-2 gap-4">
-            <Field id="mkgTahunLama" label="MKG tahun lama" error={errors.mkgTahunLama?.[0]}><NumberSelect id="mkgTahunLama" value={values.mkgTahunLama} values={yearOptions} disabled={submitting} onChange={(value) => setValue("mkgTahunLama", value)} /></Field>
-            <Field id="mkgBulanLama" label="MKG bulan lama" error={errors.mkgBulanLama?.[0]}><NumberSelect id="mkgBulanLama" value={values.mkgBulanLama} values={monthOptions} disabled={submitting} onChange={(value) => setValue("mkgBulanLama", value)} /></Field>
-          </div>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="border-b"><CardTitle>2. Dasar KGB lama</CardTitle><CardDescription>Salin data dari SK yang menjadi dasar kenaikan gaji.</CardDescription></CardHeader>
+          <CardContent className="grid gap-5 md:grid-cols-2">
+            <Field id="gajiLama" label="Gaji lama" error={errors.gajiLama?.[0]} description={gajiLama > 0 ? `${formatRupiah(gajiLama)} — ${terbilangRupiah(gajiLama)}` : "Masukkan nominal tanpa tanda titik atau koma."}>
+              <Input id="gajiLama" type="number" min="1" step="1" value={values.gajiLama} onChange={(e) => setValue("gajiLama", e.target.value)} {...inputProps("gajiLama")} />
+            </Field>
+            <Field id="pejabatKgbLama" label="Pejabat penandatangan SK KGB lama" error={errors.pejabatKgbLama?.[0]} description="Isi sesuai keputusan KGB lama yang menjadi dasar, terpisah dari penandatangan dokumen baru.">
+              <Input id="pejabatKgbLama" list="pejabat-kgb-options" value={values.pejabatKgbLama} onChange={(e) => setValue("pejabatKgbLama", e.target.value)} {...inputProps("pejabatKgbLama")} />
+              <datalist id="pejabat-kgb-options">{officialSuggestions.map((option) => <option key={option} value={option} />)}</datalist>
+            </Field>
+            <Field id="nomorKgbLama" label="Nomor SK KGB lama" error={errors.nomorKgbLama?.[0]}>
+              <Input id="nomorKgbLama" value={values.nomorKgbLama} onChange={(e) => setValue("nomorKgbLama", e.target.value)} {...inputProps("nomorKgbLama")} />
+            </Field>
+            <Field id="tglKgbLama" label="Tanggal SK KGB lama" error={errors.tglKgbLama?.[0]}>
+              <Input id="tglKgbLama" type="date" value={values.tglKgbLama} onChange={(e) => setValue("tglKgbLama", e.target.value)} {...inputProps("tglKgbLama")} />
+            </Field>
+            <Field id="tmtKgbLama" label="TMT KGB lama" error={errors.tmtKgbLama?.[0]}>
+              <Input id="tmtKgbLama" type="date" value={values.tmtKgbLama} onChange={(e) => setValue("tmtKgbLama", e.target.value)} {...inputProps("tmtKgbLama")} />
+            </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field id="mkgTahunLama" label="MKG tahun lama" error={errors.mkgTahunLama?.[0]}><NumberSelect id="mkgTahunLama" value={values.mkgTahunLama} values={yearOptions} disabled={submitting} invalid={Boolean(errors.mkgTahunLama?.length)} onChange={(value) => setValue("mkgTahunLama", value)} /></Field>
+              <Field id="mkgBulanLama" label="MKG bulan lama" error={errors.mkgBulanLama?.[0]}><NumberSelect id="mkgBulanLama" value={values.mkgBulanLama} values={monthOptions} disabled={submitting} invalid={Boolean(errors.mkgBulanLama?.length)} onChange={(value) => setValue("mkgBulanLama", value)} /></Field>
+            </div>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="border-b"><CardTitle>KGB baru</CardTitle><CardDescription>Nominal dihitung otomatis dari tabel gaji pokok PNS tahun 2024.</CardDescription></CardHeader>
-        <CardContent className="grid gap-5 md:grid-cols-2">
-          <div className="grid grid-cols-2 gap-4 md:col-span-2">
-            <Field id="mkgTahunBaru" label="MKG tahun baru" error={errors.mkgTahunBaru?.[0]}><NumberSelect id="mkgTahunBaru" value={values.mkgTahunBaru} values={yearOptions} disabled={submitting} onChange={(value) => setValue("mkgTahunBaru", value)} /></Field>
-            <Field id="mkgBulanBaru" label="MKG bulan baru" error={errors.mkgBulanBaru?.[0]}><NumberSelect id="mkgBulanBaru" value={values.mkgBulanBaru} values={monthOptions} disabled={submitting} onChange={(value) => setValue("mkgBulanBaru", value)} /></Field>
-          </div>
-          <ReadOnlyField id="gajiBaruOtomatis" label="Gaji baru" value={gajiBaru === null ? "" : formatRupiah(gajiBaru)} placeholder={employee ? "MKG tidak tersedia untuk golongan ini" : "Pilih pegawai dan MKG"} />
-          <ReadOnlyField id="terbilangGajiBaruOtomatis" label="Terbilang gaji baru" value={gajiBaru === null ? "" : terbilangRupiah(gajiBaru)} />
-          <Field id="tmtKgbBaru" label="TMT KGB baru" error={errors.tmtKgbBaru?.[0]}>
-            <Input id="tmtKgbBaru" type="date" value={values.tmtKgbBaru} onChange={(e) => setValue("tmtKgbBaru", e.target.value)} {...inputProps("tmtKgbBaru")} />
-          </Field>
-          <ReadOnlyField id="tmtKgbBerikutnyaOtomatis" label="TMT KGB berikutnya" value={tmtDepan ? formatIndonesianDate(tmtDepan) : ""} placeholder={values.mkgTahunBaru === "32" ? "Dikosongkan karena MKG sudah 32 tahun" : "Terisi otomatis 2 tahun setelah TMT baru"} />
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="border-b"><CardTitle>3. KGB baru</CardTitle><CardDescription>Gaji baru dihitung otomatis berdasarkan golongan dan masa kerja golongan.</CardDescription></CardHeader>
+          <CardContent className="grid gap-5 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-4 md:col-span-2">
+              <Field id="mkgTahunBaru" label="MKG tahun baru" error={errors.mkgTahunBaru?.[0]}><NumberSelect id="mkgTahunBaru" value={values.mkgTahunBaru} values={yearOptions} disabled={submitting} invalid={Boolean(errors.mkgTahunBaru?.length)} onChange={(value) => setValue("mkgTahunBaru", value)} /></Field>
+              <Field id="mkgBulanBaru" label="MKG bulan baru" error={errors.mkgBulanBaru?.[0]}><NumberSelect id="mkgBulanBaru" value={values.mkgBulanBaru} values={monthOptions} disabled={submitting} invalid={Boolean(errors.mkgBulanBaru?.length)} onChange={(value) => setValue("mkgBulanBaru", value)} /></Field>
+            </div>
+            <ReadOnlyField id="gajiBaruOtomatis" label="Gaji baru" value={gajiBaru === null ? "" : formatRupiah(gajiBaru)} placeholder={employee ? "MKG tidak tersedia untuk golongan ini" : "Pilih pegawai dan MKG"} />
+            <ReadOnlyField id="terbilangGajiBaruOtomatis" label="Terbilang gaji baru" value={gajiBaru === null ? "" : terbilangRupiah(gajiBaru)} />
+            <Field id="tmtKgbBaru" label="TMT KGB baru" error={errors.tmtKgbBaru?.[0]}>
+              <Input id="tmtKgbBaru" type="date" value={values.tmtKgbBaru} onChange={(e) => setValue("tmtKgbBaru", e.target.value)} {...inputProps("tmtKgbBaru")} />
+            </Field>
+            <ReadOnlyField id="tmtKgbBerikutnyaOtomatis" label="TMT KGB berikutnya" value={tmtDepan ? formatIndonesianDate(tmtDepan) : ""} placeholder={values.mkgTahunBaru === "32" ? "Dikosongkan karena MKG sudah 32 tahun" : "Terisi otomatis 2 tahun setelah TMT baru"} />
+          </CardContent>
+        </Card>
 
-      <div className="sticky bottom-4 z-10 flex items-center justify-between gap-4 rounded-xl border bg-white/95 p-4 shadow-lg backdrop-blur">
-        <p className="hidden text-xs leading-5 text-zinc-500 sm:block">Semua kolom bertanda <span className="text-destructive">*</span> wajib diisi.</p>
-        <Button type="submit" size="lg" disabled={submitting || employees.length === 0} className="ml-auto min-w-44">
-          {submitting ? <><LoaderCircle className="animate-spin" />Menyusun dokumen...</> : <><Download />{editing ? "Simpan dan unduh DOCX" : "Buat dan unduh DOCX"}</>}
-        </Button>
+        <div tabIndex={errors.signatory?.length ? -1 : undefined} data-signatory-error={errors.signatory?.length ? "" : undefined}>
+          <SignatoryField value={signatory} onChange={(value) => {
+            modal?.onDirty();
+            setSignatory(value);
+            setErrors(current => ({ ...current, signatory: [] }));
+          }} options={signatories} disabled={submitting} error={errors.signatory?.[0]} />
+        </div>
+      </div>
+
+      <div className={cn("shrink-0 space-y-2 border-t bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6", !modal && "sticky bottom-4 z-10 mt-5 rounded-xl border shadow-lg")}>
+        {submitError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{submitError}</p>}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <p className="mr-auto hidden text-xs text-zinc-600 sm:block">Kolom bertanda <span className="text-destructive">*</span> wajib diisi.</p>
+          {modal && <Button type="button" variant="outline" size="lg" disabled={submitting} onClick={modal.onCancel}>Batal</Button>}
+          <Button type="submit" size="lg" disabled={submitting || employees.length === 0} className={cn("bg-indigo-700 text-white hover:bg-indigo-800", modal && "flex-1 sm:flex-none")}>
+            {submitting ? <><LoaderCircle className="animate-spin" />Menyimpan…</> : <><Download />{editing ? "Simpan dan unduh DOCX" : "Simpan & unduh Word"}</>}
+          </Button>
+        </div>
       </div>
     </form>
   );

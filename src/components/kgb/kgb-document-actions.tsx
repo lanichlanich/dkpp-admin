@@ -60,7 +60,7 @@ export function KgbDocumentActions({ document }: { document: KgbDocumentHistory 
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unggahan belum berhasil. Silakan coba lagi."); }
     finally { setPending(false); }
   }
-  return <div className="flex flex-wrap justify-end gap-2">
+  return <div className="flex flex-wrap gap-2 @2xl:max-w-72 @2xl:justify-end">
     <a href={`/dashboard/kgb/${document.id}/edit`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100")}><Pencil />Edit</a>
     <a href={`/api/kgb/${document.id}/download`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100")}><Download />Unduh Word</a>
     {downloadable && <a href={`/api/kgb/${document.id}/signed/${downloadable.id}`} title={`SK bertanda tangan versi ${downloadable.documentRevision}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), downloadable.documentRevision === document.revision ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" : "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100")}><Download />Unduh SK TTD</a>}

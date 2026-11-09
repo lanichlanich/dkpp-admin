@@ -129,6 +129,17 @@ try {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(Buffer.from(await empty.arrayBuffer()));
   assert.match(workbook.worksheets[0].getCell("A5").value, /Tidak ada transaksi/);
+
+  const { libraryBooksReport, createLibraryReportPdf } = load("src/lib/library-reports.ts");
+  const longBook = libraryBooksReport([{
+    inventoryCode: "00001", title: "W".repeat(500), isbn: "0".repeat(100),
+    publisher: "W".repeat(500), publicationPlace: "W".repeat(200), publicationYear: "W".repeat(20),
+    category: "W".repeat(100), shelf: "W".repeat(100), notes: "W".repeat(1000),
+    copies: 1, borrowed: 0, available: 1, isActive: 1,
+  }], today);
+  const longPdf = await createLibraryReportPdf(longBook);
+  assert.equal((await PDFDocument.load(longPdf)).getPageCount(), 1, "A long record must fit between the table header and footer");
+  if (sampleDirectory) await writeFile(path.join(sampleDirectory, "book-long-row.pdf"), longPdf);
   console.log("PASS library reports: private menu permissions, period validation, PDF pagination, XLSX text identifiers and native dates, month boundaries, cross-month returns, current status, and empty reports.");
 } finally {
   db.close();

@@ -226,6 +226,7 @@ export async function createLibraryReportPdf(report: Report) {
   });
   const left = 29;
   const width = pdf.page.width - 2 * left;
+  const bodyTop = 153;
   const bodyEnd = pdf.page.height - 42;
   const padding = 6;
   const totalWeight = report.pdfColumns.reduce((sum, column) => sum + column.weight, 0);
@@ -250,32 +251,44 @@ export async function createLibraryReportPdf(report: Report) {
     for (const column of columns) {
       pdf.text(column.label, column.x + padding, 136, { width: innerWidth(column), align: column.align });
     }
-    return 153;
   }
 
-  let y = drawHeader();
+  drawHeader();
+  let y = bodyTop;
   if (!report.rows.length) {
     pdf.font("Helvetica").fontSize(10).fillColor("#40564E").text(report.empty, left + padding, y + 16, { width: width - 2 * padding });
   }
   for (const [index, row] of report.rows.entries()) {
     const texts = columns.map(column => column.keys.map(key => displayCell(row[key])).filter(Boolean).join("\n") || "-");
-    pdf.font("Helvetica").fontSize(9);
-    const textHeight = Math.max(...texts.map((text, i) => pdf.heightOfString(text, { width: innerWidth(columns[i]) })));
     const noteValue = row.notes ? displayCell(row.notes) : "";
     const note = noteValue ? `Catatan: ${noteValue}` : "";
-    const noteHeight = note ? pdf.fontSize(8).heightOfString(note, { width: width - 2 * padding }) + padding : 0;
-    const height = Math.ceil(textHeight + 2 * padding + noteHeight);
+    function measure(fontSize: number) {
+      pdf.font("Helvetica").fontSize(fontSize);
+      const textHeight = Math.max(...texts.map((text, i) => pdf.heightOfString(text, { width: innerWidth(columns[i]) })));
+      const noteSize = Math.min(8, fontSize);
+      const noteHeight = note ? pdf.fontSize(noteSize).heightOfString(note, { width: width - 2 * padding }) + padding : 0;
+      return { textHeight, noteSize, height: Math.ceil(textHeight + 2 * padding + noteHeight) };
+    }
+    // Keep even the longest valid catalog records on one page without clipping their notes.
+    let fontSize = 9;
+    let layout = measure(fontSize);
+    while (layout.height > bodyEnd - bodyTop && fontSize > 6) {
+      fontSize -= 0.25;
+      layout = measure(fontSize);
+    }
+    const { height, textHeight, noteSize } = layout;
     if (y + height > bodyEnd) {
       pdf.addPage();
-      y = drawHeader();
+      drawHeader();
+      y = bodyTop;
     }
     pdf.rect(left, y, width, height).fill(index % 2 ? "#FFFFFF" : "#F3F8F5");
     pdf.moveTo(left, y + height).lineTo(left + width, y + height).lineWidth(0.45).strokeColor("#CFDFD6").stroke();
-    pdf.font("Helvetica").fontSize(9).fillColor("#162C24");
+    pdf.font("Helvetica").fontSize(fontSize).fillColor("#162C24");
     columns.forEach((column, i) => {
       pdf.text(texts[i], column.x + padding, y + padding, { width: innerWidth(column), align: column.align });
     });
-    if (note) pdf.fontSize(8).fillColor("#40564E").text(note, left + padding, y + textHeight + 2 * padding, { width: width - 2 * padding });
+    if (note) pdf.fontSize(noteSize).fillColor("#40564E").text(note, left + padding, y + textHeight + 2 * padding, { width: width - 2 * padding });
     y += height;
   }
 

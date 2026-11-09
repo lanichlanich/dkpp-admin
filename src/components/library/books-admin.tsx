@@ -35,7 +35,7 @@ export function BooksAdmin({ books }: { books: LibraryBook[] }) {
               <TableCell className="align-top font-mono text-xs">{book.inventoryCode}</TableCell>
               <TableCell className="min-w-64 max-w-lg whitespace-normal">
                 <div className="flex items-center gap-3">
-                  <BookCover src={libraryCoverUrl(book.id, book.coverStorageName)} title={book.title} className="w-9" />
+                  <BookCover src={libraryCoverUrl(book.id, book.coverStorageName)} title={book.title} preview className="w-9" />
                   <div>
                     <p className="font-medium">{book.title}</p>
                     <p className="mt-1 text-xs text-zinc-500">{book.publisher || "-"} · {book.publicationYear || "-"}</p>

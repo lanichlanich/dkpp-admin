@@ -56,4 +56,5 @@ CREATE TABLE IF NOT EXISTS library_loans (
 CREATE INDEX IF NOT EXISTS library_loans_book_idx ON library_loans(book_id, return_date);
 CREATE INDEX IF NOT EXISTS library_loans_visitor_idx ON library_loans(visitor_id);
 CREATE INDEX IF NOT EXISTS library_loans_due_idx ON library_loans(return_date, due_date);
+CREATE INDEX IF NOT EXISTS library_loans_date_created_idx ON library_loans(loan_date DESC, created_at DESC);
 `;

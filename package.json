@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "smoke:library": "node scripts/smoke-library.mjs",
+    "smoke:library-reports": "node scripts/smoke-library-reports.mjs",
     "smoke:spj": "node scripts/smoke-spj-pelayanan-umum.mjs",
     "smoke:organization-units": "node scripts/smoke-organization-units.mjs",
     "smoke:library-statistics": "node scripts/smoke-library-statistics.mjs",

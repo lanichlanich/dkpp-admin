@@ -58,12 +58,14 @@ export async function getLibraryEmployees() {
   await requireMenuAccess("perpustakaan-pengunjung");
   return db.prepare("SELECT nip, name, unit FROM employees WHERE status = 'Aktif' ORDER BY name COLLATE NOCASE").all<LibraryEmployee>();
 }
-export async function getLibraryLoans() {
+export async function getLibraryLoans(window?: { start: string; end: string }) {
   await requireMenuAccess("perpustakaan-peminjaman");
   return db.prepare(`SELECT l.id, l.book_id AS bookId, l.visitor_id AS visitorId, b.title, b.inventory_code AS inventoryCode,
     v.name, v.card_number AS cardNumber, l.quantity, l.loan_date AS loanDate, l.due_date AS dueDate,
     l.return_date AS returnDate, l.notes FROM library_loans l JOIN library_books b ON b.id = l.book_id
-    JOIN library_visitors v ON v.id = l.visitor_id ORDER BY l.loan_date DESC, l.created_at DESC`).all<LibraryLoan>();
+    JOIN library_visitors v ON v.id = l.visitor_id
+    ${window ? "WHERE l.loan_date >= ? AND l.loan_date < ?" : ""}
+    ORDER BY l.loan_date DESC, l.created_at DESC`).all<LibraryLoan>(...(window ? [window.start, window.end] : []));
 }
 export async function getLibraryLoanOptions() {
   await requireMenuAccess("perpustakaan-peminjaman");

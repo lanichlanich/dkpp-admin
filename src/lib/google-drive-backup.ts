@@ -4,6 +4,7 @@ import { gzipSync } from "node:zlib";
 import { createBackupSnapshot } from "@/lib/database";
 import { downloadStorageObject } from "@/lib/storage";
 import { kakDocumentRows } from "@/lib/kak-file-metadata";
+import { LIBRARY_COVER_BUCKET, LIBRARY_COVER_DIRECTORY, libraryCoverNamePattern } from "@/lib/library-cover-types";
 
 const ROOT_FOLDER_ID = "18c2-AWmf2K0GKDRgv_g3AQUCicv7J1j4";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
@@ -50,6 +51,7 @@ const TABLE_CATEGORY: Record<string, Category> = {
 };
 
 const DOCUMENT_TABLES = new Set([
+  "library_books",
   "plt_assignments",
   "kak_documents",
   "employee_documents",
@@ -69,6 +71,7 @@ const DOCUMENT_TABLES = new Set([
 ]);
 
 const LOCAL_DOCUMENT_DIRECTORIES: Record<string, string> = {
+  library_books: LIBRARY_COVER_DIRECTORY,
   plt_assignments: "plt-documents",
   kak_documents: "kak-documents",
   employee_documents: "employee-documents",
@@ -312,13 +315,22 @@ export async function createBackupContent() {
     });
   }
 
-  const documents = Object.entries(snapshot).flatMap(([table, rows]) => DOCUMENT_TABLES.has(table)
-    ? rows.flatMap((row, index) => table === "kak_documents"
-      ? kakDocumentRows(row).map((documentRow) => ({ table, index, row: documentRow }))
-      : table === "plt_assignments" && !row.storage_name ? [] : [{ table, row, index }])
-    : []);
+  const documents = Object.entries(snapshot).flatMap(([table, rows]) => {
+    if (!DOCUMENT_TABLES.has(table)) return [];
+    return rows.flatMap((row, index) => {
+      if (table === "kak_documents") return kakDocumentRows(row).map(documentRow => ({ table, index, row: documentRow }));
+      if (table === "plt_assignments" && !row.storage_name) return [];
+      if (table === "library_books") {
+        if (!row.cover_storage_name) return [];
+        const name = String(row.cover_storage_name);
+        if (!libraryCoverNamePattern.test(name)) throw new Error("Referensi cover buku tidak valid.");
+        return [{ table, index, row: { ...row, storage_name: name } }];
+      }
+      return [{ table, row, index }];
+    });
+  });
   const referencedStorageNames = new Set(documents.map(({ table, row }) =>
-    table === "wfh_reports" ? `${String(row.id)}.docx` : String(row.storage_name ?? ""),
+    table === "wfh_reports" ? `${String(row.id)}.docx` : table === "library_books" ? "" : String(row.storage_name ?? ""),
   ));
   const orphanedStorageObjects = storageObjects.filter((object) => !referencedStorageNames.has(object.name));
   const downloadedDocuments = await mapLimit(documents, 5, async ({ table, row, index }) => {
@@ -326,10 +338,12 @@ export async function createBackupContent() {
     if (!storageName) throw new Error(`Referensi file pada ${table} tidak memiliki storage_name.`);
     const fallbackDirectory = LOCAL_DOCUMENT_DIRECTORIES[table];
     const filePath = fallbackDirectory ? `data/${fallbackDirectory}/${storageName}` : undefined;
-    const bytes = await downloadStorageObject(storageName, filePath);
+    const storageBucket = table === "library_books" ? LIBRARY_COVER_BUCKET : undefined;
+    const bytes = await downloadStorageObject(storageName, filePath, storageBucket);
     return {
       category: TABLE_CATEGORY[table]!,
       storageName,
+      storageBucket,
       archiveFile: { path: `files/${table}/record-${safeId(row.id, index)}.${extensionFor(row, table)}`, bytes },
     };
   });
@@ -354,7 +368,7 @@ export async function createBackupContent() {
     documentCount: downloadedDocuments.length,
     unlinkedStorageObjectCount: downloadedOrphans.length,
     storageFiles: [
-      ...downloadedDocuments.map(item => ({ path: `${item.category}/${item.archiveFile.path}`, storageName: item.storageName })),
+      ...downloadedDocuments.map(item => ({ path: `${item.category}/${item.archiveFile.path}`, storageName: item.storageName, storageBucket: item.storageBucket })),
       ...downloadedOrphans.map(item => ({ path: `Sistem/${item.archivePath}`, storageName: item.storageName })),
     ],
   };

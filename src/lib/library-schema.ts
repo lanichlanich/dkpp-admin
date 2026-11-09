@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS library_books (
   shelf TEXT NOT NULL DEFAULT '',
   notes TEXT NOT NULL DEFAULT '',
   is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+  cover_storage_name TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

@@ -867,6 +867,10 @@ db.transaction(() => {
   if (!spjExists) db.exec(SPJ_SEED);
   const libraryExists = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'library_books'").get();
   db.exec(LIBRARY_SCHEMA);
+  const bookColumns = db.prepare("PRAGMA table_info(library_books)").all() as { name: string }[];
+  if (!bookColumns.some(column => column.name === "cover_storage_name")) {
+    db.exec("ALTER TABLE library_books ADD COLUMN cover_storage_name TEXT");
+  }
   if (!libraryExists) {
     const insert = db.prepare(`INSERT INTO library_books
       (id, inventory_code, title, publication_year, publication_place, publisher, isbn, category, copies, created_at, updated_at)

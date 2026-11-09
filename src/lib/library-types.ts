@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export type LibraryBook = { id: string; inventoryCode: string; title: string; publicationYear: string; publicationPlace: string; publisher: string; isbn: string; category: string; copies: number; borrowed: number; available: number; shelf: string; notes: string; isActive: number; updatedAt: string };
+export type LibraryBook = { id: string; inventoryCode: string; title: string; publicationYear: string; publicationPlace: string; publisher: string; isbn: string; category: string; copies: number; borrowed: number; available: number; shelf: string; notes: string; isActive: number; updatedAt: string; coverStorageName: string | null };
 export type PublicLibraryBook = Omit<LibraryBook, "notes" | "isActive" | "updatedAt">;
 export type LibraryVisitor = { id: string; cardNumber: string; employeeNip: string | null; name: string; organization: string; phone: string; address: string; isActive: number; createdAt: string; updatedAt: string };
 export type LibraryCardVisitor = Pick<LibraryVisitor, "id" | "cardNumber" | "name" | "organization">;

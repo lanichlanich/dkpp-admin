@@ -27,13 +27,16 @@ for (const directory of [
   "wfh-documents",
   "wfh-reports",
   "wfh-schedule-letters",
+  "library-book-covers",
 ]) {
   const directoryPath = path.join(root, "data", directory);
   try {
     const entries = await (await import("node:fs/promises")).readdir(directoryPath, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.isFile() && /\.(pdf|doc|docx)$/i.test(entry.name)) {
-        files.push({ name: entry.name, filePath: path.join(directoryPath, entry.name) });
+      const cover = directory === "library-book-covers";
+      const valid = cover ? /^[a-f0-9-]{36}\.webp$/.test(entry.name) : /\.(pdf|doc|docx)$/i.test(entry.name);
+      if (entry.isFile() && valid) {
+        files.push({ name: entry.name, filePath: path.join(directoryPath, entry.name), bucket: cover ? "dkpp-library-covers" : bucket });
       }
     }
   } catch (error) {
@@ -51,7 +54,9 @@ for (const file of files) {
     continue;
   }
   const extension = path.extname(file.name).toLowerCase();
-  const contentType = extension === ".pdf"
+  const contentType = extension === ".webp"
+    ? "image/webp"
+    : extension === ".pdf"
     ? "application/pdf"
     : extension === ".doc"
       ? "application/msword"
@@ -60,7 +65,7 @@ for (const file of files) {
     console.log(`DRY-RUN ${file.name}: ${bytes.length} bytes`);
     continue;
   }
-  const response = await fetch(`${baseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${encodeURIComponent(file.name)}`, {
+  const response = await fetch(`${baseUrl}/storage/v1/object/${encodeURIComponent(file.bucket)}/${encodeURIComponent(file.name)}`, {
     method: "POST",
     headers: {
       apikey: secretKey,

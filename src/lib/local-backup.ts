@@ -22,7 +22,7 @@ export async function createLocalBackup() {
     "Ekstrak arsip .tar.gz menggunakan 7-Zip, WinRAR atau tar -xzf <nama-arsip>.",
     "Database JSON dan berkas tersimpan dalam folder Kepegawaian, Persuratan, Umum, Perencanaan, Perpustakaan, dan Sistem.",
     "manifest.json mencatat ukuran dan SHA-256 setiap item, serta nama asli objek Storage untuk pemulihan.",
-    "Untuk pemulihan: siapkan database dengan migrasi skema aplikasi, impor JSON tabel sesuai urutan foreign key, kemudian unggah berkas sesuai storageFiles pada manifest ke bucket aplikasi.",
+    "Untuk pemulihan: siapkan database dengan migrasi skema aplikasi, impor JSON tabel sesuai urutan foreign key, kemudian unggah berkas sesuai storageFiles pada manifest ke bucket yang tercantum di storageBucket. Jika kolom itu kosong, gunakan bucket utama aplikasi.",
     "Verifikasi hash, jumlah baris tabel, seluruh file, dan akses unduh sebelum mengalihkan aplikasi ke hasil pemulihan.",
     "Sesi login tidak dicadangkan; pengguna harus login kembali setelah pemulihan.",
     "Variabel environment dan kredensial layanan tidak disertakan. Konfigurasikan kembali secara terpisah.", "",

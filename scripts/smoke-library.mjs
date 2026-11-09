@@ -4,10 +4,12 @@ import fs from 'node:fs';
 import Module, {createRequire} from 'node:module';
 import path from 'node:path';
 import Database from 'better-sqlite3';
+import sharp from 'sharp';
 import ts from 'typescript';
 const require=createRequire(import.meta.url), db=new Database(':memory:');db.pragma('foreign_keys = ON');
 db.exec("CREATE TABLE users (id TEXT PRIMARY KEY); INSERT INTO users VALUES ('test-user'); CREATE TABLE employees (nip TEXT PRIMARY KEY, name TEXT, unit TEXT, status TEXT); INSERT INTO employees VALUES ('199001012020121001','Pegawai Terdaftar','Unit DKPP','Aktif'); INSERT INTO employees VALUES ('199001012020121002','Pegawai Nonaktif','Unit DKPP','Nonaktif');");
 let signedIn=true;let permissions=new Set(['perpustakaan-buku','perpustakaan-pengunjung','perpustakaan-peminjaman']);
+const coverObjects = new Map();
 const adapter={prepare(sql){const s=db.prepare(sql);return {get:async(...v)=>s.get(...v),all:async(...v)=>s.all(...v),run:async(...v)=>s.run(...v)};}};
 const cache=new Map();
 function load(file){
@@ -17,6 +19,24 @@ function load(file){
   if(name==='server-only')return {};
   if(name==='next/cache')return {revalidatePath:()=>{}};
   if(name==='@/lib/database')return {database:adapter};
+  if (name === '@/lib/storage') return {
+    isStorageConfigured: () => true,
+    uploadStorageObject: async (key, bytes, mime, options) => {
+      assert.equal(mime, 'image/webp');
+      assert.deepEqual(options, {bucket:'dkpp-library-covers',upsert:false});
+      assert(!coverObjects.has(key));
+      coverObjects.set(key,bytes);
+    },
+    downloadStorageObject: async (key, _path, bucket) => {
+      assert.equal(bucket,'dkpp-library-covers');
+      assert(coverObjects.has(key));
+      return coverObjects.get(key);
+    },
+    deleteStorageObject: async (key, bucket) => {
+      assert.equal(bucket,'dkpp-library-covers');
+      coverObjects.delete(key);
+    },
+  };
   if(name==='@/lib/authorization')return {
    requireMenuAccess:async menu=>{if(!signedIn||!permissions.has(menu))throw Error('Denied');return {id:'test-user'};},
    checkApiAccess:async menus=>!signedIn?Response.json({},{status:401}):!menus.some(m=>permissions.has(m))?Response.json({},{status:403}):null,
@@ -30,6 +50,7 @@ db.exec(load('src/lib/library-schema.ts').LIBRARY_SCHEMA);
 const service=load('src/lib/library.ts'), types=load('src/lib/library-types.ts'), {jakartaToday}=load('src/lib/plt-dates.ts');
 const books=load('src/app/api/library/books/route.ts'), book=load('src/app/api/library/books/[id]/route.ts'), visitors=load('src/app/api/library/visitors/route.ts'), visitor=load('src/app/api/library/visitors/[id]/route.ts'), visits=load('src/app/api/library/visits/route.ts'), loans=load('src/app/api/library/loans/route.ts'), returns=load('src/app/api/library/loans/[id]/return/route.ts'), cards=load('src/app/api/library/visitors/[id]/card/route.ts');
 const batchCards=load('src/app/api/library/visitors/cards/route.ts');
+const coverRoute=load('src/app/api/library/books/[id]/cover/route.ts');
 const request=(data,method='POST')=>new Request('http://localhost/api/library',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
 const ctx=id=>({params:Promise.resolve({id})});
 const today=jakartaToday(), yesterday=new Date(new Date(`${today}T00:00:00Z`).getTime()-86400000).toISOString().slice(0,10);
@@ -39,6 +60,53 @@ const baseVisitor={employeeNip:'',name:'Pengunjung Umum',organization:'Masyaraka
 async function created(api,data){const response=await api.POST(request(data));assert.equal(response.status,201,await response.clone().text());return (await response.json()).result.id;}
 async function bookRow(id){return (await service.getLibraryBooks()).find(b=>b.id===id);}
 try {
+ const png=await sharp({create:{width:1000,height:1600,channels:3,background:'#065f46'}}).png().toBuffer();
+ const jpeg=await sharp({create:{width:64,height:96,channels:3,background:'#b45309'}}).jpeg().toBuffer();
+ const upload=(values,file,method='POST',remove=false)=>{
+   const form=new FormData();form.set('book',JSON.stringify(values));
+   if(file) form.set('cover',file);
+   if(remove) form.set('removeCover','true');
+   return new Request('http://localhost/api/library/books',{method,body:form});
+ };
+ const coverInput={...baseBook,inventoryCode:'COVER-TEST',isActive:false};
+ const pngFile=new File([png],'cover.png',{type:'image/png'});
+ const jpegFile=new File([jpeg],'cover.jpg',{type:'image/jpeg'});
+ for(const file of [new File(['<svg/>'],'cover.png',{type:'image/png'}),new File([png.subarray(0,30)],'corrupt.png',{type:'image/png'})]){
+   assert.equal((await books.POST(upload(coverInput,file))).status,422);
+ }
+ assert.equal((await books.POST(upload(coverInput,new File([new Uint8Array(2*1024*1024+1)],'too-large.png',{type:'image/png'})))).status,413);
+ assert.equal((await books.POST(upload(coverInput,pngFile,'POST',true))).status,400);
+ signedIn=false;assert.equal((await books.POST(upload(coverInput,pngFile))).status,401);signedIn=true;
+ assert.equal(coverObjects.size,0);
+ const coverCreated=await books.POST(upload(coverInput,pngFile));
+ assert.equal(coverCreated.status,201,await coverCreated.clone().text());
+ const coverId=(await coverCreated.json()).result.id;
+ let coverBook=await bookRow(coverId);
+ const firstName=coverBook.coverStorageName;
+ const image=await sharp(coverObjects.get(firstName)).metadata();
+ assert.equal(image.format,'webp');assert(image.height<=1200&&image.width<=800);
+ const coverRequest=(name,headers)=>new Request(`http://localhost/api/library/books/${coverId}/cover?v=${name}`,{headers});
+ signedIn=false;assert.equal((await coverRoute.GET(coverRequest(firstName),ctx(coverId))).status,404);signedIn=true;
+ const adminImage=await coverRoute.GET(coverRequest(firstName),ctx(coverId));
+ assert.equal(adminImage.status,200);assert.equal(adminImage.headers.get('content-type'),'image/webp');
+ assert.equal((await coverRoute.GET(coverRequest(firstName,{'if-none-match':adminImage.headers.get('etag')}),ctx(coverId))).status,304);
+ assert.equal((await book.PATCH(request({...coverInput,isActive:true,updatedAt:coverBook.updatedAt},'PATCH'),ctx(coverId))).status,200);
+ coverBook=await bookRow(coverId);assert.equal(coverBook.coverStorageName,firstName);
+ signedIn=false;assert.equal((await coverRoute.GET(coverRequest(firstName),ctx(coverId))).status,200);signedIn=true;
+ assert.equal((await books.POST(upload(coverInput,jpegFile))).status,409);assert.equal(coverObjects.size,1);
+ assert.equal((await book.PATCH(upload({...coverInput,updatedAt:'stale'},jpegFile,'PATCH'),ctx(coverId))).status,409);assert.equal(coverObjects.size,1);
+ assert.equal((await book.PATCH(upload({...coverInput,isActive:true,updatedAt:coverBook.updatedAt},jpegFile,'PATCH'),ctx(coverId))).status,200);
+ coverBook=await bookRow(coverId);assert(!coverObjects.has(firstName));assert.equal(coverObjects.size,1);
+ assert.equal((await coverRoute.GET(coverRequest(firstName),ctx(coverId))).status,404);
+ const secondName=coverBook.coverStorageName;
+ assert.equal((await book.PATCH(upload({...coverInput,updatedAt:coverBook.updatedAt},null,'PATCH',true),ctx(coverId))).status,200);
+ coverBook=await bookRow(coverId);assert.equal(coverBook.coverStorageName,null);assert(!coverObjects.has(secondName));
+ assert.equal((await book.PATCH(upload({...coverInput,updatedAt:coverBook.updatedAt},pngFile,'PATCH'),ctx(coverId))).status,200);
+ coverBook=await bookRow(coverId);
+ assert.equal((await book.DELETE(request({confirmed:true,updatedAt:coverBook.updatedAt},'DELETE'),ctx(coverId))).status,200);
+ assert.equal(coverObjects.size,0);
+ console.log('PASS cover: validation, private Storage, public active books, caching, replace, remove, delete, and cleanup after conflict.');
+
  const seed=JSON.parse(fs.readFileSync('src/data/library-books.json','utf8'));assert.equal(seed.length,154);assert.equal(seed.reduce((n,b)=>n+b.copies,0),251);assert.equal(new Set(seed.map(b=>b.inventoryCode)).size,154);assert.equal(seed[0].inventoryCode,'2026000112');
  const id=await created(books,baseBook);assert.equal((await bookRow(id)).inventoryCode,'000123');
  assert.equal((await books.POST(request(baseBook))).status,409);

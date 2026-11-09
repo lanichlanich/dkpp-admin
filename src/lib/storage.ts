@@ -37,13 +37,13 @@ export async function createStorageDownloadUrl(storageName: string, fileName: st
   return url.toString();
 }
 
-function storageUrl(storageName: string) {
+function storageUrl(storageName: string, bucketName: string) {
   if (!supabaseUrl || !secretKey) return null;
-  return `${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${encodeURIComponent(storageName)}`;
+  return `${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucketName)}/${encodeURIComponent(storageName)}`;
 }
 
-export async function downloadStorageObject(storageName: string, fallbackPath?: string) {
-  const url = storageUrl(storageName);
+export async function downloadStorageObject(storageName: string, fallbackPath?: string, bucketName = bucket) {
+  const url = storageUrl(storageName, bucketName);
   if (!url) {
     if (!fallbackPath) throw new Error("Supabase Storage belum dikonfigurasi.");
     return readFile(fallbackPath);
@@ -60,7 +60,7 @@ export async function downloadStorageObject(storageName: string, fallbackPath?: 
   // Private buckets also expose the authenticated download path. Keep this
   // fallback for projects whose Storage gateway does not accept the generic
   // object path with a server key.
-  const authenticatedUrl = `${supabaseUrl}/storage/v1/object/authenticated/${encodeURIComponent(bucket)}/${encodeURIComponent(storageName)}`;
+  const authenticatedUrl = `${supabaseUrl}/storage/v1/object/authenticated/${encodeURIComponent(bucketName)}/${encodeURIComponent(storageName)}`;
   const authenticatedResponse = await fetch(authenticatedUrl, {
     headers,
     cache: "no-store",
@@ -72,16 +72,16 @@ export async function downloadStorageObject(storageName: string, fallbackPath?: 
   return Buffer.from(await authenticatedResponse.arrayBuffer());
 }
 
-export async function uploadStorageObject(storageName: string, file: Buffer, contentType = "application/octet-stream") {
+export async function uploadStorageObject(storageName: string, file: Buffer, contentType = "application/octet-stream", options?: { bucket: string; upsert?: boolean }) {
   if (!supabaseUrl || !secretKey) return;
-  const url = `${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${encodeURIComponent(storageName)}`;
+  const url = `${supabaseUrl}/storage/v1/object/${encodeURIComponent(options?.bucket ?? bucket)}/${encodeURIComponent(storageName)}`;
   const response = await fetch(url, {
     method: "POST",
     headers: {
       apikey: secretKey,
       authorization: `Bearer ${secretKey}`,
       "content-type": contentType,
-      "x-upsert": "true",
+      "x-upsert": String(options?.upsert ?? true),
     },
     body: new Uint8Array(file),
     signal: AbortSignal.timeout(20_000),
@@ -89,9 +89,9 @@ export async function uploadStorageObject(storageName: string, file: Buffer, con
   if (!response.ok) throw new Error(`Storage upload failed: ${response.status}`);
 }
 
-export async function deleteStorageObject(storageName: string) {
+export async function deleteStorageObject(storageName: string, bucketName = bucket) {
   if (!supabaseUrl || !secretKey) return;
-  const response = await fetch(`${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}`, {
+  const response = await fetch(`${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucketName)}`, {
     method: "DELETE",
     headers: { apikey: secretKey, authorization: `Bearer ${secretKey}`, "content-type": "application/json" },
     body: JSON.stringify({ prefixes: [storageName] }),

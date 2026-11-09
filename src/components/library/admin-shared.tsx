@@ -17,7 +17,12 @@ export function LibraryField({ label, value, onChange, required = false, type = 
   return <label className="grid gap-2 text-sm font-medium">{label}<Input value={value} onChange={e => onChange(e.target.value)} required={required} type={type} maxLength={maxLength} min={min} disabled={disabled} /></label>;
 }
 export async function libraryRequest(path: string, method: string, values: unknown) {
-  const response = await fetch(`/api/library/${path}`, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
+  const isForm = values instanceof FormData;
+  const response = await fetch(`/api/library/${path}`, {
+    method,
+    headers: isForm ? undefined : { "Content-Type": "application/json" },
+    body: isForm ? values : JSON.stringify(values),
+  });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(result.message || "Permintaan gagal. Silakan coba lagi.");
   return result;

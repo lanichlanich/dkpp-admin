@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { database as db } from "@/lib/database";
 import { requireMenuAccess } from "@/lib/authorization";
 import { jakartaToday } from "@/lib/plt-dates";
+import { discardLibraryCover, prepareLibraryCover, storeLibraryCover } from "@/lib/library-cover";
+import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB } from "@/lib/upload-limits";
 import { bookSchema, visitorSchema, visitSchema, loanSchema, returnSchema, libraryCardsSchema, type LibraryBook, type PublicLibraryBook, type LibraryVisitor, type LibraryCardVisitor, type LibraryVisit, type LibraryLoan, type LibraryEmployee } from "@/lib/library-types";
 
 export class LibraryError extends Error {
@@ -12,7 +14,8 @@ export class LibraryError extends Error {
 const borrowed = `(SELECT COALESCE(SUM(l.quantity), 0) FROM library_loans l WHERE l.book_id = b.id AND l.return_date IS NULL)`;
 const booksSelect = `SELECT b.id, b.inventory_code AS inventoryCode, b.title, b.publication_year AS publicationYear,
   b.publication_place AS publicationPlace, b.publisher, b.isbn, b.category, b.copies, b.shelf, b.notes,
-  b.is_active AS isActive, b.updated_at AS updatedAt, ${borrowed} AS borrowed, b.copies - ${borrowed} AS available FROM library_books b`;
+  b.is_active AS isActive, b.updated_at AS updatedAt, b.cover_storage_name AS coverStorageName,
+  ${borrowed} AS borrowed, b.copies - ${borrowed} AS available FROM library_books b`;
 const visitorsSelect = `SELECT id, card_number AS cardNumber, employee_nip AS employeeNip, name, organization, phone, address,
   is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt FROM library_visitors`;
 function refresh() {
@@ -22,13 +25,17 @@ function refresh() {
 export async function getPublicLibraryBooks(): Promise<PublicLibraryBook[]> {
   // Deliberate allowlist: this public query never reads visitors, employees, or loan identities.
   const rows = await db.prepare(`SELECT b.id, b.inventory_code AS inventoryCode, b.title, b.publication_year AS publicationYear,
-    b.publication_place AS publicationPlace, b.publisher, b.isbn, b.category, b.copies, b.shelf,
+    b.publication_place AS publicationPlace, b.publisher, b.isbn, b.category, b.copies, b.shelf, b.cover_storage_name AS coverStorageName,
     ${borrowed} AS borrowed, b.copies - ${borrowed} AS available FROM library_books b WHERE b.is_active = 1 ORDER BY b.title COLLATE NOCASE`).all<PublicLibraryBook>();
   return rows;
 }
 export async function getLibraryBooks() {
   await requireMenuAccess("perpustakaan-buku");
   return db.prepare(`${booksSelect} ORDER BY b.title COLLATE NOCASE`).all<LibraryBook>();
+}
+export async function getLibraryBookCover(id: string) {
+  return db.prepare("SELECT cover_storage_name AS coverStorageName, is_active AS isActive FROM library_books WHERE id = ?")
+    .get<Pick<LibraryBook, "coverStorageName" | "isActive">>(id);
 }
 export async function getLibraryVisitors() {
   await requireMenuAccess("perpustakaan-pengunjung");
@@ -80,25 +87,61 @@ function version(input: unknown) {
   if (typeof value !== "string" || !value) throw new LibraryError("Versi data tidak tersedia. Muat ulang halaman.", 409);
   return value;
 }
-export async function saveLibraryBook(input: unknown, id?: string) {
+export async function saveLibraryBook(input: unknown, id?: string, cover?: File | null) {
   await requireMenuAccess("perpustakaan-buku");
-  const d = bookSchema.parse(input), now = new Date().toISOString(), bookId = id ?? randomUUID();
+  const d = bookSchema.parse(input);
+  const bookId = id ?? randomUUID();
+  const updatedAt = id ? version(input) : null;
+  const timestamp = Date.now();
+  const now = new Date(new Date(timestamp).toISOString() === updatedAt ? timestamp + 1 : timestamp).toISOString();
+  const previous = id && cover !== undefined
+    ? await db.prepare("SELECT cover_storage_name AS coverStorageName FROM library_books WHERE id = ? AND updated_at = ?")
+      .get<Pick<LibraryBook, "coverStorageName">>(id, updatedAt)
+    : undefined;
+  if (id && cover !== undefined && !previous) {
+    throw new LibraryError("Data buku sudah berubah. Muat ulang daftar sebelum mengubah cover.", 409);
+  }
+
+  let storedCover: string | null = null;
+  let bytes: Buffer | null = null;
+  if (cover) {
+    if (cover.size > MAX_UPLOAD_SIZE_BYTES) throw new LibraryError(`Ukuran cover maksimal ${MAX_UPLOAD_SIZE_MB} MB.`, 413);
+    bytes = await prepareLibraryCover(cover);
+    if (!bytes) throw new LibraryError("Cover harus berupa gambar JPG, PNG, atau WebP yang valid dengan resolusi hingga 20 megapiksel.", 422);
+    storedCover = `${randomUUID()}.webp`;
+  }
+
   const values = [d.inventoryCode, d.title, d.publicationYear, d.publicationPlace, d.publisher, d.isbn, d.category, d.copies, d.shelf, d.notes, Number(d.isActive), now];
-  const result = id ? await db.prepare(`UPDATE library_books SET inventory_code = ?, title = ?, publication_year = ?, publication_place = ?,
-    publisher = ?, isbn = ?, category = ?, copies = ?, shelf = ?, notes = ?, is_active = ?, updated_at = ? WHERE id = ? AND updated_at = ?
-    AND ? >= (SELECT COALESCE(SUM(quantity),0) FROM library_loans WHERE book_id = ? AND return_date IS NULL)`)
-    .run(...values, id, version(input), d.copies, id)
-    : await db.prepare(`INSERT INTO library_books (inventory_code, title, publication_year, publication_place, publisher, isbn, category, copies,
-      shelf, notes, is_active, updated_at, id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(...values, bookId, now);
-  if (!result.changes) throw new LibraryError("Data berubah atau jumlah eksemplar lebih kecil daripada buku yang sedang dipinjam. Muat ulang daftar.", 409);
+  try {
+    if (storedCover && bytes) await storeLibraryCover(storedCover, bytes);
+    const result = id
+      ? await db.prepare(`UPDATE library_books SET inventory_code = ?, title = ?, publication_year = ?, publication_place = ?,
+        publisher = ?, isbn = ?, category = ?, copies = ?, shelf = ?, notes = ?, is_active = ?, updated_at = ?
+        ${cover !== undefined ? ", cover_storage_name = ?" : ""}
+        WHERE id = ? AND updated_at = ?
+        AND ? >= (SELECT COALESCE(SUM(quantity),0) FROM library_loans WHERE book_id = ? AND return_date IS NULL)`)
+        .run(...values, ...(cover !== undefined ? [storedCover] : []), id, updatedAt, d.copies, id)
+      : await db.prepare(`INSERT INTO library_books (inventory_code, title, publication_year, publication_place, publisher, isbn, category, copies,
+        shelf, notes, is_active, updated_at, id, created_at, cover_storage_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(...values, bookId, now, storedCover);
+    if (!result.changes) throw new LibraryError("Data berubah atau jumlah eksemplar lebih kecil daripada buku yang sedang dipinjam. Muat ulang daftar.", 409);
+  } catch (error) {
+    await discardLibraryCover(storedCover);
+    throw error;
+  }
+  await discardLibraryCover(previous?.coverStorageName);
   refresh(); return bookId;
 }
 export async function deleteLibraryBook(id: string, input: unknown) {
   await requireMenuAccess("perpustakaan-buku");
   if ((input as { confirmed?: unknown })?.confirmed !== true) throw new LibraryError("Konfirmasi penghapusan diperlukan.");
+  const updatedAt = version(input);
+  const book = await db.prepare("SELECT cover_storage_name AS coverStorageName FROM library_books WHERE id = ? AND updated_at = ?")
+    .get<Pick<LibraryBook, "coverStorageName">>(id, updatedAt);
   const result = await db.prepare(`DELETE FROM library_books WHERE id = ? AND updated_at = ?
-    AND NOT EXISTS (SELECT 1 FROM library_loans WHERE book_id = ?)`).run(id, version(input), id);
+    AND NOT EXISTS (SELECT 1 FROM library_loans WHERE book_id = ?)`).run(id, updatedAt, id);
   if (!result.changes) throw new LibraryError("Buku berubah atau memiliki riwayat peminjaman. Nonaktifkan buku melalui Edit untuk menyimpan riwayat.", 409);
+  await discardLibraryCover(book?.coverStorageName);
   refresh();
 }
 export async function saveLibraryVisitor(input: unknown, id?: string) {

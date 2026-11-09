@@ -12,8 +12,10 @@ delete process.env.BACKUP_ADMIN_USERNAMES;
 process.env.GOOGLE_DRIVE_BACKUP_ADMIN_USERNAMES = "admin1";
 delete process.env.GOOGLE_DRIVE_CLIENT_ID; delete process.env.GOOGLE_DRIVE_CLIENT_SECRET; delete process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
 const poName = "12345678-1234-1234-1234-123456789abc.docx";
+const coverName = "87654321-1234-1234-1234-123456789abc.webp";
 const contents = new Map(["employee.pdf", "kak.docx", "rka.pdf", poName, "report.docx", "kgb.docx", "kgb-signed.pdf"].map(name => [name, Buffer.from(`Original bytes for ${name}`)]));
 contents.set("orphan.pdf", randomBytes(5 * 1024 * 1024));
+contents.set(coverName, Buffer.from("Cover fixture bytes"));
 const snapshot = { tables: {
   app_roles: [{ id: "administrator", name: "Administrator", is_administrator: 1, menu_permissions: "[]" }],
   employees: [{ nip: "198001012005011001", name: "Pegawai Uji" }],
@@ -23,16 +25,24 @@ const snapshot = { tables: {
   employee_documents: [{ id: "employee", storage_name: "employee.pdf", original_file_name: "pegawai.pdf" }],
   kak_documents: [{ id: "kak", storage_name: "kak.docx", file_name: "kak.docx", source_storage_name: "rka.pdf", source_name: "rka.pdf", draft_json: JSON.stringify({ poDocument: { storageName: poName, fileName: "po.docx", fileSize: 20, templateSha256: "a".repeat(64) } }) }],
   wfh_reports: [{ id: "report" }],
-  library_books: [{ id: "book-1", inventory_code: "000123", copies: 2 }],
+  library_books: [{ id: "book-1", inventory_code: "000123", copies: 2, cover_storage_name: coverName }],
   library_visitors: [{ id: "visitor-1", name: "Pengunjung Uji" }],
   library_visits: [{ id: "visit-1", visitor_id: "visitor-1" }],
   library_loans: [{ id: "loan-1", book_id: "book-1", visitor_id: "visitor-1" }],
-}, storageObjects: [...contents.keys()].map(name => ({ name, metadata: { size: contents.get(name).length } })) };
+}, storageObjects: [...contents.keys()].filter(name => name !== coverName).map(name => ({ name, metadata: { size: contents.get(name).length } })) };
 function setup(user = { id: "admin", username: "admin1" }, failure = false) {
   const state = { snapshots: 0, downloads: [] }, cache = new Map();
   cache.set(path.resolve("src/lib/session.ts"), { exports: { getCurrentUser: async () => user ? { isAdministrator: user.username === "admin1", menuPermissions: [], ...user } : null } });
   cache.set(path.resolve("src/lib/database.ts"), { exports: { createBackupSnapshot: async () => { state.snapshots++; return snapshot; } } });
-  cache.set(path.resolve("src/lib/storage.ts"), { exports: { downloadStorageObject: async name => { state.downloads.push(name); if (failure) throw new Error("Unreadable file"); return contents.get(name); } } });
+  cache.set(path.resolve("src/lib/storage.ts"), { exports: { downloadStorageObject: async (name, localPath, bucket) => {
+    state.downloads.push(name);
+    if (failure) throw new Error("Unreadable file");
+    if (name === coverName) {
+      assert.equal(bucket, "dkpp-library-covers");
+      assert.equal(localPath, `data/library-book-covers/${coverName}`);
+    }
+    return contents.get(name);
+  } } });
   function load(file) {
     const filename = path.resolve(file); if (cache.has(filename)) return cache.get(filename).exports;
     const mod = new Module(filename); cache.set(filename, mod); mod.filename = filename; mod.paths = Module._nodeModulePaths(path.dirname(filename));
@@ -69,7 +79,9 @@ try {
   const bytes = Buffer.concat(chunks); assert(bytes.length > 4.5 * 1024 * 1024, "Exercise a backup above Vercel's buffered payload limit");
   assert.equal(bytes.length, Number(response.headers.get("x-backup-bytes"))); assert.equal(createHash("sha256").update(bytes).digest("hex"), response.headers.get("x-backup-sha256"));
   const files = extract(bytes), manifest = JSON.parse(files.get("manifest.json"));
-  assert.equal(manifest.tableCount, 12); assert.equal(manifest.documentCount, 7); assert.equal(manifest.unlinkedStorageObjectCount, 1);
+  assert.equal(manifest.tableCount, 12); assert.equal(manifest.documentCount, 8); assert.equal(manifest.unlinkedStorageObjectCount, 1);
+  assert.deepEqual(files.get("Perpustakaan/files/library_books/record-book-1.webp"), contents.get(coverName));
+  assert.equal(manifest.storageFiles.find(entry => entry.storageName === coverName).storageBucket, "dkpp-library-covers");
   assert.deepEqual(JSON.parse(files.get("Kepegawaian/database/employees.json")), snapshot.tables.employees);
   assert.deepEqual(JSON.parse(files.get("Sistem/database/users.json")), snapshot.tables.users);
   for (const table of ["library_books", "library_visitors", "library_visits", "library_loans"])

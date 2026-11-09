@@ -1,9 +1,11 @@
 "use client";
 import { useMemo, useState } from "react";
-import { BookOpen, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { PublicLibraryBook } from "@/lib/library-types";
+import { libraryCoverUrl } from "@/lib/library-cover-types";
+import { BookCover } from "./book-cover";
 
 export function LibraryCatalog({ books }: { books: PublicLibraryBook[] }) {
   const [search, setSearch] = useState(""), [category, setCategory] = useState(""), [availableOnly, setAvailableOnly] = useState(false), [page, setPage] = useState(1);
@@ -19,7 +21,10 @@ export function LibraryCatalog({ books }: { books: PublicLibraryBook[] }) {
       <label className="flex items-center gap-2 px-2 text-sm"><input type="checkbox" checked={availableOnly} onChange={e => { setAvailableOnly(e.target.checked); setPage(1); }} />Tersedia saja</label>
     </div>
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filtered.slice((current - 1) * 12, current * 12).map(book => <article key={book.id} className="flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b bg-emerald-50/70 px-5 py-4"><BookOpen aria-hidden className="size-6 text-emerald-700" /><span className={`rounded-full px-2.5 py-1 text-xs font-medium ${book.available > 0 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>{book.available > 0 ? `${book.available} tersedia` : book.copies > 0 ? "Sedang dipinjam" : "Belum tersedia"}</span></div>
+      <div className="flex items-start justify-between gap-3 border-b bg-emerald-50/70 px-5 py-4">
+        <BookCover src={libraryCoverUrl(book.id, book.coverStorageName)} title={book.title} className="w-16 bg-white" />
+        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${book.available > 0 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>{book.available > 0 ? `${book.available} tersedia` : book.copies > 0 ? "Sedang dipinjam" : "Belum tersedia"}</span>
+      </div>
       <div className="flex flex-1 flex-col p-5"><p className="text-xs text-zinc-500 capitalize">{book.category || "Umum"}</p><h3 className="mt-2 text-base font-semibold leading-6 text-zinc-900">{book.title}</h3><p className="mt-3 text-sm text-zinc-500">{book.publisher && book.publisher !== "-" ? book.publisher : "Penerbit belum tercatat"}{book.publicationYear && book.publicationYear !== "-" ? ` · ${book.publicationYear}` : ""}</p>
         <details className="mt-auto pt-5 text-sm"><summary className="cursor-pointer font-medium text-emerald-700">Detail buku</summary><dl className="mt-3 space-y-2 text-zinc-600"><div><dt className="inline font-medium">Kode inventaris: </dt><dd className="inline break-all">{book.inventoryCode}</dd></div><div><dt className="inline font-medium">ISBN/ISSN: </dt><dd className="inline">{book.isbn || "-"}</dd></div><div><dt className="inline font-medium">Tempat terbit: </dt><dd className="inline">{book.publicationPlace || "-"}</dd></div><div><dt className="inline font-medium">Eksemplar: </dt><dd className="inline">{book.copies} total, {book.borrowed} dipinjam</dd></div><div><dt className="inline font-medium">Rak: </dt><dd className="inline">{book.shelf || "Hubungi petugas"}</dd></div></dl></details>
       </div>

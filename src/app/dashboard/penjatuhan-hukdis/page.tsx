@@ -15,7 +15,7 @@ const perPage = 12;
 const linkStyle = "inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent focus-visible:outline-2";
 
 export default async function DisciplineCasesPage({ searchParams }: {
-  searchParams: Promise<{ perkara?: string; baru?: string; cari?: string; halaman?: string }>;
+  searchParams: Promise<{ perkara?: string; baru?: string; cari?: string; halaman?: string; langkah?: string }>;
 }) {
   await requireMenuAccess(DISCIPLINE_MENU);
   const query = await searchParams;
@@ -60,7 +60,8 @@ export default async function DisciplineCasesPage({ searchParams }: {
     </details>
 
     {query.perkara && !selected && <p role="alert" className="rounded-lg bg-amber-50 p-4 text-sm text-amber-900">Perkara yang dipilih tidak ditemukan.</p>}
-    {(creating || selected) && <DisciplineCaseForm key={creating ? "baru" : selected?.id} initial={creating ? undefined : selected} employees={employees} />}
+    {(creating || selected) && <DisciplineCaseForm key={creating ? "baru" : selected?.id} initial={creating ? undefined : selected}
+      initialStep={creating ? 0 : Number(query.langkah) - 1} employees={employees} />}
     <section aria-labelledby="register-hukdis" className="space-y-3 rounded-xl border bg-card p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="register-hukdis" className="flex items-center gap-2 font-semibold"><FileSignature className="size-4 text-indigo-700" /> Register perkara</h2>

@@ -1,6 +1,6 @@
 # Administrasi penjatuhan hukuman disiplin PNS
 
-Menu **Kepegawaian → Penjatuhan Hukuman Disiplin** menyimpan register perkara dan menyiapkan draf Word. Pilih PNS aktif, isi nomor register dan dugaan, lalu lengkapi tahap yang sedang berjalan. Identitas PNS diambil dari database dan disimpan sebagai snapshot perkara. Isi pejabat dari daftar pegawai atau secara manual bila pejabatnya berasal dari luar DKPP. Tetapkan pejabat penandatangan sesuai jabatan, kewenangan, dan penunjukan yang berlaku.
+Menu **Kepegawaian → Penjatuhan Hukuman Disiplin** menyimpan register perkara dan menyiapkan draf Word. Wizard dimulai dari uraian dugaan dan nomor register. Pada langkah berikutnya, cari PNS aktif yang diperiksa dan atasannya berdasarkan nama, NIP, atau jabatan. Pencarian yang sama tersedia untuk anggota tim dan pejabat lainnya. Identitas PNS disimpan sebagai snapshot perkara. Data pejabat di luar daftar bisa diisi manual. Tetapkan pejabat penandatangan sesuai kewenangan dan penunjukan yang berlaku.
 
 ## Dasar dan alur
 

@@ -1,17 +1,27 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Download, LoaderCircle, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsUpDown, Download, LoaderCircle, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  disciplineCaseStatus, disciplineDocuments, disciplineLevels, disciplineSanctions, emptyDisciplineCase,
+  disciplineCaseSchema, disciplineCaseStatus, disciplineDocuments, disciplineLevels, disciplineSanctions, emptyDisciplineCase,
   type DisciplineCase, type DisciplineCaseInput, type DisciplineDocument, type DisciplineEmployee, type DisciplinePerson,
 } from "@/lib/discipline-case";
 
-const sections = ["Perkara", "Pemanggilan", "Tim pemeriksa", "Pemeriksaan", "Keputusan", "Draf surat"] as const;
+const steps: { title: string; fields: (keyof DisciplineCaseInput)[] }[] = [
+  { title: "Dugaan pelanggaran", fields: ["allegation", "reference", "level", "incidentDate", "incidentPlace", "provision"] },
+  { title: "Pegawai dan atasan", fields: ["employeeNip", "examiner"] },
+  { title: "Tim pemeriksa", fields: ["team"] },
+  { title: "Pemanggilan", fields: ["firstCall", "secondCall"] },
+  { title: "Pemeriksaan", fields: ["review"] },
+  { title: "Keputusan", fields: ["authority", "decision"] },
+  { title: "Draf surat", fields: [] },
+];
 const selectStyle = "min-h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm";
 type FieldType = "text" | "date" | "time" | "multiline";
 type Option = readonly [value: string, label: string];
@@ -33,19 +43,57 @@ function Fields({ fields, values, change }: { fields: readonly Field[]; values: 
   })}</div>;
 }
 
-function PersonFields({ title, person, employees, change }: {
-  title: string; person: DisciplinePerson; employees: DisciplineEmployee[]; change: (value: DisciplinePerson) => void;
+function EmployeePicker({ label, selected, employees, change, disabled, required }: {
+  label: string; selected?: DisciplinePerson; employees: DisciplineEmployee[]; change: (employee: DisciplineEmployee) => void;
+  disabled?: boolean; required?: boolean;
+}) {
+  const id = useId();
+  const search = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+
+  return <div className="grid gap-1.5">
+    <label htmlFor={id} className="text-sm font-medium">{label}</label>
+    <Popover open={open && !disabled} onOpenChange={setOpen}>
+      <PopoverTrigger render={<Button id={id} type="button" variant="outline" role="combobox" aria-label={label}
+        aria-expanded={open && !disabled} aria-required={required} disabled={disabled}
+        className="h-auto min-h-10 w-full justify-between whitespace-normal text-left font-normal" />}>
+        <span className="min-w-0 wrap-break-word">{selected?.name || "Cari nama, NIP, atau jabatan"}</span>
+        <ChevronsUpDown aria-hidden="true" className="shrink-0" />
+      </PopoverTrigger>
+      <PopoverContent align="start" aria-label={label} initialFocus={search} className="w-[min(34rem,calc(100vw-3rem))] p-0">
+        <Command>
+          <CommandInput ref={search} aria-label={`Pencarian ${label}`} placeholder="Ketik nama, NIP, atau jabatan…" />
+          <CommandList>
+            <CommandEmpty>Pegawai tidak ditemukan.</CommandEmpty>
+            <CommandGroup>
+              {employees.map(employee => <CommandItem key={employee.nip} value={employee.nip}
+                keywords={[employee.name, employee.position, employee.unit]} onSelect={() => {
+                  change(employee);
+                  setOpen(false);
+                }}>
+                <span className="min-w-0 wrap-break-word">
+                  <span className="block font-medium">{employee.name}</span>
+                  <span className="block text-xs text-muted-foreground">{employee.nip}{employee.position && ` · ${employee.position}`}</span>
+                </span>
+              </CommandItem>)}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+    {selected && <p className="text-xs text-muted-foreground">NIP {selected.nip}{selected.position && ` · ${selected.position}`}</p>}
+  </div>;
+}
+
+function PersonFields({ title, person, employees, change, disabled }: {
+  title: string; person: DisciplinePerson; employees: DisciplineEmployee[]; change: (value: DisciplinePerson) => void; disabled: boolean;
 }) {
   return <fieldset className="space-y-3 rounded-lg border p-4">
     <legend className="px-1 font-medium">{title}</legend>
-    <label className="grid gap-1.5 text-sm">
-      <span>Isi dari data pegawai</span>
-      <select className={selectStyle} value={employees.some(p => p.nip === person.nip) ? person.nip : ""}
-        onChange={e => { const p = employees.find(item => item.nip === e.target.value); if (p) change({ name: p.name, nip: p.nip, rank: p.rank, position: p.position }); }}>
-        <option value="">Pilih pegawai atau isi manual</option>
-        {employees.map(p => <option key={p.nip} value={p.nip}>{p.name} · {p.nip}</option>)}
-      </select>
-    </label>
+    <EmployeePicker label={`Cari ${title.toLocaleLowerCase("id-ID")}`} employees={employees} disabled={disabled}
+      selected={employees.some(employee => employee.nip === person.nip) ? person : undefined}
+      change={({ name, nip, rank, position }) => change({ name, nip, rank, position })} />
+    <p className="text-xs text-muted-foreground">Isi manual jika pejabat tidak ada dalam daftar.</p>
     <Fields fields={[["name", "Nama"], ["nip", "NIP"], ["rank", "Pangkat / golongan"], ["position", "Jabatan"]]} values={person}
       change={(field, value) => change({ ...person, [field]: value })} />
   </fieldset>;
@@ -56,25 +104,60 @@ const callFields: Field[] = [["number", "Nomor panggilan"], ["letterDate", "Tang
   ["attendance", "Kehadiran", [["hadir", "Hadir"], ["tidak-hadir", "Tidak hadir"]]]];
 const endpoint = "/api/penjatuhan-hukdis";
 
-export function DisciplineCaseForm({ initial, employees }: { initial?: DisciplineCase; employees: DisciplineEmployee[] }) {
+export function DisciplineCaseForm({ initial, initialStep = 0, employees }: { initial?: DisciplineCase; initialStep?: number; employees: DisciplineEmployee[] }) {
   const router = useRouter();
+  const heading = useRef<HTMLHeadingElement>(null);
   const [record, setRecord] = useState(initial);
   const [values, setValues] = useState(initial?.values ?? emptyDisciplineCase);
-  const [section, setSection] = useState<(typeof sections)[number]>("Perkara");
+  const [step, setStep] = useState(Number.isInteger(initialStep) && steps[initialStep] ? initialStep : 0);
+  const [furthestStep, setFurthestStep] = useState(step);
+  const previousStep = useRef(step);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<"save" | DisciplineDocument | null>(null);
   const [message, setMessage] = useState("");
   const [saved, setSaved] = useState(false);
+  const { title: section } = steps[step];
   const employee = record?.employee ?? employees.find(p => p.nip === values.employeeNip);
   const change = (next: Partial<DisciplineCaseInput>) => { setValues(v => ({ ...v, ...next })); setDirty(true); setSaved(false); };
   const nested = <K extends "firstCall" | "secondCall" | "team" | "review" | "decision">(key: K, field: string, value: string | DisciplinePerson | boolean) =>
     change({ [key]: { ...values[key], [field]: value } } as Pick<DisciplineCaseInput, K>);
   const editPerson = (title: string, key: "examiner" | "authority") =>
-    <PersonFields title={title} person={values[key]} employees={employees} change={person => change({ [key]: person })} />;
+    <PersonFields title={title} person={values[key]} employees={employees} disabled={busy !== null} change={person => change({ [key]: person })} />;
+
+  useEffect(() => {
+    if (previousStep.current !== step) {
+      previousStep.current = step;
+      heading.current?.focus();
+    }
+  }, [step]);
+
+  function validateBefore(target: number) {
+    const parsed = disciplineCaseSchema.safeParse(values);
+    if (parsed.success) return true;
+
+    for (let index = 0; index < target; index++) {
+      for (const field of steps[index].fields) {
+        const issue = parsed.error.issues.find(item => item.path[0] === field);
+        if (issue) {
+          setStep(index);
+          setMessage(issue.message);
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  function goTo(target: number) {
+    if (busy || (!record && target > step && !validateBefore(Math.min(target, 2)))) return;
+    setMessage("");
+    setStep(target);
+    setFurthestStep(previous => Math.max(previous, target));
+  }
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !validateBefore(steps.length)) return;
     setBusy("save"); setMessage(""); setSaved(false);
     try {
       const response = await fetch(record ? `${endpoint}/${record.id}` : endpoint, {
@@ -88,7 +171,7 @@ export function DisciplineCaseForm({ initial, employees }: { initial?: Disciplin
       setDirty(false);
       setSaved(true);
       if (record) router.refresh();
-      else router.replace(`/dashboard/penjatuhan-hukdis?perkara=${result.record.id}`, { scroll: false });
+      else router.replace(`/dashboard/penjatuhan-hukdis?perkara=${result.record.id}&langkah=${step + 1}`, { scroll: false });
     } catch (error) { setMessage((error as Error).message || "Perkara gagal disimpan."); }
     finally { setBusy(null); }
   }
@@ -116,22 +199,29 @@ export function DisciplineCaseForm({ initial, employees }: { initial?: Disciplin
         {employee && <p className="mt-1 text-sm text-muted-foreground">{employee.name} · {employee.position || employee.unit}</p>}</div>
       <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-900">{disciplineCaseStatus(values)}</span>
     </header>
-    <nav aria-label="Tahap administrasi" className="flex flex-wrap gap-1 border-b pb-3">
-      {sections.map(item => <Button key={item} type="button" size="sm" variant={section === item ? "default" : "ghost"}
-        aria-pressed={section === item} onClick={() => setSection(item)}>{item}</Button>)}
+    <nav aria-label="Tahap administrasi" className="border-b pb-3">
+      <ol className="flex flex-wrap gap-1">
+        {steps.map(({ title }, index) => <li key={title}>
+          <Button type="button" size="sm" variant={step === index ? "default" : "ghost"} aria-current={step === index ? "step" : undefined}
+            disabled={busy !== null || (!record && index > furthestStep)} onClick={() => goTo(index)}>
+            <span aria-hidden="true" className="tabular-nums">{index + 1}.</span> {title}
+          </Button>
+        </li>)}
+      </ol>
     </nav>
+    <div>
+      <p className="text-xs font-medium text-muted-foreground">Langkah {step + 1} dari {steps.length}</p>
+      <h3 ref={heading} tabIndex={-1} className="text-base font-semibold outline-none">{section}</h3>
+    </div>
+    {message && <p role="alert" className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-800">{message}</p>}
     <fieldset disabled={busy !== null} className="min-w-0 space-y-4">
-      {section === "Perkara" && <>
-        <label className="grid gap-1.5 text-sm font-medium"><span>PNS yang diperiksa</span>
-          <select className={selectStyle} value={values.employeeNip} disabled={Boolean(record)} onChange={e => change({ employeeNip: e.target.value })}>
-            <option value="">Pilih PNS aktif</option>
-            {record && !employees.some(p => p.nip === record.employee.nip) && <option value={record.employee.nip}>{record.employee.name}</option>}
-            {employees.map(p => <option value={p.nip} key={p.nip}>{p.name} · {p.nip}</option>)}
-          </select>
-        </label>
-        <Fields fields={[["reference", "Nomor register"], ["level", "Tingkat hukuman yang ditelaah", disciplineLevels.map(level => [level, level] as const)],
-          ["incidentDate", "Tanggal kejadian", "date"], ["incidentPlace", "Tempat kejadian"], ["provision", "Pasal / ayat / huruf PP 94 Tahun 2021"],
-          ["allegation", "Uraian dugaan", "multiline"]]} values={values} change={(field, value) => change({ [field]: value })} />
+      {section === "Dugaan pelanggaran" && <Fields fields={[["allegation", "Uraian dugaan", "multiline"],
+        ["reference", "Nomor register"], ["level", "Tingkat hukuman yang ditelaah", disciplineLevels.map(level => [level, level] as const)],
+        ["incidentDate", "Tanggal kejadian", "date"], ["incidentPlace", "Tempat kejadian"], ["provision", "Pasal / ayat / huruf PP 94 Tahun 2021"]]}
+        values={values} change={(field, value) => change({ [field]: value })} />}
+      {section === "Pegawai dan atasan" && <>
+        <EmployeePicker label="PNS yang diperiksa" employees={employees} selected={employee} disabled={Boolean(record) || busy !== null}
+          required change={person => change({ employeeNip: person.nip })} />
         {editPerson("Atasan langsung atau ketua tim pemeriksa", "examiner")}
       </>}
       {section === "Pemanggilan" && <>
@@ -146,7 +236,8 @@ export function DisciplineCaseForm({ initial, employees }: { initial?: Disciplin
         <Fields fields={[["number", "Nomor surat pembentukan"], ["date", "Tanggal pembentukan", "date"]]} values={values.team} change={(field, value) => nested("team", field, value)} />
         {editPerson("Atasan langsung atau ketua tim pemeriksa", "examiner")}
         {([["oversight", "Unsur pengawasan"], ["hr", "Unsur kepegawaian"], ["other", "Pejabat lain yang ditunjuk (opsional)"], ["issuer", "PPK atau pejabat yang ditunjuk"]] as const)
-          .map(([key, title]) => <PersonFields key={key} title={title} person={values.team[key]} employees={employees} change={p => nested("team", key, p)} />)}
+          .map(([key, title]) => <PersonFields key={key} title={title} person={values.team[key]} employees={employees}
+            disabled={busy !== null} change={p => nested("team", key, p)} />)}
       </>}
       {section === "Pemeriksaan" && <>
         <Fields fields={[["date", "Tanggal pemeriksaan", "date"], ["place", "Tempat atau media pemeriksaan"],
@@ -190,10 +281,20 @@ export function DisciplineCaseForm({ initial, employees }: { initial?: Disciplin
         </div>
       </>}
     </fieldset>
-    {message && <p role="alert" className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-800">{message}</p>}
     {saved && <p role="status" className="text-sm text-emerald-700">Perkara tersimpan.</p>}
-    <div className="flex justify-end border-t pt-4"><Button type="submit" disabled={busy !== null || (Boolean(record) && !dirty)}>
-      {busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} Simpan perkara
-    </Button></div>
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
+      <Button type="button" variant="outline" disabled={busy !== null || step === 0} onClick={() => goTo(step - 1)}>
+        <ChevronLeft /> Kembali
+      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" variant={step < steps.length - 1 ? "outline" : "default"}
+          disabled={busy !== null || !values.employeeNip || (Boolean(record) && !dirty)}>
+          {busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} Simpan perkara
+        </Button>
+        {step < steps.length - 1 && <Button type="button" disabled={busy !== null} onClick={() => goTo(step + 1)}>
+          Lanjut <ChevronRight />
+        </Button>}
+      </div>
+    </div>
   </form>;
 }

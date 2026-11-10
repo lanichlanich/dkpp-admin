@@ -9,12 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  disciplineCaseSchema, disciplineCaseStatus, disciplineDocuments, disciplineLevels, disciplineSanctions, emptyDisciplineCase,
+  classifyDisciplineAbsence, disciplineCaseSchema, disciplineCaseStatus, disciplineDocuments, disciplineSanctions, emptyDisciplineCase,
   type DisciplineCase, type DisciplineCaseInput, type DisciplineDocument, type DisciplineEmployee, type DisciplinePerson,
 } from "@/lib/discipline-case";
 
 const steps: { title: string; fields: (keyof DisciplineCaseInput)[] }[] = [
-  { title: "Dugaan pelanggaran", fields: ["allegation", "reference", "level", "incidentDate", "incidentPlace", "provision"] },
+  { title: "Dugaan pelanggaran", fields: ["absenceDays", "consecutiveAbsence"] },
   { title: "Pegawai dan atasan", fields: ["employeeNip", "examiner"] },
   { title: "Tim pemeriksa", fields: ["team"] },
   { title: "Pemanggilan", fields: ["firstCall", "secondCall"] },
@@ -118,11 +118,23 @@ export function DisciplineCaseForm({ initial, initialStep = 0, employees }: { in
   const [saved, setSaved] = useState(false);
   const { title: section } = steps[step];
   const employee = record?.employee ?? employees.find(p => p.nip === values.employeeNip);
+  const isLegacy = initial !== undefined && initial.values.absenceDays === undefined;
+  const absence = classifyDisciplineAbsence(values.absenceDays, values.consecutiveAbsence);
+  const level = isLegacy ? values.level : absence?.level;
+  const availableSanctions = disciplineSanctions.filter(item => isLegacy ? (!level || item.level === level) : absence?.sanctions.includes(item.id));
   const change = (next: Partial<DisciplineCaseInput>) => { setValues(v => ({ ...v, ...next })); setDirty(true); setSaved(false); };
   const nested = <K extends "firstCall" | "secondCall" | "team" | "review" | "decision">(key: K, field: string, value: string | DisciplinePerson | boolean) =>
     change({ [key]: { ...values[key], [field]: value } } as Pick<DisciplineCaseInput, K>);
   const editPerson = (title: string, key: "examiner" | "authority") =>
     <PersonFields title={title} person={values[key]} employees={employees} disabled={busy !== null} change={person => change({ [key]: person })} />;
+
+  function changeAbsence(days: number | undefined, consecutive: boolean) {
+    const next = classifyDisciplineAbsence(days, consecutive);
+    const decision = next?.sanctions.some(id => id === values.decision.sanction)
+      ? values.decision : { ...values.decision, sanction: "" };
+    setMessage("");
+    change({ absenceDays: days, consecutiveAbsence: consecutive, decision });
+  }
 
   useEffect(() => {
     if (previousStep.current !== step) {
@@ -132,6 +144,11 @@ export function DisciplineCaseForm({ initial, initialStep = 0, employees }: { in
   }, [step]);
 
   function validateBefore(target: number) {
+    if (!isLegacy && !absence) {
+      setStep(0);
+      setMessage("Masukkan jumlah hari kerja tidak masuk sebagai bilangan bulat dari 1 sampai 366.");
+      return false;
+    }
     const parsed = disciplineCaseSchema.safeParse(values);
     if (parsed.success) return true;
 
@@ -195,7 +212,7 @@ export function DisciplineCaseForm({ initial, initialStep = 0, employees }: { in
 
   return <form onSubmit={save} className="space-y-4 rounded-xl border bg-card p-4 sm:p-6">
     <header className="flex flex-wrap items-start justify-between gap-2">
-      <div><h2 className="text-lg font-semibold">{record ? values.reference : "Tambah perkara disiplin"}</h2>
+      <div><h2 className="text-lg font-semibold">{record ? "Perkara disiplin" : "Tambah perkara disiplin"}</h2>
         {employee && <p className="mt-1 text-sm text-muted-foreground">{employee.name} · {employee.position || employee.unit}</p>}</div>
       <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-900">{disciplineCaseStatus(values)}</span>
     </header>
@@ -215,10 +232,29 @@ export function DisciplineCaseForm({ initial, initialStep = 0, employees }: { in
     </div>
     {message && <p role="alert" className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-800">{message}</p>}
     <fieldset disabled={busy !== null} className="min-w-0 space-y-4">
-      {section === "Dugaan pelanggaran" && <Fields fields={[["allegation", "Uraian dugaan", "multiline"],
-        ["reference", "Nomor register"], ["level", "Tingkat hukuman yang ditelaah", disciplineLevels.map(level => [level, level] as const)],
-        ["incidentDate", "Tanggal kejadian", "date"], ["incidentPlace", "Tempat kejadian"], ["provision", "Pasal / ayat / huruf PP 94 Tahun 2021"]]}
-        values={values} change={(field, value) => change({ [field]: value })} />}
+      {section === "Dugaan pelanggaran" && (isLegacy ? <div className="space-y-2 text-sm">
+        <p className="whitespace-pre-wrap">{values.allegation}</p>
+        <p className="text-muted-foreground">{[values.level, values.provision].filter(Boolean).join(" · ")}</p>
+      </div> : <>
+        <label className="grid max-w-sm gap-1.5 text-sm font-medium">
+          <span>Jumlah hari kerja tidak masuk</span>
+          <Input type="number" inputMode="numeric" min={1} max={366} step={1} placeholder="Contoh 4" value={values.absenceDays ?? ""}
+            disabled={Boolean(record?.values.decision.issued)} onChange={e => {
+              const days = e.target.value === "" ? undefined : Number(e.target.value);
+              changeAbsence(days, Boolean(days && days >= 10 && values.consecutiveAbsence));
+            }} />
+        </label>
+        <p className="text-sm text-muted-foreground">Hitung hari kerja tanpa alasan yang sah secara kumulatif dalam satu tahun berjalan.</p>
+        {(values.absenceDays ?? 0) >= 10 && <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-0.5 size-4" checked={Boolean(values.consecutiveAbsence)}
+            disabled={Boolean(record?.values.decision.issued)} onChange={e => changeAbsence(values.absenceDays, e.target.checked)} />
+          <span>Ada sedikitnya 10 hari kerja berturut-turut</span>
+        </label>}
+        {absence && <div aria-live="polite" className="space-y-1 rounded-lg border bg-muted/40 p-3 text-sm">
+          <p className="font-semibold">{absence.level ? `Tingkat hukuman ${absence.level.toLowerCase()}` : "Belum mencapai ambang hukuman disiplin"}</p>
+          <p>{absence.provision} PP Nomor 94 Tahun 2021</p>
+        </div>}
+      </>)}
       {section === "Pegawai dan atasan" && <>
         <EmployeePicker label="PNS yang diperiksa" employees={employees} selected={employee} disabled={Boolean(record) || busy !== null}
           required change={person => change({ employeeNip: person.nip })} />
@@ -253,12 +289,12 @@ export function DisciplineCaseForm({ initial, initialStep = 0, employees }: { in
       {section === "Keputusan" && <>
         <p className="text-sm text-muted-foreground">Pilih jenis hukuman dan pejabat berdasarkan kewenangan yang berlaku. Untuk hukuman sedang, periksa ketentuan peralihan Pasal 42 sebelum memilih jenisnya.</p>
         <Fields fields={[["number", "Nomor keputusan"], ["date", "Tanggal keputusan", "date"], ["place", "Tempat penetapan"],
-          ["sanction", "Jenis hukuman", disciplineSanctions.filter(item => !values.level || item.level === values.level).map(item => [item.id, item.label] as const)],
+          ["sanction", "Jenis hukuman", availableSanctions.map(item => [item.id, item.label] as const)],
           ["consideration", "Pertimbangan tambahan", "multiline"], ["extraBasis", "Dasar hukum tambahan"]]}
           values={values.decision} change={(field, value) => nested("decision", field, value)} />
         {editPerson("Pejabat yang berwenang menghukum", "authority")}
         <label className="flex items-start gap-2 rounded-lg border p-3 text-sm"><input type="checkbox" checked={values.decision.issued}
-          disabled={Boolean(record?.values.decision.issued)} onChange={e => nested("decision", "issued", e.target.checked)} />
+          disabled={Boolean(record?.values.decision.issued) || (!isLegacy && !level)} onChange={e => nested("decision", "issued", e.target.checked)} />
           <span>Keputusan sudah ditetapkan oleh pejabat berwenang</span></label>
         <section className="space-y-3 rounded-lg border p-4">
           <h3 className="font-medium">Panggilan untuk menerima keputusan</h3>

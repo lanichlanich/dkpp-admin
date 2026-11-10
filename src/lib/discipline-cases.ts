@@ -12,9 +12,9 @@ type CaseRow = {
   data_json: { employee: DisciplineEmployee; values: DisciplineCase["values"] } | string;
   revision: number;
 };
-export type DisciplineCaseSummary = { id: string; employee_name: string; employee_nip: string; reference: string; status: string };
+export type DisciplineCaseSummary = { id: string; employee_name: string; employee_nip: string; reference: string; status: string; created_at: string | Date };
 export function listDisciplineCases() {
-  return db.prepare(`SELECT id, employee_name, employee_nip, reference, status
+  return db.prepare(`SELECT id, employee_name, employee_nip, reference, status, created_at
     FROM discipline_cases ORDER BY updated_at DESC, id DESC`).all<DisciplineCaseSummary>();
 }
 
@@ -36,13 +36,20 @@ export async function saveDisciplineCase(userId: string, input: unknown, existin
   const values = parsed.data;
   const current = existing ? await getDisciplineCase(existing.id) : undefined;
   if (existing && !current) throw new DisciplineCaseError("Perkara tidak ditemukan.", 404);
+  const isLegacy = current && current.values.absenceDays === undefined;
+  if (!isLegacy && values.absenceDays === undefined) throw new DisciplineCaseError("Masukkan jumlah hari kerja tidak masuk.", 422);
+  if (isLegacy && (values.absenceDays !== undefined || !values.reference || !values.allegation))
+    throw new DisciplineCaseError("Data dugaan dan nomor perkara lama harus tetap tersedia.", 422);
   if (current && current.employee.nip !== values.employeeNip) throw new DisciplineCaseError("Pegawai pada perkara yang sudah tersimpan tidak dapat diganti.", 409);
   if (current?.values.decision.issued && !values.decision.issued) throw new DisciplineCaseError("Penetapan yang tercatat tidak dapat dikembalikan menjadi draf. Catat tindak lanjut pada upaya administratif.", 409);
+  if (current?.values.decision.issued && (current.values.absenceDays !== values.absenceDays ||
+    Boolean(current.values.consecutiveAbsence) !== Boolean(values.consecutiveAbsence)))
+    throw new DisciplineCaseError("Jumlah dan pola ketidakhadiran pada perkara yang sudah ditetapkan tidak dapat diubah.", 409);
   const employee = current?.employee ?? await db.prepare(`SELECT nip, name, rank, position, unit FROM employees
     WHERE nip = ? AND asn_type = 'PNS' AND status = 'Aktif'`).get<DisciplineEmployee>(values.employeeNip);
   if (!employee) throw new DisciplineCaseError("Pilih PNS aktif dari daftar pegawai.", 422);
   const id = current?.id ?? randomUUID();
-  const referenceKey = values.reference.normalize("NFKC").toLocaleLowerCase("id-ID").replace(/\s+/g, "");
+  const referenceKey = isLegacy ? values.reference.normalize("NFKC").toLocaleLowerCase("id-ID").replace(/\s+/g, "") : `absence:${id}`;
   const data = JSON.stringify({ employee, values });
   const status = disciplineCaseStatus(values);
   const now = new Date().toISOString();
@@ -52,11 +59,11 @@ export async function saveDisciplineCase(userId: string, input: unknown, existin
           revision = revision + 1, updated_by = ?, updated_at = ? WHERE id = ? AND revision = ?`)
         .run(values.reference, referenceKey, status, data, userId, now, id, existing.version)
       : await db.prepare(`INSERT INTO discipline_cases (id, employee_nip, employee_name, reference, reference_key, status,
-          data_json, revision, updated_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
-          ON CONFLICT(reference_key) DO NOTHING`).run(id, employee.nip, employee.name, values.reference, referenceKey, status, data, userId, now, now);
-    if (!changed.changes) throw new DisciplineCaseError(existing ? "Perkara sudah diperbarui. Muat ulang sebelum menyimpan." : "Nomor register sudah dipakai.", 409);
+          data_json, revision, updated_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`)
+        .run(id, employee.nip, employee.name, values.reference, referenceKey, status, data, userId, now, now);
+    if (!changed.changes) throw new DisciplineCaseError("Perkara sudah diperbarui. Muat ulang sebelum menyimpan.", 409);
   } catch (error) {
-    if (["23505", "SQLITE_CONSTRAINT_UNIQUE"].includes(String((error as { code?: string }).code))) {
+    if (isLegacy && ["23505", "SQLITE_CONSTRAINT_UNIQUE"].includes(String((error as { code?: string }).code))) {
       throw new DisciplineCaseError("Nomor register sudah dipakai.", 409);
     }
     throw error;

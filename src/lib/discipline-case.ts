@@ -17,6 +17,44 @@ export const disciplineSanctions = [
   { id: "pemberhentian", level: "Berat", label: "Pemberhentian dengan hormat tidak atas permintaan sendiri sebagai PNS" },
 ] as const;
 
+type AbsenceRule = {
+  level: (typeof disciplineLevels)[number];
+  provision: string;
+  sanctions: readonly (typeof disciplineSanctions)[number]["id"][];
+};
+
+const absenceRules: (AbsenceRule & { max: number })[] = [
+  { max: 3, level: "Ringan", provision: "Pasal 9 ayat (2) huruf b angka 1", sanctions: ["lisan"] },
+  { max: 6, level: "Ringan", provision: "Pasal 9 ayat (2) huruf b angka 2", sanctions: ["tertulis"] },
+  { max: 10, level: "Ringan", provision: "Pasal 9 ayat (2) huruf b angka 3", sanctions: ["tidak-puas"] },
+  { max: 13, level: "Sedang", provision: "Pasal 10 ayat (2) huruf f angka 1", sanctions: ["tukin-6", "tunda-kgb"] },
+  { max: 16, level: "Sedang", provision: "Pasal 10 ayat (2) huruf f angka 2", sanctions: ["tukin-9", "tunda-kp"] },
+  { max: 20, level: "Sedang", provision: "Pasal 10 ayat (2) huruf f angka 3", sanctions: ["tukin-12", "turun-pangkat"] },
+  { max: 24, level: "Berat", provision: "Pasal 11 ayat (2) huruf d angka 1", sanctions: ["turun-jabatan"] },
+  { max: 27, level: "Berat", provision: "Pasal 11 ayat (2) huruf d angka 2", sanctions: ["bebas-jabatan"] },
+  { max: 366, level: "Berat", provision: "Pasal 11 ayat (2) huruf d angka 3", sanctions: ["pemberhentian"] },
+];
+const consecutiveRule: AbsenceRule = {
+  level: "Berat", provision: "Pasal 11 ayat (2) huruf d angka 4", sanctions: ["pemberhentian"],
+};
+
+const absenceDaysSchema = z.number().int().min(1).max(366, "Jumlah hari dalam satu tahun paling banyak 366.");
+export function classifyDisciplineAbsence(days: number | undefined, consecutive: boolean | undefined) {
+  if (days === undefined || !absenceDaysSchema.safeParse(days).success || (consecutive && days < 10)) return;
+
+  const rule = consecutive ? consecutiveRule : days >= 3 ? absenceRules.find(item => days <= item.max) : undefined;
+  const obligation = "Pasal 4 huruf f";
+  const pattern = consecutive
+    ? (days === 10 ? " berturut-turut" : ", termasuk sedikitnya 10 hari kerja berturut-turut")
+    : " secara kumulatif dalam satu tahun berjalan";
+  return {
+    allegation: `tidak masuk kerja tanpa alasan yang sah selama ${days} hari kerja${pattern}`,
+    level: rule?.level ?? "" as const,
+    provision: rule ? `${obligation} juncto ${rule.provision}` : obligation,
+    sanctions: rule?.sanctions ?? [],
+  };
+}
+
 export const disciplineDocuments = [
   { id: "panggilan-1", label: "Surat Panggilan I" },
   { id: "panggilan-2", label: "Surat Panggilan II" },
@@ -38,13 +76,15 @@ const appointment = z.object({ date, time: z.string().regex(/^(?:(?:[01]\d|2[0-3
 const call = appointment.extend({ number: line(), letterDate: date, attendance: z.enum(["", "hadir", "tidak-hadir"]) });
 
 export const disciplineCaseSchema = z.object({
-  reference: line(80).refine(Boolean, "Nomor register wajib diisi."),
+  reference: line(80).default(""),
   employeeNip: z.string().regex(/^[0-9]{18}$/, "Pilih PNS yang diperiksa."),
-  allegation: note(800).refine(Boolean, "Uraian dugaan wajib diisi."),
-  provision: line(250),
-  incidentDate: date,
-  incidentPlace: line(),
-  level: z.enum(["", ...disciplineLevels]),
+  absenceDays: absenceDaysSchema.optional(),
+  consecutiveAbsence: z.boolean().optional(),
+  allegation: note(800).default(""),
+  provision: line(250).default(""),
+  incidentDate: date.default(""),
+  incidentPlace: line().default(""),
+  level: z.enum(["", ...disciplineLevels]).default(""),
   examiner: person,
   authority: person,
   firstCall: call,
@@ -63,9 +103,16 @@ export const disciplineCaseSchema = z.object({
     sent: date, received: date, effective: date, appeal: z.enum(["", "tidak-diajukan", "keberatan", "banding", "diputus"]),
     appealDate: date, appealResult: note(800),
   }),
+}).transform(data => {
+  const absence = classifyDisciplineAbsence(data.absenceDays, data.consecutiveAbsence);
+  if (!absence) return data;
+  const { allegation, level, provision } = absence;
+  return { ...data, allegation, level, provision, reference: "", incidentDate: "", incidentPlace: "" };
 }).superRefine((data, ctx) => {
   const error = (path: (string | number)[], message: string) => ctx.addIssue({ code: "custom", path, message });
   const { firstCall, secondCall, review, decision, team } = data;
+  const absence = classifyDisciplineAbsence(data.absenceDays, data.consecutiveAbsence);
+  if (data.consecutiveAbsence && !absence) error(["consecutiveAbsence"], "Tandai berturut-turut jika ada sedikitnya 10 hari kerja tanpa putus.");
   for (const [key, call] of [["firstCall", firstCall], ["secondCall", secondCall]] as const) {
     if (call.date && call.letterDate && call.date < call.letterDate) error([key, "date"], "Jadwal pemeriksaan mendahului tanggal surat panggilan.");
     if (call.attendance && !call.date) error([key, "attendance"], "Catat tanggal jadwal sebelum mencatat kehadiran.");
@@ -87,9 +134,10 @@ export const disciplineCaseSchema = z.object({
   if (delivery.date && (delivery.date < delivery.letterDate || (decision.date && delivery.date < decision.date)))
     error(["decision", "delivery", "date"], "Jadwal menerima keputusan mendahului surat panggilan atau penetapan.");
   const sanction = disciplineSanctions.find(item => item.id === decision.sanction);
-  if (decision.sanction && (!sanction || (data.level && data.level !== sanction.level)))
-    error(["decision", "sanction"], "Pilih jenis hukuman yang sesuai dengan tingkatnya.");
+  if (decision.sanction && (!sanction || (absence ? !absence.sanctions.includes(sanction.id) : data.level && data.level !== sanction.level)))
+    error(["decision", "sanction"], absence ? "Pilih jenis hukuman yang sesuai jumlah hari tidak masuk." : "Pilih jenis hukuman yang sesuai dengan tingkatnya.");
   if (decision.issued) {
+    if (absence && !absence.level) error(["decision", "issued"], "Jumlah hari tidak masuk belum mencapai ambang hukuman disiplin.");
     if (!decision.number || !decision.date || !decision.place || !sanction || !data.level || !data.authority.name || !data.authority.position || !data.provision)
       error(["decision", "issued"], "Lengkapi nomor, tanggal, tingkat, jenis hukuman, pasal, dan pejabat berwenang sebelum mencatat penetapan.");
     if (!review.signature || review.outcome !== "terbukti" || !review.findings)

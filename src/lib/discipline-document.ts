@@ -22,6 +22,7 @@ const personTags = (key: string, person: DisciplinePerson) => ({
 export async function generateDisciplineDocument(record: DisciplineCase, kind: DisciplineDocument) {
   const { employee, values } = record;
   const { firstCall, secondCall, examiner, authority, review, team, decision } = values;
+  const isAttendanceCase = values.absenceDays !== undefined;
   const sanction = disciplineSanctions.find(item => item.id === decision.sanction);
   const call = kind === "panggilan-2" ? secondCall : firstCall;
   const isCall = kind === "panggilan-1" || kind === "panggilan-2";
@@ -45,7 +46,7 @@ export async function generateDisciplineDocument(record: DisciplineCase, kind: D
     missing("Catat keputusan yang telah ditetapkan dan isi jadwal panggilan untuk menerimanya.");
   if (["lisan", "tertulis", "tidak-puas"].includes(kind) &&
       (!validDecision || sanction?.id !== kind || review.outcome !== "terbukti" || !review.signature ||
-        !review.findings || !values.provision || !values.incidentDate || !decision.consideration))
+        !review.findings || !values.provision || (!isAttendanceCase && !values.incidentDate) || !decision.consideration))
     missing("Pilih jenis hukuman yang sesuai format, lalu lengkapi hasil pemeriksaan, pasal, pertimbangan, dan pejabat berwenang.");
 
   const absence = review.signature === "dua-kali-tidak-hadir";
@@ -65,13 +66,20 @@ export async function generateDisciplineDocument(record: DisciplineCase, kind: D
     employee_signature: sig(employee),
     bap_signatures: [examiner, team.oversight, team.hr, team.other].map(sig).filter(Boolean).join("\n\n"),
     bap_other: [team.oversight, team.hr, team.other].filter(p => p.name).map((p, i) => `${i + 2}. Nama: ${p.name}\nNIP: ${p.nip}\nPangkat: ${p.rank}\nJabatan: ${p.position}`).join("\n"),
-    findings: review.findings, incident_date: dateText(values.incidentDate) || "—", incident_place: values.incidentPlace || "—",
+    findings: review.findings,
+    incident_date_heading: isAttendanceCase ? "HARI" : "WAKTU",
+    incident_place_heading: isAttendanceCase ? "POLA" : "TEMPAT",
+    incident_date: isAttendanceCase ? `${values.absenceDays} hari kerja` : dateText(values.incidentDate) || "—",
+    incident_place: isAttendanceCase ? (values.consecutiveAbsence ? "Min. 10 hari beruntun" : "Kumulatif") : values.incidentPlace || "—",
     aggravating: review.aggravating || "—", mitigating: review.mitigating || "—", impact: review.impact || "—",
     report_date: dateText(review.reportDate), recipient: review.recipient, recipient_place: review.recipientPlace,
     report_basis: absence ? "penelaahan alat bukti dan keterangan karena ketidakhadiran pada kedua panggilan dilakukan" : `pemeriksaan telah dilakukan pada ${dayText(review.date)}, ${dateText(review.date)}`,
     report_enclosure: absence ? `Alat bukti dan keterangan yang digunakan: ${review.evidence}` : "Berita acara pemeriksaan disertakan sebagai bahan tindak lanjut.",
     report_conclusion: review.outcome === "terbukti" ? `Pelanggaran disiplin terbukti. Rekomendasi: ${review.recommendation}.` : "Dugaan pelanggaran disiplin tidak terbukti.",
     decision_finding: `berdasarkan ${absence ? "alat bukti dan keterangan setelah dua panggilan tidak dihadiri" : "hasil pemeriksaan"}, ${employee.name}, NIP ${employee.nip}, terbukti melakukan perbuatan berupa ${review.findings}`,
+    decision_violation: isAttendanceCase
+      ? `terbukti ${values.allegation} dan melanggar`
+      : `pada ${dateText(values.incidentDate)} melakukan perbuatan yang melanggar`,
     decision_date: dateText(decision.date), decision_number: decision.number, decision_place: decision.place,
     sanction: sanction?.label ?? "", consideration: decision.consideration,
     extra_basis: decision.extraBasis || "Peraturan Pemerintah Nomor 79 Tahun 2021 tentang Upaya Administratif dan Badan Pertimbangan Aparatur Sipil Negara",
@@ -83,9 +91,9 @@ export async function generateDisciplineDocument(record: DisciplineCase, kind: D
   const zip = new PizZip(await readFile(path.join(process.cwd(), "src", "templates", "penjatuhan-hukdis", `${template}.docx`)));
   const document = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true, nullGetter(part) { throw new Error(`Tag format tidak diisi: ${part.value}`); } });
   document.render(tags);
-  const label = values.reference.replace(/[^\p{L}\p{N}._-]+/gu, "-").slice(0, 65);
+  const label = (values.reference || employee.name).replace(/[^\p{L}\p{N}._-]+/gu, "-").slice(0, 65);
   return {
-    fileName: `Draf-${kind}-${label}.docx`,
+    fileName: `Draf-${kind}-${label}${isAttendanceCase ? `-${record.id.slice(0, 8)}` : ""}.docx`,
     bytes: document.getZip().generate({ type: "nodebuffer", compression: "DEFLATE" }),
   };
 }

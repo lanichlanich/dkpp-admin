@@ -43,6 +43,7 @@
     "smoke:surat-perbantuan": "node scripts/smoke-surat-perbantuan.mjs",
     "smoke:pembukaan-kerjaku": "node scripts/smoke-pembukaan-kerjaku.mjs",
     "smoke:surat-hukdis-hukda": "node scripts/smoke-surat-hukdis-hukda.mjs",
+    "smoke:discipline-cases": "node scripts/smoke-discipline-cases.mjs",
     "smoke:local-ai": "node scripts/smoke-local-ai.mjs",
     "smoke:openai": "node scripts/smoke-local-ai.mjs",
     "smoke:openai-client": "node scripts/smoke-openai-client.mjs",

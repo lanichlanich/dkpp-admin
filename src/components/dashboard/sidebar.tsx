@@ -18,6 +18,7 @@ const personnelNavigation = [
   { label: "Anjab-ABK", href: "/dashboard/anjab-abk", icon: Calculator },
   { label: "Daftar Plt.", href: "/dashboard/daftar-plt", icon: CalendarDays },
   { label: "Daftar Hukdis", href: "/dashboard/hukdis", icon: Scale },
+  { label: "Penjatuhan Hukuman Disiplin", href: "/dashboard/penjatuhan-hukdis", icon: FileSignature },
   { label: "Surat HUKDIS & HUKDA", href: "/dashboard/surat-hukdis-hukda", icon: FileCheck2 },
   { label: "DPCP", href: "/dashboard/dpcp", icon: ScrollText },
   { label: "PAK", href: "/dashboard/pak", icon: Award },

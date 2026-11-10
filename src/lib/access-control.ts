@@ -2,7 +2,7 @@ export const MENU_CATALOG = [
   { id: "dashboard", label: "Dashboard", group: "Utama", path: "/dashboard" },
   ...[
     ["pegawai", "Daftar Pegawai"], ["unit-organisasi", "Daftar Unit Organisasi"], ["jabatan", "Daftar Jabatan"], ["anjab-abk", "Anjab-ABK"], ["daftar-plt", "Daftar Plt."],
-    ["hukdis", "Daftar Hukdis"], ["surat-hukdis-hukda", "Surat HUKDIS & HUKDA"], ["dpcp", "DPCP"],
+    ["hukdis", "Daftar Hukdis"], ["penjatuhan-hukdis", "Penjatuhan Hukuman Disiplin"], ["surat-hukdis-hukda", "Surat HUKDIS & HUKDA"], ["dpcp", "DPCP"],
     ["pak", "PAK"], ["kgb", "SK KGB"], ["pembukaan-kerjaku", "Pembukaan Kerjaku"],
   ].map(([id, label]) => ({ id, label, group: "Kepegawaian", path: `/dashboard/${id}` })),
   ...[["daftar-wfh", "Daftar WFH/WFO"], ["laporan-pegawai-wfh-wfo", "Laporan Pegawai WFH/WFO"], ["wfh", "Surat Tugas WFH"], ["laporan-wfh", "Laporan WFH"], ["spj-pelayanan-umum", "SPJ Pelayanan Umum Kantor"]]

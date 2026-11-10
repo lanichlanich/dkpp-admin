@@ -36,6 +36,7 @@ const TABLE_NAMES = [
   "service_archive_uploads",
   "employee_documents",
   "hukdis_records",
+  "discipline_cases",
   "wfh_reports",
   "wfh_schedule_months",
   "wfh_schedule_entries",

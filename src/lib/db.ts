@@ -474,6 +474,22 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS employee_documents_type_idx
     ON employee_documents(document_type, created_at DESC);
 
+  CREATE TABLE IF NOT EXISTS discipline_cases (
+    id TEXT PRIMARY KEY,
+    employee_nip TEXT NOT NULL,
+    employee_name TEXT NOT NULL,
+    reference TEXT NOT NULL,
+    reference_key TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL,
+    data_json TEXT NOT NULL CHECK (json_valid(data_json)),
+    revision INTEGER NOT NULL CHECK (revision >= 1),
+    updated_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS discipline_cases_updated_idx ON discipline_cases(updated_at DESC, id DESC);
+  CREATE INDEX IF NOT EXISTS discipline_cases_actor_idx ON discipline_cases(updated_by);
+
   CREATE TABLE IF NOT EXISTS hukdis_records (
     employee_nip TEXT NOT NULL,
     report_period TEXT NOT NULL,

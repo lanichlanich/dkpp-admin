@@ -26,6 +26,7 @@ const TABLE_CATEGORY: Record<string, Category> = {
   organization_units: "Kepegawaian",
   job_positions: "Kepegawaian",
   hukdis_records: "Kepegawaian",
+  discipline_cases: "Kepegawaian",
   employee_documents: "Kepegawaian",
   kgb_documents: "Kepegawaian",
   kgb_signed_documents: "Kepegawaian",

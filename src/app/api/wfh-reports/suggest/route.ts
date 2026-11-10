@@ -2,7 +2,8 @@ import { checkApiAccess } from "@/lib/authorization";
 import { getCurrentUser } from "@/lib/session";
 import { getReportEmployee } from "@/lib/wfh-report-store";
 import { reportContextSchema } from "@/lib/wfh-report-validation";
-import { generateWfhTasks, GeminiError } from "@/lib/gemini-wfh";
+import { generateWfhTasks } from "@/lib/wfh-report-ai";
+import { OpenAiApiError } from "@/lib/openai-client";
 
 export const runtime = "nodejs";
 const inFlight = new Set<string>();
@@ -21,6 +22,6 @@ export async function POST(request: Request) {
   if (inFlight.has(user.id) || now - (lastRequest.get(user.id) ?? 0) < 10000) return Response.json({ message: "Tunggu sebentar sebelum meminta usulan lagi." }, { status: 429 });
   lastRequest.set(user.id, now); inFlight.add(user.id);
   try { return Response.json(await generateWfhTasks(employee), { headers: { "Cache-Control": "no-store" } }); }
-  catch (error) { return Response.json({ message: error instanceof GeminiError ? error.message : "Usulan tugas gagal dibuat." }, { status: error instanceof GeminiError ? error.status : 500 }); }
+  catch (error) { return Response.json({ message: error instanceof OpenAiApiError ? error.message : "Usulan tugas gagal dibuat." }, { status: error instanceof OpenAiApiError ? error.status : 500 }); }
   finally { inFlight.delete(user.id); }
 }

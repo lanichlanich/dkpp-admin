@@ -30,7 +30,7 @@ function load(file) {
       downloadStorageObject: async name => { if (!objects.has(name)) throw new Error("Missing object"); return objects.get(name); },
       uploadStorageObject: async (name, bytes) => objects.set(name, bytes), deleteStorageObject: async name => { if (failDelete) throw new Error("Simulated storage outage"); objects.delete(name); },
     };
-    if (name === "@/lib/gemini-client") return { GeminiApiError: class extends Error {}, requestGeminiJson: async () => { aiCalls++; return { value: { values: { namaDokumen: "Arsip 10 MB" }, confidence: { namaDokumen: "high" }, warnings: [], identityMismatch: false }, model: "fixture" }; } };
+    if (name === "@/lib/openai-client") return { ...load("src/lib/openai-client.ts"), OpenAiApiError: class extends Error {}, requestOpenAiJson: async () => { aiCalls++; return { value: { values: { namaDokumen: "Arsip 10 MB" }, confidence: { namaDokumen: "high" }, warnings: [], identityMismatch: false }, model: "fixture" }; } };
     if (name.startsWith("@/")) return load(`src/${name.slice(2)}.ts`);
     return require(name);
   };
@@ -109,5 +109,5 @@ try {
   cloud = false; assert.deepEqual(await (await prepare(max)).json(), { local: true }); cloud = true;
   allowed = false; assert.equal((await prepare(max)).status, 403); assert.equal((await api.POST(json({ ...fields, uploadId }))).status, 403); assert.equal((await downloads.GET(new Request("http://localhost"), { params: Promise.resolve({ id: doc.id }) })).status, 403);
   userId = null; assert.equal((await remove(second)).status, 401); assert.equal((await prepare(max)).status, 401); assert.equal((await api.GET()).status, 401);
-  console.log("PASS Arsip Dinas: 10 MiB upload/save/Gemini, invalid-file rejection, authorization, expiry, retry, private download; explicit delete confirmation, stale-edit conflict, transactional rollback, scoped PDF deletion, inaccessible download after deletion and durable storage-failure cleanup.");
+  console.log("PASS Arsip Dinas: 10 MiB upload/save/OpenAI, invalid-file rejection, authorization, expiry, retry, private download; explicit delete confirmation, stale-edit conflict, transactional rollback, scoped PDF deletion, inaccessible download after deletion and durable storage-failure cleanup.");
 } finally { db.close(); }

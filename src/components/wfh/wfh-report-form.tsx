@@ -91,10 +91,10 @@ export function WfhReportForm({ employees, today, aiReady }: { employees: Report
       <div><p className="text-xs text-zinc-500">Jabatan</p><p className="mt-1 text-sm font-medium">{employee?.position || "Pilih pegawai terlebih dahulu"}</p></div>
       <div><p className="text-xs text-zinc-500">Unit kerja</p><p className="mt-1 text-sm font-medium">{employee?.unit || "Pilih pegawai terlebih dahulu"}</p></div>
     </CardContent></Card>
-    <Card><CardHeader><CardTitle>Usulan tugas Gemini</CardTitle><CardDescription>Gemini menerima jabatan dan unit kerja untuk membuat empat usulan tugas yang dapat dikerjakan dari rumah. Usulan akan mengganti kolom tugas; realisasi tetap Anda isi sendiri.</CardDescription></CardHeader><CardContent>
-      <Button type="button" variant="outline" className="h-auto whitespace-normal py-2 text-left" onClick={suggest} disabled={!!busy || !employee || !aiReady}>{busy === "ai" ? <LoaderCircle className="animate-spin" /> : <Sparkles />}{busy === "ai" ? "Gemini sedang menyusun tugas..." : "Buat usulan tugas dengan Gemini"}</Button>
+    <Card><CardHeader><CardTitle>Usulan tugas OpenAI</CardTitle><CardDescription>OpenAI menerima jabatan dan unit kerja untuk membuat empat usulan tugas yang dapat dikerjakan dari rumah. Usulan akan mengganti kolom tugas; realisasi tetap Anda isi sendiri.</CardDescription></CardHeader><CardContent>
+      <Button type="button" variant="outline" className="h-auto whitespace-normal py-2 text-left" onClick={suggest} disabled={!!busy || !employee || !aiReady}>{busy === "ai" ? <LoaderCircle className="animate-spin" /> : <Sparkles />}{busy === "ai" ? "OpenAI sedang menyusun tugas..." : "Buat usulan tugas dengan OpenAI"}</Button>
       {aiMessage && <p role="status" className="mt-3 text-sm leading-6">{aiMessage}</p>}
-      {!aiReady && <p className="mt-2 text-sm text-amber-700">Gemini belum dikonfigurasi. Anda tetap dapat mengisi tugas secara manual.</p>}
+      {!aiReady && <p className="mt-2 text-sm text-amber-700">OpenAI belum dikonfigurasi. Anda tetap dapat mengisi tugas secara manual.</p>}
     </CardContent></Card>
     <div className="space-y-4">{tasks.map((task, i) => <Card key={i}><CardHeader><CardTitle>Kegiatan {i + 1}</CardTitle></CardHeader><CardContent className="grid gap-4 sm:grid-cols-2">
       <div className="space-y-2"><Label htmlFor={`start-${i}`}>Mulai</Label><Input id={`start-${i}`} type="time" value={task.start} disabled={!!busy} onChange={e => updateTask(i, { start: e.target.value })} required /></div>

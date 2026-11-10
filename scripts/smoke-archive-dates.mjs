@@ -12,9 +12,9 @@ function load(file) {
   const mod = new Module(filename); mod.filename = filename; mod.paths = Module._nodeModulePaths(path.dirname(filename)); modules.set(filename, mod);
   mod.require = name => {
     if (name === "server-only") return {};
-    if (name === "@/lib/gemini-client") return {
-      GeminiApiError: class extends Error {},
-      requestGeminiJson: async () => ({ model: "fixture", value: {
+    if (name === "@/lib/openai-client") return { ...load("src/lib/openai-client.ts"),
+      OpenAiApiError: class extends Error {},
+      requestOpenAiJson: async () => ({ model: "fixture", value: {
         values: modelValues ?? { namaDokumen: "Surat Uji", nomor: "UJI/2026", jenisDokumen: "Surat", tglDokumen: dateValue },
         confidence: modelConfidence ?? { namaDokumen: "high", nomor: "high", jenisDokumen: "high", ...(certainty ? { tglDokumen: certainty } : {}) }, warnings: [], identityMismatch: mismatch,
       } }),
@@ -34,8 +34,8 @@ for (const [input, expected] of [
   ["29 Februari 2026", ""], ["31 April 2026", ""], ["32 Oktober 2026", ""], ["2026-02-30", ""], ["", ""],
   ["8 September 2026 atau 9 September 2026", ""], ["2026-10-09T00:00:00Z", ""], ["10/28/2026", ""],
 ]) assert.equal(normalizeDocumentDate(input), expected, input);
-const { extractGeminiDocumentData } = load("src/lib/gemini-document-ai.ts");
-const extract = (kind = "official-archive") => extractGeminiDocumentData({ kind, files: [new File(["%PDF-1.4\n%%EOF"], "Uji.pdf")], context: { nip: "200001012020121099" } });
+const { extractDocumentData } = load("src/lib/document-ai.ts");
+const extract = (kind = "official-archive") => extractDocumentData({ kind, files: [new File(["%PDF-1.4\n%%EOF"], "Uji.pdf")], context: { nip: "200001012020121099" } });
 let result = await extract(); assert.equal(result.values.tglDokumen, "2026-09-08"); assert.equal(result.confidence.tglDokumen, "high");
 for (const value of ["", "Tidak ditemukan", "31 September 2026", "September 2026", "8 September 2026 atau 9 September 2026"]) {
   dateValue = value; result = await extract(); assert.equal(result.values.tglDokumen, ""); assert.equal(result.confidence.tglDokumen, "low");
@@ -69,4 +69,4 @@ const familySource = { values: { namaAnak1: "Anak Kedua", tglAnak1: "3 Desember 
 const differentChild = fillEmptyDocumentFields({ namaAnak1: "Anak Pertama", tglAnak1: "" }, familySource, ["namaAnak1", "tglAnak1"]);
 assert.equal(differentChild.values.namaAnak1, "Anak Pertama"); assert.equal(differentChild.values.tglAnak1, ""); assert(differentChild.warnings.length);
 assert.equal(fillEmptyDocumentFields({ namaAnak1: "ANAK KEDUA", tglAnak1: "" }, familySource, ["tglAnak1"]).values.tglAnak1, "2012-12-03");
-console.log("PASS all Gemini dates: all nine date fields across archive/employee/DPCP/Plt, Indonesian/numeric/ISO formats, leap years, invalid/partial/ambiguous dates, low/missing confidence, identity mismatch, manual/stored values and document-generation date preservation.");
+console.log("PASS all OpenAI dates: all nine date fields across archive/employee/DPCP/Plt, Indonesian/numeric/ISO formats, leap years, invalid/partial/ambiguous dates, low/missing confidence, identity mismatch, manual/stored values and document-generation date preservation.");

@@ -18,7 +18,7 @@ function load(file) {
 const { KAK_SECTIONS, kakDraftSchema } = load("src/lib/kak-types.ts");
 const { kakOptionsSchema } = load("src/lib/kak-validation.ts");
 const { generateKakDocument } = load("src/lib/kak-document.ts");
-const { generateKakDraft } = load("src/lib/gemini-kak.ts");
+const { generateKakDraft } = load("src/lib/kak-ai.ts");
 const { getKakReferenceContext, formatKakLegalBasis } = load("src/lib/kak-references.ts");
 const { resolveKakSequence } = load("src/lib/kak-sequence.ts");
 const { generatePoDocument, getPoWarnings } = load("src/lib/po-document.ts");
@@ -181,9 +181,9 @@ assert.equal(resolvePoSignatory({ ...roryMetadata, penandatanganNip: "" }, defau
 assert.equal(resolvePoSignatory({ ...roryMetadata, penandatanganPangkat: "Pangkat Rory" }, { ...defaultOptions, signatory: { ...options.signatory, nip: "198001012005011001", rank: "" } }, employeeSigners).rank, "", "A different chosen official must not inherit the RKA signer's rank");
 assert.equal(kakOptionsSchema.parse({ ...defaultOptions, poSignatory: { ...poSignatory, rank: "Dari browser" } }).poSignatory, undefined, "Resolved employee data must come from the server");
 console.log("PASS PO employee rank: default RKA and selected official, current rank, uppercase KEPALA, exact NIP, unambiguous names and missing-rank warning");
-const client = load("src/lib/gemini-client.ts");
+const client = load("src/lib/openai-client.ts");
 const requests = [];
-client.requestGeminiJson = async (...args) => {
+client.requestOpenAiJson = async (...args) => {
   requests.push(args);
   return { model: "test", value: requests.length === 1 ? { isRka: true, reason: "", metadata: comparisonDraft.metadata } : { sections: draft.sections, risks: draft.risks, warnings: [], legalBasisIds: [] } };
 };
@@ -215,10 +215,10 @@ const savedPo = readKakPoFile(inserted[0][12]);
 assert.equal(savedPo.fileName, saved.poFileName); assert(uploaded[1].bytes.equals(saveInput.poDocument));
 assert(saved.bundleFileName.endsWith(".zip"));
 console.log("PASS shared procurement preference, single extraction/narrative workflow and rollback on partial storage/database failures");
-cache.set(path.resolve("src/lib/session.ts"), { exports: { getCurrentUser: async () => ({ id: "test" }) } });
+cache.set(path.resolve("src/lib/session.ts"), { exports: { getCurrentUser: async () => ({ id: "test", menuPermissions: ["pembuatan-kak"] }) } });
 cache.set(path.resolve("src/lib/employees.ts"), { exports: { getPptkEmployeeOptions: async () => [] } });
 cache.set(path.resolve("src/lib/signatory-options.ts"), { exports: { getSignatoryOptions: async () => employeeSigners } });
-const generation = load("src/lib/gemini-kak.ts");
+const generation = load("src/lib/kak-ai.ts");
 generation.generateKakDraft = async () => ({ draft: structuredClone({ ...draft, metadata: roryMetadata }), model: "test", source: Buffer.from("%PDF-test") });
 const { POST } = load("src/app/api/kak/generate/route.ts");
 uploaded.length = inserted.length = 0;

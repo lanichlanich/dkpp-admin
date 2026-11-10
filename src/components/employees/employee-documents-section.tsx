@@ -386,14 +386,14 @@ export function EmployeeDocumentsSection({ employee, active }: { employee: Emplo
             )}
             {!editingDocument && <div className={cn("space-y-2", isSkp || !documentType || !employeeDocumentNeedsServicePeriod(documentType) ? "sm:col-span-2" : undefined)}>
               <Label htmlFor={`file-${employee.nip}`}>File dokumen</Label>
-              <p className="text-xs text-muted-foreground">Tombol Baca &amp; isi otomatis mengirim dokumen ke Google Gemini. Periksa hasil sebelum mengunggah.</p>
+              <p className="text-xs text-muted-foreground">Tombol Baca &amp; isi otomatis mengirim dokumen ke OpenAI. Periksa hasil sebelum mengunggah.</p>
               <Input id={`file-${employee.nip}`} name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" disabled={busy} required aria-invalid={Boolean(errors.file?.length)} className="cursor-pointer file:mr-3 file:font-medium" />
               {errors.file?.[0] && <p className="text-xs font-medium text-destructive">{errors.file[0]}</p>}
             </div>}
           </div>
           {extractionResult && (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900">
-              <p className="flex items-center gap-2 font-medium"><ShieldCheck className="size-4" />Diproses menggunakan Gemini: {extractionResult.model}</p>
+              <p className="flex items-center gap-2 font-medium"><ShieldCheck className="size-4" />Diproses menggunakan OpenAI: {extractionResult.model}</p>
               <p className="mt-1">Data hanya mengisi draf. Kolom kuning memiliki keyakinan rendah dan perlu diperiksa.</p>
               {extractionResult.warnings.length > 0 && <ul className="mt-2 list-disc pl-5">{extractionResult.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>}
             </div>

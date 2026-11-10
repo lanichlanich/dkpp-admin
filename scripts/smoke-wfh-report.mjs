@@ -52,13 +52,13 @@ try {
   assert((await page.text()).includes(report.downloadUrl));
   mkdirSync(".tmp/wfh-report",{recursive:true});
   writeFileSync(".tmp/wfh-report/sample.docx",bytes);
-  if(process.env.SMOKE_GEMINI_LIVE==="1") {
+  if(process.env.SMOKE_OPENAI_LIVE==="1") {
     const ai=await post({nip:input.nip,date:input.date},users[0],"/api/wfh-reports/suggest");
     const response=await ai.json();
     assert.equal(ai.status,200,JSON.stringify(response));
     assert.equal(response.tasks.length,4);
     assert(response.tasks.every(t=>t.activity && t.targetOutput && !("status" in t)));
-    console.log("Live Gemini WFH suggestions passed: "+response.model);
+    console.log("Live OpenAI WFH suggestions passed: "+response.model);
   }
   console.log("WFH report: validation, authentication, ownership, archive, download and all preserved DOCX parts passed.");
 } finally {

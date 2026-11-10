@@ -54,7 +54,7 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
     return payload.uploadId as string;
   }
 
-  async function readWithGemini() {
+  async function readWithAi() {
     if (!file) { toast.error("Pilih PDF yang akan dibaca terlebih dahulu."); return; }
     setReading(true); setWarnings([]);
     try {
@@ -70,8 +70,8 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
       const values = payload.values as MetadataFields;
       setFields((current) => ({ namaDokumen: current.namaDokumen || values.namaDokumen || "", nomor: current.nomor || values.nomor || "", jenisDokumen: current.jenisDokumen || values.jenisDokumen || "", tglDokumen: dateEdited.current ? current.tglDokumen : values.tglDokumen || "" }));
       setWarnings(payload.warnings ?? []);
-      toast.success("Pembacaan Gemini selesai. Periksa kembali hasilnya sebelum disimpan.");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Gemini tidak dapat membaca dokumen. Isi form secara manual."); }
+      toast.success("Pembacaan OpenAI selesai. Periksa kembali hasilnya sebelum disimpan.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "OpenAI tidak dapat membaca dokumen. Isi form secara manual."); }
     finally { setReading(false); }
   }
 
@@ -127,7 +127,7 @@ export function ArsipDinas({ initialDocuments }: { initialDocuments: ArchiveDocu
             <div className="space-y-2"><Label htmlFor="archive-kind">Jenis dokumen</Label><Input id="archive-kind" value={fields.jenisDokumen} onChange={(e) => update("jenisDokumen", e.target.value)} placeholder="Contoh: Surat Edaran" maxLength={100} required disabled={saving} /></div>
             <div className="space-y-2"><Label htmlFor="archive-date">Tanggal dokumen</Label><Input id="archive-date" type="date" value={fields.tglDokumen} onChange={(e) => { dateEdited.current = true; update("tglDokumen", e.target.value); }} required disabled={saving} /><p className="text-xs text-zinc-500">Tanggal penetapan/penerbitan surat. Jika belum terbaca, isi manual sesuai dokumen.</p></div>
           </div>
-          {!editing && <div className="space-y-2"><Label htmlFor="archive-pdf">Softfile PDF</Label><div className="flex flex-col gap-2 sm:flex-row"><Input id="archive-pdf" type="file" accept="application/pdf,.pdf" onChange={(e) => { if (!chooseFile(e.target.files?.[0] ?? null)) e.target.value = ""; }} disabled={saving || reading} required className="max-w-xl file:mr-3 file:rounded-md file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-emerald-800" /><Button type="button" variant="outline" onClick={readWithGemini} disabled={!file || reading || saving}>{reading ? <><LoaderCircle className="animate-spin" />Membaca...</> : <><Sparkles />Baca dengan Gemini</>}</Button></div><p className="text-xs text-zinc-500">Gemini membaca nama, nomor, jenis, dan tanggal dokumen jika tercantum dari PDF maksimal {MAX_ARCHIVE_UPLOAD_SIZE_MB} MB. Jika gagal menemukan tanggal atau gagal membaca, isian dapat dilengkapi manual. Tinjau hasilnya sebelum menyimpan.</p></div>}
+          {!editing && <div className="space-y-2"><Label htmlFor="archive-pdf">Softfile PDF</Label><div className="flex flex-col gap-2 sm:flex-row"><Input id="archive-pdf" type="file" accept="application/pdf,.pdf" onChange={(e) => { if (!chooseFile(e.target.files?.[0] ?? null)) e.target.value = ""; }} disabled={saving || reading} required className="max-w-xl file:mr-3 file:rounded-md file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-emerald-800" /><Button type="button" variant="outline" onClick={readWithAi} disabled={!file || reading || saving}>{reading ? <><LoaderCircle className="animate-spin" />Membaca...</> : <><Sparkles />Baca dengan OpenAI</>}</Button></div><p className="text-xs text-zinc-500">OpenAI membaca nama, nomor, jenis, dan tanggal dokumen jika tercantum dari PDF maksimal {MAX_ARCHIVE_UPLOAD_SIZE_MB} MB. Jika gagal menemukan tanggal atau gagal membaca, isian dapat dilengkapi manual. Tinjau hasilnya sebelum menyimpan.</p></div>}
           {warnings.length > 0 && <div role="status" className="space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{warnings.map((warning, i) => <p key={i}>{warning}</p>)}</div>}
           <div className="flex flex-wrap justify-end gap-2">{editing && <Button type="button" variant="outline" onClick={cancelEdit} disabled={saving}>Batal edit</Button>}<Button type="submit" disabled={saving || reading}>{saving ? <><LoaderCircle className="animate-spin" />Menyimpan...</> : editing ? <><Pencil />Simpan perubahan</> : <><Upload />Simpan arsip</>}</Button></div>
         </form>

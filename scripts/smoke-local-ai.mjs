@@ -81,13 +81,13 @@ try {
     body: formData,
   });
   const payload = await response.json();
-  assert(response.status === 200, `Pembacaan Gemini gagal (${response.status}): ${payload.message ?? ""}`);
-  assert(payload.localOnly === false, "Respons tidak ditandai sebagai pemrosesan Gemini.");
+  assert(response.status === 200, `Pembacaan OpenAI gagal (${response.status}): ${payload.message ?? ""}`);
+  assert(payload.localOnly === false, "Respons tidak ditandai sebagai pemrosesan OpenAI.");
   assert(payload.values.nomorSurat === "800.1.11.13/3023/Sekret", `Nomor surat tidak tepat: ${payload.values.nomorSurat}`);
   assert(payload.values.tglSurat === "2026-09-08", `Tanggal surat tidak tepat: ${payload.values.tglSurat}`);
   assert(payload.values.tmtSurat === "2026-10-01", `TMT tidak tepat: ${payload.values.tmtSurat}`);
   assert(payload.values.masaKerja === "14 Tahun 2 Bulan", `Masa kerja tidak tepat: ${payload.values.masaKerja}`);
-  assert(payload.sources.some((source) => source.method === "gemini"), "Sumber tidak tercatat sebagai Gemini.");
+  assert(payload.sources.some((source) => source.method === "openai"), "Sumber tidak tercatat sebagai OpenAI.");
   formData.set("file",new File([samplePdf()],"synthetic.pdf",{type:"application/pdf"}));
   const pdfResponse = await send(formData);
   const pdf = await pdfResponse.json();
@@ -103,7 +103,7 @@ try {
   const dpcpResponse = await send(dpcp, "/api/local-ai/extract");
   const extracted = await dpcpResponse.json();
   assert(dpcpResponse.ok, "DOCX/DPCP extraction failed: "+JSON.stringify(extracted));
-  assert(extracted.localOnly === false, "Legacy endpoint must use Gemini");
+  assert(extracted.localOnly === false, "Legacy endpoint must use OpenAI");
   assert(extracted.values.gaji === "3456700", "Salary parsing failed");
   assert(extracted.values.tmtpns === "2009-01-01", "PNS date failed");
   assert(extracted.values.namaPasangan === "", "Missing facts must stay empty");
@@ -114,7 +114,7 @@ try {
   assert(mismatchResponse.ok, "Mismatch check request failed");
   assert(Object.values(mismatch.values).every(v=>v === ""), "Mismatched identity must not fill fields");
   assert(mismatch.warnings.length > 0, "Mismatch warning required");
-  console.log(`Smoke test berhasil: Gemini + ${payload.model} mengisi empat metadata dokumen dengan tepat.`);
+  console.log(`Smoke test berhasil: OpenAI + ${payload.model} mengisi empat metadata dokumen dengan tepat.`);
   console.log("PDF, DOCX/DPCP, legacy alias, identity mismatch, missing facts, file validation and authentication passed.");
 } finally {
   database.prepare("DELETE FROM users WHERE id = ?").run(userId);

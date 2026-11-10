@@ -1,8 +1,8 @@
 import { checkApiAccess } from "@/lib/authorization";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
-import { generateKakDraft } from "@/lib/gemini-kak";
-import { GeminiApiError } from "@/lib/gemini-client";
+import { generateKakDraft } from "@/lib/kak-ai";
+import { OpenAiApiError } from "@/lib/openai-client";
 import { generateKakDocument } from "@/lib/kak-document";
 import { generatePoDocument, getPoWarnings } from "@/lib/po-document";
 import { kakOptionsSchema } from "@/lib/kak-validation";
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     const saved = await saveKak({ userId: user.id, ...result, document, poDocument: po.document, poTemplateSha256: po.templateSha256, options: resolvedOptions, sourceName: file.name });
     return NextResponse.json({ ...saved, metadata: result.draft.metadata, warnings: result.draft.warnings, references: result.draft.references, nomorUrutSubKegiatan: sequence.number, nomorUrutReference: sequence.reference }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
-    if (error instanceof GeminiApiError) return NextResponse.json({ error: error.message }, { status: error.status });
+    if (error instanceof OpenAiApiError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error("PO and KAK generation failed", error);
     return NextResponse.json({ error: "Draft PO dan KAK gagal dibuat atau disimpan. Silakan coba lagi." }, { status: 500 });
   } finally { active.delete(user.id); }

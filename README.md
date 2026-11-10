@@ -1,6 +1,6 @@
 # DKPP-Admin
 
-Dashboard administrasi kepegawaian dengan pembuatan dokumen KGB/DPCP/WFH dan pembacaan dokumen menggunakan Google Gemini.
+Dashboard administrasi kepegawaian dengan pembuatan dokumen KGB/DPCP/WFH dan pembacaan dokumen menggunakan OpenAI.
 
 ## Menjalankan aplikasi
 
@@ -10,32 +10,32 @@ npm.cmd run dev
 
 Buka http://localhost:3000. Launcher Windows tersedia di scripts/start-adminflow.ps1.
 
-## Gemini
+## OpenAI
 
 Simpan konfigurasi hanya di .env.local (diabaikan Git), lalu mulai ulang server bila diperlukan:
 
 ```dotenv
-GEMINI_API_KEY=isi_kunci_anda
-GEMINI_MODEL=gemini-3.1-flash-lite
+OPENAI_API_KEY=isi_kunci_anda
+OPENAI_MODEL=gpt-5.4-mini
 ```
 
-Jangan gunakan awalan NEXT_PUBLIC untuk API key. Pemanggilan Gemini berlangsung di server.
+Simpan API key hanya di server tanpa awalan `NEXT_PUBLIC_`. `OPENAI_MODEL` opsional dan menggunakan `gpt-5.4-mini` bila kosong. Requests menggunakan OpenAI Responses API dengan `store: false`.
 
-Salin `.env.example` menjadi `.env.local`, lalu isi API key hanya di lingkungan lokal atau pengaturan Environment Variables Vercel.
+Untuk Vercel, tambahkan `OPENAI_API_KEY` sebagai Environment Variable sensitif pada lingkungan Production, lalu deploy ulang. Gunakan key proyek OpenAI API yang memiliki kuota aktif.
 
-Baca & isi form mengirim PDF, gambar, atau teks dan gambar dalam DOCX ke Google Gemini. Maksimal 5 file, 2 MB per file, dan total 2 MB; khusus Arsip Dinas mendukung PDF hingga 10 MB. DOC lama perlu dikonversi ke DOCX/PDF. Hasil hanya mengisi draf kosong, wajib diperiksa sebelum simpan/generasi. Identitas yang tidak cocok mengosongkan hasil ekstraksi. Endpoint lama /api/local-ai/extract menjadi alias ke Gemini; Ollama tidak lagi diperlukan.
+Baca & isi form mengirim PDF, gambar, atau teks dan gambar dalam DOCX ke OpenAI. Maksimal 5 file, 2 MB per file, dan total 2 MB; khusus Arsip Dinas mendukung PDF hingga 10 MB. DOC lama perlu dikonversi ke DOCX/PDF. Hasil hanya mengisi draf kosong, wajib diperiksa sebelum simpan/generasi. Identitas yang tidak cocok mengosongkan hasil ekstraksi. Endpoint lama /api/local-ai/extract menjadi alias ke OpenAI; Ollama tidak lagi diperlukan.
 
-**Persuratan → Arsip Dinas** menerima PDF maksimal **10 MB (10 × 1024 × 1024 byte)**, termasuk untuk pembacaan Gemini. Dalam konfigurasi Supabase, browser mengunggah langsung memakai URL unggah privat tanpa menimpa berkas yang sudah ada. Server memverifikasi pemilik unggahan, masa berlaku, ukuran aktual, dan signature PDF sebelum menyimpan arsip. Unggahan yang gagal disimpan dapat dicoba kembali tanpa menduplikasi arsip; unggahan terbengkalai dibersihkan saat unggahan berikutnya disiapkan setelah token kedaluwarsa. Unduhan memerlukan sesi aplikasi dan diarahkan ke URL privat yang berlaku 60 detik. Mode SQLite tanpa Supabase tetap memakai unggahan multipart dan penyimpanan lokal. Terapkan migrasi `increase_service_archive_upload_limit` untuk batas database dan tabel unggahan sementara.
+**Persuratan → Arsip Dinas** menerima PDF maksimal **10 MB (10 × 1024 × 1024 byte)**, termasuk untuk pembacaan OpenAI. Dalam konfigurasi Supabase, browser mengunggah langsung memakai URL unggah privat tanpa menimpa berkas yang sudah ada. Server memverifikasi pemilik unggahan, masa berlaku, ukuran aktual, dan signature PDF sebelum menyimpan arsip. Unggahan yang gagal disimpan dapat dicoba kembali tanpa menduplikasi arsip; unggahan terbengkalai dibersihkan saat unggahan berikutnya disiapkan setelah token kedaluwarsa. Unduhan memerlukan sesi aplikasi dan diarahkan ke URL privat yang berlaku 60 detik. Mode SQLite tanpa Supabase tetap memakai unggahan multipart dan penyimpanan lokal. Terapkan migrasi `increase_service_archive_upload_limit` untuk batas database dan tabel unggahan sementara.
 
 Pada daftar Arsip Dinas, tombol **Hapus** membuka konfirmasi berisi nama, nomor, dan tanggal dokumen. **Batal** menutup konfirmasi tanpa perubahan; **Ya, hapus arsip** menghapus arsip dan PDF secara permanen. Server memerlukan konfirmasi eksplisit serta versi data yang masih sama. Jika penyimpanan PDF sedang bermasalah, referensi pembersihan tetap tersimpan untuk dicoba ulang otomatis.
 
-Pembacaan tanggal Arsip Dinas memakai tanggal penerbitan/penetapan surat utama, termasuk bagian tanda tangan di halaman akhir. Tanggal kegiatan, TMT, surat rujukan, pengundangan, dan stempel penerimaan tidak dipakai sebagai tanggal penetapan. Format bulan Indonesia dan angka hari/bulan/tahun dinormalisasi menjadi `YYYY-MM-DD`. Tanggal kosong, tidak valid, atau berkeyakinan rendah disertai peringatan dan harus diisi manual; form tidak menggantinya dengan tanggal hari ini. Tanggal yang diketik pengguna tetap dipertahankan, termasuk perubahan saat Gemini sedang membaca.
+Pembacaan tanggal Arsip Dinas memakai tanggal penerbitan/penetapan surat utama, termasuk bagian tanda tangan di halaman akhir. Tanggal kegiatan, TMT, surat rujukan, pengundangan, dan stempel penerimaan tidak dipakai sebagai tanggal penetapan. Format bulan Indonesia dan angka hari/bulan/tahun dinormalisasi menjadi `YYYY-MM-DD`. Tanggal kosong, tidak valid, atau berkeyakinan rendah disertai peringatan dan harus diisi manual; form tidak menggantinya dengan tanggal hari ini. Tanggal yang diketik pengguna tetap dipertahankan, termasuk perubahan saat OpenAI sedang membaca.
 
-Validasi yang sama berlaku pada seluruh tanggal hasil Gemini: tanggal surat dan TMT Dokumen Pegawai, TMT PNS serta tanggal lahir pasangan/anak dan tanggal nikah pada DPCP, dan TMT Plt. Tanggal penetapan, TMT CPNS/PNS, tanggal lahir, tanggal nikah, dan tanggal pensiun dibedakan sesuai sumber dan identitas. Isian manual/tersimpan tetap dipertahankan. Form Plt. baru dimulai dengan TMT kosong; saran tanggal perpanjangan tetap tersedia, tetapi hasil pembacaan tanpa TMT yang jelas mengosongkan saran yang belum diubah agar dilengkapi manual. Pada PO/KAK, jadwal tetap mengikuti rentang/bulan/triwulan RKA tanpa mengarang tanggal lengkap; tanggal pembuatan PO/KAK dan tanggal WFH tetap pilihan pengguna. Jalankan `npm.cmd run smoke:gemini-dates` untuk regresi seluruh kolom tanggal.
+Validasi yang sama berlaku pada seluruh tanggal hasil OpenAI: tanggal surat dan TMT Dokumen Pegawai, TMT PNS serta tanggal lahir pasangan/anak dan tanggal nikah pada DPCP, dan TMT Plt. Tanggal penetapan, TMT CPNS/PNS, tanggal lahir, tanggal nikah, dan tanggal pensiun dibedakan sesuai sumber dan identitas. Isian manual/tersimpan tetap dipertahankan. Form Plt. baru dimulai dengan TMT kosong; saran tanggal perpanjangan tetap tersedia, tetapi hasil pembacaan tanpa TMT yang jelas mengosongkan saran yang belum diubah agar dilengkapi manual. Pada PO/KAK, jadwal tetap mengikuti rentang/bulan/triwulan RKA tanpa mengarang tanggal lengkap; tanggal pembuatan PO/KAK dan tanggal WFH tetap pilihan pengguna. Jalankan `npm.cmd run smoke:document-ai-dates` untuk regresi seluruh kolom tanggal.
 
 ## Laporan WFH
 
-Menu Laporan WFH memilih pegawai aktif, menampilkan jabatan/unit, meminta empat usulan tugas Gemini, dan memungkinkan penyuntingan. Realisasi dan persentase diisi pengguna. Setelah konfirmasi pemeriksaan, laporan DOCX dibuat dari template sumber, disimpan dalam arsip milik pengguna, dan dapat diunduh ulang dengan autentikasi. Tanpa Gemini, laporan tetap dapat diisi manual.
+Menu Laporan WFH memilih pegawai aktif, menampilkan jabatan/unit, meminta empat usulan tugas OpenAI, dan memungkinkan penyuntingan. Realisasi dan persentase diisi pengguna. Setelah konfirmasi pemeriksaan, laporan DOCX dibuat dari template sumber, disimpan dalam arsip milik pengguna, dan dapat diunduh ulang dengan autentikasi. Tanpa OpenAI, laporan tetap dapat diisi manual.
 
 ## Surat Perbantuan
 
@@ -55,7 +55,7 @@ Nama SK yang tersimpan dan diunduh otomatis mengikuti **nama pegawai_jabatan Plt
 
 Pengingat di daftar dan dashboard muncul mulai H-14, pada hari terakhir, dan sesudah habis berdasarkan WIB. Pada perpanjangan **+3 bulan**, tanggal mulai disarankan sehari setelah periode lama dan **dapat diubah manual sesuai SK baru**; tanggal akhir dihitung tiga bulan dari tanggal yang dipilih. Tanggal mulai baru harus sesudah tanggal mulai lama. Bila SK baru berlaku lebih awal, pengingat periode lama berhenti saat penggantinya mulai; jika ada jeda, masa tugas lama tetap ditandai habis sampai periode baru dimulai. Penugasan lain yang bertumpang tindih tetap ditolak.
 
-Tombol **Baca dengan Gemini** membaca SK PDF/DOCX yang dipilih atau SK tersimpan saat edit. Hasilnya mengisi nomor SK, jabatan Plt., unit tujuan, dan tanggal mulai/TMT (bukan tanggal penerbitan). Identitas dicocokkan dengan pegawai dari database; hasil yang meragukan atau berbeda identitas tidak mengisi form. Perubahan manual tidak ditimpa, sedangkan tanggal awal yang masih berupa saran dapat mengikuti TMT dari SK. Jabatan dan unit pada perpanjangan mengikuti riwayat asal. Hasil pembacaan tetap perlu diperiksa sebelum disimpan. DOC lama perlu dikonversi menjadi PDF/DOCX untuk pembacaan otomatis, atau tetap diisi manual.
+Tombol **Baca dengan OpenAI** membaca SK PDF/DOCX yang dipilih atau SK tersimpan saat edit. Hasilnya mengisi nomor SK, jabatan Plt., unit tujuan, dan tanggal mulai/TMT (bukan tanggal penerbitan). Identitas dicocokkan dengan pegawai dari database; hasil yang meragukan atau berbeda identitas tidak mengisi form. Perubahan manual tidak ditimpa, sedangkan tanggal awal yang masih berupa saran dapat mengikuti TMT dari SK. Jabatan dan unit pada perpanjangan mengikuti riwayat asal. Hasil pembacaan tetap perlu diperiksa sebelum disimpan. DOC lama perlu dikonversi menjadi PDF/DOCX untuk pembacaan otomatis, atau tetap diisi manual.
 
 Perpanjangan memerlukan nomor SK dan unggahan SK baru, serta tidak menghapus riwayat. Periode yang sudah diperpanjang tidak dapat diedit/dihapus sebelum periode lanjutannya dihapus. Gunakan **Selesai** untuk menghentikan pengingat penugasan yang telah berakhir lebih awal.
 
@@ -89,11 +89,11 @@ Uji: `npm.cmd run smoke:library`, `npm.cmd run smoke:google-drive-backup`, dan `
 npm.cmd run lint
 npm.cmd run build
 npm.cmd run smoke:wfh-report
-npm.cmd run smoke:gemini
+npm.cmd run smoke:openai-client
 npm.cmd run smoke:surat-perbantuan
 ```
 
-smoke:gemini menggunakan layanan Gemini dan kuota proyek dengan dokumen uji sintetis.
+`npm.cmd run smoke:openai` menguji server lokal dengan layanan OpenAI dan kuota proyek menggunakan dokumen sintetis.
 
 ## Data produksi
 

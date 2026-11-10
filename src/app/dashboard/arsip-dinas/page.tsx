@@ -14,7 +14,7 @@ export default async function ArsipDinasPage() {
     <div>
       <p className="text-sm font-medium text-emerald-700">Administrasi persuratan</p>
       <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-950 md:text-3xl">Arsip Dinas</h1>
-      <p className="mt-2 text-sm text-zinc-500">Simpan dan temukan dokumen dinas dalam PDF. Isi metadata dengan bantuan Gemini atau lengkapi secara manual.</p>
+      <p className="mt-2 text-sm text-zinc-500">Simpan dan temukan dokumen dinas dalam PDF. Isi metadata dengan bantuan OpenAI atau lengkapi secara manual.</p>
     </div>
     <ArsipDinas initialDocuments={documents} />
   </div>;

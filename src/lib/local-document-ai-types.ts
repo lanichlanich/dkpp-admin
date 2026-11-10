@@ -12,7 +12,7 @@ export const EXTRACTION_DATE_LABELS: Record<string, string> = {
 
 export type LocalDocumentSource = {
   fileName: string;
-  method: "text" | "ocr" | "text+ocr" | "gemini";
+  method: "text" | "ocr" | "text+ocr" | "openai";
   pageCount?: number;
 };
 

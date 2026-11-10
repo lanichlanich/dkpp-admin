@@ -232,7 +232,7 @@ export function DpcpForm({ employees, today, signatories }: { employees: DpcpEmp
       <Card className="border-emerald-200 bg-emerald-50/40">
         <CardHeader className="border-b border-emerald-100">
           <CardTitle className="flex items-center gap-2"><ScanText className="size-5 text-emerald-700" />Isi otomatis dari dokumen</CardTitle>
-          <CardDescription>Dokumen dibaca menggunakan Google Gemini. Data yang sudah Anda isi tidak akan ditimpa.</CardDescription>
+          <CardDescription>Dokumen dibaca menggunakan OpenAI. Data yang sudah Anda isi tidak akan ditimpa.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -241,14 +241,14 @@ export function DpcpForm({ employees, today, signatories }: { employees: DpcpEmp
             <p className="text-xs leading-5 text-zinc-500">Maksimal 5 file, {MAX_UPLOAD_SIZE_MB} MB per file, dan total {MAX_UPLOAD_SIZE_MB} MB. Gunakan PDF/DOCX atau foto hasil scan yang jelas.</p>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="flex items-center gap-2 text-xs text-emerald-800"><ShieldCheck className="size-4" />Dokumen dikirim ke Google Gemini untuk mengisi draf yang perlu Anda periksa.</p>
+            <p className="flex items-center gap-2 text-xs text-emerald-800"><ShieldCheck className="size-4" />Dokumen dikirim ke OpenAI untuk mengisi draf yang perlu Anda periksa.</p>
             <Button type="button" variant="outline" onClick={readAndFill} disabled={busy || !employee}>
               {extracting ? <><LoaderCircle className="animate-spin" />Membaca dokumen...</> : <><ScanText />Baca & isi form</>}
             </Button>
           </div>
           {extractionResult && (
             <div className="rounded-lg border border-emerald-200 bg-white/80 p-3 text-xs leading-5 text-emerald-950">
-              <p className="font-medium">Selesai diproses menggunakan Gemini: {extractionResult.model}.</p>
+              <p className="font-medium">Selesai diproses menggunakan OpenAI: {extractionResult.model}.</p>
               <p>Kolom berwarna kuning memiliki keyakinan rendah dan wajib diperiksa.</p>
               {extractionResult.warnings.length > 0 && <ul className="mt-2 list-disc pl-5">{extractionResult.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>}
             </div>

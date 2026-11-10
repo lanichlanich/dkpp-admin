@@ -29,12 +29,12 @@ Temuan khusus:
 - Banyak kode aplikasi masih untracked; jangan menganggap commit yang sekarang sudah berisi semua fitur.
 - `.gitignore` belum menutup `data/official-statement-documents/` dan `.tmp/`. `src/data/pegawai.json` mengandung data pegawai dan diimpor otomatis oleh `db.ts` ketika tabel kosong. Pisahkan data nyata dari source sebelum push; audit template dan seluruh riwayat Git untuk data pribadi serta rahasia.
 - Pembuatan tabel dan migrasi SQLite masih dijalankan saat modul diimpor; tabel `wfh_reports` dibuat terpisah di `wfh-report-store.ts`. Keduanya wajib masuk inventaris migrasi.
-- Ekstraksi dokumen saat ini menggunakan Gemini. `local-document-ai.ts` hanya meneruskan panggilan ke Gemini; jangan merancang deployment dengan asumsi masih menggunakan Ollama.
+- Ekstraksi dokumen saat ini menggunakan OpenAI. `local-document-ai.ts` hanya meneruskan panggilan ke OpenAI; jangan merancang deployment dengan asumsi masih menggunakan Ollama.
 - Upload dokumen dan total dokumen sumber untuk ekstraksi menerima hingga 2 MB. Alur request multipart tetap perlu diubah ketika Storage Supabase diterapkan.
 
 ## 2. Arsitektur tujuan
 
-GitHub private menyimpan source, lockfile, template yang sudah diperiksa, migrasi schema, dan pengujian. Vercel menjalankan UI, Server Actions, Route Handlers, generator DOCX dan integrasi Gemini. Supabase Postgres menyimpan seluruh data terstruktur; Supabase Storage private menyimpan semua dokumen asli dan hasil generator.
+GitHub private menyimpan source, lockfile, template yang sudah diperiksa, migrasi schema, dan pengujian. Vercel menjalankan UI, Server Actions, Route Handlers, generator DOCX dan integrasi OpenAI. Supabase Postgres menyimpan seluruh data terstruktur; Supabase Storage private menyimpan semua dokumen asli dan hasil generator.
 
 Rekomendasi fase pertama: pertahankan login aplikasi yang ada dan pindahkan tabel users/sessions ke Postgres. Pertahankan ID pengguna dan password hash sehingga akun dan relasi arsip tetap sama. Pengguna login ulang di domain baru karena cookie localhost tidak berpindah domain. Simpan snapshot sessions untuk kelengkapan backup, tetapi jangan mengaktifkan kembali sesi lama di produksi. Perpindahan ke Supabase Auth adalah proyek lanjutan dengan mapping identitas dan pengujian tersendiri, bukan prasyarat penggunaan Database/Storage Supabase.
 
@@ -93,7 +93,7 @@ Pertahankan storage_name/UUID; laporan WFH menggunakan ID ditambah `.docx`. Simp
 2. Refactor simpan, lihat, download, penggantian dan penghapusan pada semua modul arsip. Generator membentuk Buffer di memori, menyimpan ke Storage lalu mengaktifkan metadata.
 3. Upload browser langsung ke Storage melalui URL/token upload terbatas yang diterbitkan server setelah otorisasi. Finalisasi server memeriksa keberadaan, ukuran, MIME/signature dan kepemilikan; jangan percaya metadata dari browser.
 4. Download memeriksa akses lalu mengarahkan ke signed URL berumur pendek, dengan nama file unduhan sesuai arsip. Jangan mengirim dokumen besar melalui response buffer Vercel.
-5. Ekstraksi Gemini memakai object key dari upload sementara yang sudah diverifikasi, bukan multipart besar ke Vercel. Server membaca berkas untuk Gemini; batasi ukuran, waktu, retry dan bersihkan objek sementara setelah selesai/kedaluwarsa. Hasil tetap draft yang ditinjau pengguna.
+5. Ekstraksi OpenAI memakai object key dari upload sementara yang sudah diverifikasi, bukan multipart besar ke Vercel. Server membaca berkas untuk OpenAI; batasi ukuran, waktu, retry dan bersihkan objek sementara setelah selesai/kedaluwarsa. Hasil tetap draft yang ditinjau pengguna.
 6. Postgres dan Storage tidak memiliki satu transaksi bersama. Gunakan status pending/ready, retry idempoten, dan cleanup terjadwal untuk kegagalan parsial. Saat mengganti file, verifikasi file baru sebelum beralih; hapus versi lama hanya setelah metadata berhasil. Jangan menghapus arsip asli selama masa validasi migrasi.
 7. Pastikan template DOCX ikut bundle runtime Vercel. Direktori kerja Vercel tidak menjadi penyimpanan permanen; file sementara bila diperlukan tidak boleh menjadi sumber arsip.
 
@@ -104,7 +104,7 @@ Pertahankan storage_name/UUID; laporan WFH menggunakan ID ditambah `.docx`. Simp
 - Login/logout, akun lama, profil, register sesuai kebijakan akses, sesi kedaluwarsa, notifikasi, dashboard, pencarian/filter/paginasi pegawai, status mutasi/pensiun, timeline dan perhitungan BUP.
 - KGB, DPCP, PAK, WFH, laporan WFH, surat pengantar, Hukdis/Hukda: isi form, validasi, kalkulasi, generate, arsip, download ulang, edit/hapus yang tersedia. Tabel kosong tetap harus dites dengan fixture staging.
 - Dokumen pegawai: semua jenis SK/SKP, batas upload 2 MB, ganti/hapus, aturan jenis ASN, metadata serta keterkaitan dengan pegawai yang benar.
-- AI: input PDF/gambar/DOCX, batas 2 MB per file dan total, identitas tidak cocok, timeout/error Gemini, draft dan pengisian manual. Uji URL lama `/api/local-ai/extract` serta alur baru bila masih dipakai.
+- AI: input PDF/gambar/DOCX, batas 2 MB per file dan total, identitas tidak cocok, timeout/error OpenAI, draft dan pengisian manual. Uji URL lama `/api/local-ai/extract` serta alur baru bila masih dipakai.
 - Uji tanpa login dan akses pengguna lain untuk operasi baca/tulis/upload/download sesuai matriks izin. Storage private, secret tidak masuk bundle, tidak ada data sensitif pada log.
 - Jalankan lint, build, seluruh smoke relevan pada database uji; adaptasi tes yang masih bergantung SQLite. Tambahkan tes KGB dan perpindahan data/storage bila belum tercakup.
 - Render contoh hasil DOCX setiap jenis dan periksa setiap halaman, kop, tanda tangan, tabel, tag tersisa, dan part ZIP yang harus tetap identik. Catatan lama menyebut masalah fidelity PAK; itu belum diverifikasi ulang pada audit ini. Jalankan kembali `smoke:pak` dan QA visual sebelum menyatakan lolos.

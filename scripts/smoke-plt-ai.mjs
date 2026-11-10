@@ -8,7 +8,7 @@ import ts from "typescript";
 const require = createRequire(import.meta.url), modules = new Map();
 const nip = "200001012020121099";
 let signedIn = true, menus = ["daftar-plt"], calls = 0, capturedContext = "", pending = null, failModel = false, output;
-class GeminiApiError extends Error { constructor(message, status = 502) { super(message); this.status = status; } }
+class OpenAiApiError extends Error { constructor(message, status = 502) { super(message); this.status = status; } }
 const reset = () => { output = { values: { employeeName: "Pegawai Uji", employeeNip: nip, skNumber: "800/AI/2027", actingPosition: "Kepala Bidang Contoh", actingUnit: "Bidang Contoh", startDate: "2027-02-05" }, confidence: Object.fromEntries(["employeeName", "employeeNip", "skNumber", "actingPosition", "actingUnit", "startDate"].map(key => [key, "high"])), warnings: [], identityMismatch: false }; };
 reset();
 const user = () => signedIn ? { id: "plt-ai-user" } : null;
@@ -18,7 +18,7 @@ function load(file) {
   const mod = new Module(filename); mod.filename = filename; mod.paths = Module._nodeModulePaths(path.dirname(filename)); modules.set(filename, mod);
   mod.require = name => {
     if (name === "server-only") return {};
-    if (name === "@/lib/gemini-client") return { GeminiApiError, requestGeminiJson: async (_instructions, parts) => { calls++; capturedContext = parts[0].text; if (failModel) throw new GeminiApiError("Kuota Gemini tercapai.", 429); if (pending) await pending; return { value: output, model: "gemini-test" }; } };
+    if (name === "@/lib/openai-client") return { ...load("src/lib/openai-client.ts"), OpenAiApiError, requestOpenAiJson: async (_instructions, parts) => { calls++; capturedContext = parts[0].text; if (failModel) throw new OpenAiApiError("Kuota OpenAI tercapai.", 429); if (pending) await pending; return { value: output, model: "openai-test" }; } };
     if (name === "@/lib/session") return { getCurrentUser: async () => user() };
     if (name === "@/lib/authorization") return { checkApiAccess: async requested => !signedIn ? Response.json({}, { status: 401 }) : requested.some(menu => menus.includes(menu)) ? null : Response.json({}, { status: 403 }) };
     if (name === "@/lib/database") return { database: { prepare: () => ({ get: async requestedNip => requestedNip === nip ? { name: "Pegawai Uji dari Database" } : undefined }) } };
@@ -52,7 +52,7 @@ applied = applyPltExtraction({ ...initial, actingPosition: "Jabatan asal riwayat
 assert.equal(applied.values.actingPosition, "Jabatan asal riwayat"); assert.equal(applied.values.actingUnit, "Unit riwayat");
 assert.equal(applied.filled.length, 2);
 result.confidence.startDate = "low"; assert.equal(applyPltExtraction(initial, result, new Set(), false).values.startDate, "", "An unreadable TMT must not leave a suggested date presented as extracted");
-assert.equal(applyPltExtraction(initial, result, new Set(["startDate"]), false).values.startDate, initial.startDate, "Manual/stored dates must be retained even when Gemini cannot read the TMT");
+assert.equal(applyPltExtraction(initial, result, new Set(["startDate"]), false).values.startDate, initial.startDate, "Manual/stored dates must be retained even when OpenAI cannot read the TMT");
 reset(); output.values.startDate = "2027-02-30";
 result = await (await POST(request())).json(); assert.equal(result.values.startDate, "");
 reset(); output.values.employeeNip = "200001012020121088";
@@ -64,7 +64,7 @@ assert.equal((await POST(request("plt-assignment", "000000000000000000"))).statu
 const beforeInvalid = calls;
 assert.equal((await POST(request("plt-assignment", nip, new File(["text"], "bad.pdf")))).status, 422);
 assert.equal((await POST(request("plt-assignment", nip, new File([new Uint8Array(2 * 1024 * 1024 + 1)], "large.pdf")))).status, 422);
-assert.equal(calls, beforeInvalid, "Invalid/oversized files must be rejected before Gemini calls");
+assert.equal(calls, beforeInvalid, "Invalid/oversized files must be rejected before OpenAI calls");
 assert.equal((await POST(request("employee-document"))).status, 403, "Plt permission must not grant extraction for another feature");
 menus = ["pegawai"]; assert.equal((await POST(request())).status, 403);
 output.values.nomorSurat = "SK-LAMA"; output.confidence.nomorSurat = "high";
@@ -75,9 +75,9 @@ menus = ["arsip-dinas"]; output.values.nomor = "ARSIP-LAMA"; output.confidence.n
 assert.equal((await (await POST(request("official-archive"))).json()).values.nomor, "ARSIP-LAMA");
 menus = ["daftar-plt"];
 failModel = true; assert.equal((await POST(request())).status, 429);
-failModel = false; assert.equal((await POST(request())).status, 200, "Failed Gemini calls must release the request guard");
+failModel = false; assert.equal((await POST(request())).status, 200, "Failed OpenAI calls must release the request guard");
 let release; pending = new Promise(resolve => { release = resolve; });
 const first = POST(request());
 assert.equal((await POST(request())).status, 429); release(); await first; pending = null;
 signedIn = false; assert.equal((await POST(request())).status, 401);
-console.log("PASS Plt Gemini: schema/normalization, server employee identity, mismatched NIP, manual-field preservation, renewal target preservation, invalid/oversized files before API call, feature-scoped authorization and concurrent-request guard.");
+console.log("PASS Plt OpenAI: schema/normalization, server employee identity, mismatched NIP, manual-field preservation, renewal target preservation, invalid/oversized files before API call, feature-scoped authorization and concurrent-request guard.");

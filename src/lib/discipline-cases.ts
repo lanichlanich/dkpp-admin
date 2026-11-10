@@ -1,7 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { database as db } from "@/lib/database";
-import { disciplineCaseSchema, disciplineCaseStatus, type DisciplineCase, type DisciplineEmployee } from "@/lib/discipline-case";
+import { disciplineCaseSchema, disciplineCaseStatus, emptyDisciplineCase, type DisciplineCase, type DisciplineEmployee } from "@/lib/discipline-case";
 
 export class DisciplineCaseError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -14,7 +14,9 @@ type CaseRow = {
 };
 export type DisciplineCaseSummary = { id: string; employee_name: string; employee_nip: string; reference: string; status: string; created_at: string | Date };
 export function listDisciplineCases() {
-  return db.prepare(`SELECT id, employee_name, employee_nip, reference, status, created_at
+  return db.prepare(`SELECT id, employee_name, employee_nip, reference, created_at,
+    CASE WHEN status IN ('Upaya administratif', 'Tanggal berlaku tercatat', 'Keputusan diterima', 'Keputusan ditetapkan')
+      THEN 'Hasil pemeriksaan tercatat' ELSE status END AS status
     FROM discipline_cases ORDER BY updated_at DESC, id DESC`).all<DisciplineCaseSummary>();
 }
 
@@ -33,15 +35,17 @@ export async function getDisciplineCase(id: string): Promise<DisciplineCase | un
 export async function saveDisciplineCase(userId: string, input: unknown, existing?: { id: string; version: number }): Promise<DisciplineCase> {
   const parsed = disciplineCaseSchema.safeParse(input);
   if (!parsed.success) throw new DisciplineCaseError(parsed.error.issues[0]?.message || "Periksa data perkara.", 422);
-  const values = parsed.data;
   const current = existing ? await getDisciplineCase(existing.id) : undefined;
   if (existing && !current) throw new DisciplineCaseError("Perkara tidak ditemukan.", 404);
+  const values = { ...parsed.data,
+    decision: current?.values.decision ?? emptyDisciplineCase.decision,
+    authority: current?.values.authority ?? emptyDisciplineCase.authority,
+  };
   const isLegacy = current && current.values.absenceDays === undefined;
   if (!isLegacy && values.absenceDays === undefined) throw new DisciplineCaseError("Masukkan jumlah hari kerja tidak masuk.", 422);
   if (isLegacy && (values.absenceDays !== undefined || !values.reference || !values.allegation))
     throw new DisciplineCaseError("Data dugaan dan nomor perkara lama harus tetap tersedia.", 422);
   if (current && current.employee.nip !== values.employeeNip) throw new DisciplineCaseError("Pegawai pada perkara yang sudah tersimpan tidak dapat diganti.", 409);
-  if (current?.values.decision.issued && !values.decision.issued) throw new DisciplineCaseError("Penetapan yang tercatat tidak dapat dikembalikan menjadi draf. Catat tindak lanjut pada upaya administratif.", 409);
   if (current?.values.decision.issued && (current.values.absenceDays !== values.absenceDays ||
     Boolean(current.values.consecutiveAbsence) !== Boolean(values.consecutiveAbsence)))
     throw new DisciplineCaseError("Jumlah dan pola ketidakhadiran pada perkara yang sudah ditetapkan tidak dapat diubah.", 409);

@@ -11,11 +11,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (denied) return denied;
   return disciplineCaseResponse(async () => {
     const { id, kind } = await params;
-    const template = disciplineDocuments.find(item => item.id === kind);
+    const template = kind === "bap" ? kind : disciplineDocuments.find(item => item.id === kind)?.id;
     if (!template || !z.uuid().safeParse(id).success) throw new DisciplineCaseError("Format atau perkara tidak ditemukan.", 404);
     const record = await getDisciplineCase(id);
     if (!record) throw new DisciplineCaseError("Perkara tidak ditemukan.", 404);
-    const document = await generateDisciplineDocument(record, template.id);
+    const document = await generateDisciplineDocument(record, template);
     return new Response(new Uint8Array(document.bytes), { headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(document.fileName)}`,

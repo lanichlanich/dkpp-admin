@@ -38,7 +38,7 @@ export default async function DisciplineCasesPage({ searchParams }: {
     <header className="flex flex-wrap items-start justify-between gap-4">
       <div><p className="text-sm font-medium text-indigo-700">Kepegawaian</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">Penjatuhan Hukuman Disiplin</h1>
-        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Kelola perkara ketidakhadiran PNS, pemanggilan, pemeriksaan, keputusan, dan penyampaiannya. Draf Word menggunakan format lampiran dan kop DKPP.</p>
+        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Kelola perkara ketidakhadiran PNS mulai dari pemanggilan hingga laporan hasil pemeriksaan. Draf Word menggunakan format lampiran dan kop DKPP.</p>
       </div>
       <Link href={`${pagePath}?baru=1`} className="inline-flex min-h-9 items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-2">
         <Plus className="size-4" /> Tambah perkara
@@ -47,16 +47,14 @@ export default async function DisciplineCasesPage({ searchParams }: {
     <details className="rounded-xl border bg-card p-4 text-sm">
       <summary className="cursor-pointer font-medium">Acuan proses dan kewenangan</summary>
       <ul className="mt-3 list-disc space-y-2 pl-5 leading-6 text-muted-foreground">
-        <li>Tingkat hukuman dan dasar pasal dihitung dari jumlah hari kerja tidak masuk tanpa alasan yang sah. Penetapan tetap berdasarkan hasil pemeriksaan dan kewenangan pejabat. Untuk hukuman sedang, periksa ketentuan peralihan Pasal 42.</li>
-        <li>Sampaikan panggilan tertulis paling lambat 7 hari kerja sebelum pemeriksaan. Bila PNS tidak hadir pada Panggilan I, lakukan Panggilan II paling lambat 7 hari kerja sejak jadwal pertama. Bila keduanya tidak dihadiri, catat alat bukti dan keterangan sebagai dasar.</li>
+        <li>Tingkat dugaan dan dasar pasal dihitung dari jumlah hari kerja tidak masuk tanpa alasan yang sah. Teruskan laporan hasil melalui jalur hierarki sesuai kewenangan.</li>
+        <li>Sampaikan panggilan tertulis paling lambat 7 hari kerja sebelum pemeriksaan. Bila PNS tidak hadir pada Panggilan I, lakukan Panggilan II paling lambat 7 hari kerja sejak jadwal pertama. Jadwal kedua juga dapat dicatat untuk pemeriksaan lanjutan. Bila keduanya tidak dihadiri, catat alat bukti dan keterangan sebagai dasar laporan.</li>
         <li>Pemeriksaan tertutup dituangkan dalam BAP. Untuk dugaan hukuman berat, tim pemeriksa wajib dibentuk. Untuk hukuman sedang, tim dapat dibentuk. Penolakan tanda tangan PNS dicatat pada BAP.</li>
-        <li>Sampaikan keputusan paling lambat 14 hari kerja sejak penetapan. Catat tanggal diterima. Peraturan BKN menetapkan hari kerja ke-15 sejak diterima sebagai waktu berlaku. Jika ada keberatan atau banding, ikuti keputusan upaya administratif.</li>
-        <li>Verifikasi tanggal terhadap kalender kerja instansi. Dokumentasikan keputusan dan bukti pemeriksaan untuk pengarsipan serta pencatatan di I’DIS BKN.</li>
+        <li>Catat BAP berdasarkan panggilan yang bersangkutan. Verifikasi tanggal terhadap kalender kerja instansi dan arsipkan hasil pemeriksaan serta alat bukti.</li>
       </ul>
       <p className="mt-3 flex flex-wrap gap-3 text-indigo-700">
         <a className="underline" href="https://peraturan.bpk.go.id/Details/177031/pp-no-94-tahun-2021">PP 94 Tahun 2021</a>
         <a className="underline" href="https://peraturan.bpk.go.id/Details/225406/peraturan-bkn-no-6-tahun-2022">Peraturan BKN 6 Tahun 2022</a>
-        <a className="underline" href="https://peraturan.bpk.go.id/Details/175828/pp-no-79-tahun-2021">PP 79 Tahun 2021</a>
       </p>
     </details>
 

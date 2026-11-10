@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  classifyDisciplineAbsence, disciplineCaseSchema, disciplineCaseStatus, disciplineDocuments, disciplineSanctions, emptyDisciplineCase,
-  type DisciplineCase, type DisciplineCaseInput, type DisciplineDocument, type DisciplineEmployee, type DisciplinePerson,
+  classifyDisciplineAbsence, disciplineCalls, disciplineCaseSchema, disciplineCaseStatus, disciplineDocuments, emptyDisciplineCase, getDisciplineExaminations,
+  type DisciplineCase, type DisciplineCaseInput, type DisciplineDocument, type DisciplineEmployee, type DisciplineExamination, type DisciplinePerson,
 } from "@/lib/discipline-case";
 
 const steps: { title: string; fields: (keyof DisciplineCaseInput)[] }[] = [
@@ -19,7 +19,6 @@ const steps: { title: string; fields: (keyof DisciplineCaseInput)[] }[] = [
   { title: "Tim pemeriksa", fields: ["team"] },
   { title: "Pemanggilan", fields: ["firstCall", "secondCall"] },
   { title: "Pemeriksaan", fields: ["review"] },
-  { title: "Keputusan", fields: ["authority", "decision"] },
   { title: "Draf surat", fields: [] },
 ];
 const selectStyle = "min-h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm";
@@ -102,6 +101,9 @@ function PersonFields({ title, person, employees, change, disabled }: {
 const appointmentFields: Field[] = [["date", "Tanggal agenda", "date"], ["time", "Jam (WIB)", "time"], ["place", "Tempat"]];
 const callFields: Field[] = [["number", "Nomor panggilan"], ["letterDate", "Tanggal surat", "date"], ...appointmentFields,
   ["attendance", "Kehadiran", [["hadir", "Hadir"], ["tidak-hadir", "Tidak hadir"]]]];
+const examinationFields: Field[] = [["date", "Tanggal pemeriksaan", "date"], ["place", "Tempat atau media pemeriksaan"],
+  ["signature", "Pencatatan berita acara", [["ditandatangani", "Ditandatangani"], ["menolak", "PNS menolak menandatangani"]]],
+  ["questions", "Pertanyaan dan jawaban (beri nomor setiap butir)", "multiline"]];
 const endpoint = "/api/penjatuhan-hukdis";
 
 export function DisciplineCaseForm({ initial, initialStep = 0, employees }: { initial?: DisciplineCase; initialStep?: number; employees: DisciplineEmployee[] }) {
@@ -109,7 +111,7 @@ export function DisciplineCaseForm({ initial, initialStep = 0, employees }: { in
   const heading = useRef<HTMLHeadingElement>(null);
   const [record, setRecord] = useState(initial);
   const [values, setValues] = useState(initial?.values ?? emptyDisciplineCase);
-  const [step, setStep] = useState(Number.isInteger(initialStep) && steps[initialStep] ? initialStep : 0);
+  const [step, setStep] = useState(Number.isInteger(initialStep) ? Math.min(Math.max(initialStep, 0), steps.length - 1) : 0);
   const [furthestStep, setFurthestStep] = useState(step);
   const previousStep = useRef(step);
   const [dirty, setDirty] = useState(false);
@@ -120,20 +122,24 @@ export function DisciplineCaseForm({ initial, initialStep = 0, employees }: { in
   const employee = record?.employee ?? employees.find(p => p.nip === values.employeeNip);
   const isLegacy = initial !== undefined && initial.values.absenceDays === undefined;
   const absence = classifyDisciplineAbsence(values.absenceDays, values.consecutiveAbsence);
-  const level = isLegacy ? values.level : absence?.level;
-  const availableSanctions = disciplineSanctions.filter(item => isLegacy ? (!level || item.level === level) : absence?.sanctions.includes(item.id));
+  const sessions = getDisciplineExaminations(values);
+  const missedBoth = disciplineCalls.every(key => values[key].attendance === "tidak-hadir");
+  const evidenceOnly = values.review.signature === "dua-kali-tidak-hadir";
   const change = (next: Partial<DisciplineCaseInput>) => { setValues(v => ({ ...v, ...next })); setDirty(true); setSaved(false); };
-  const nested = <K extends "firstCall" | "secondCall" | "team" | "review" | "decision">(key: K, field: string, value: string | DisciplinePerson | boolean) =>
+  const nested = <K extends "firstCall" | "secondCall" | "team" | "review">(key: K, field: string, value: string | DisciplinePerson) =>
     change({ [key]: { ...values[key], [field]: value } } as Pick<DisciplineCaseInput, K>);
-  const editPerson = (title: string, key: "examiner" | "authority") =>
-    <PersonFields title={title} person={values[key]} employees={employees} disabled={busy !== null} change={person => change({ [key]: person })} />;
+  const examinerFields = <PersonFields title="Atasan langsung atau ketua tim pemeriksa" person={values.examiner} employees={employees}
+    disabled={busy !== null} change={examiner => change({ examiner })} />;
 
   function changeAbsence(days: number | undefined, consecutive: boolean) {
-    const next = classifyDisciplineAbsence(days, consecutive);
-    const decision = next?.sanctions.some(id => id === values.decision.sanction)
-      ? values.decision : { ...values.decision, sanction: "" };
     setMessage("");
-    change({ absenceDays: days, consecutiveAbsence: consecutive, decision });
+    change({ absenceDays: days, consecutiveAbsence: consecutive });
+  }
+
+  function changeExamination(key: (typeof disciplineCalls)[number], session?: DisciplineExamination) {
+    setMessage("");
+    change({ review: { ...values.review, sessions: { ...sessions, [key]: session }, date: "", place: "", questions: "",
+      signature: evidenceOnly ? "dua-kali-tidak-hadir" : "" } });
   }
 
   useEffect(() => {
@@ -258,11 +264,11 @@ export function DisciplineCaseForm({ initial, initialStep = 0, employees }: { in
       {section === "Pegawai dan atasan" && <>
         <EmployeePicker label="PNS yang diperiksa" employees={employees} selected={employee} disabled={Boolean(record) || busy !== null}
           required change={person => change({ employeeNip: person.nip })} />
-        {editPerson("Atasan langsung atau ketua tim pemeriksa", "examiner")}
+        {examinerFields}
       </>}
       {section === "Pemanggilan" && <>
-        <p className="text-sm text-muted-foreground">Periksa jarak hari kerja antara surat dan pemeriksaan serta tenggat Panggilan II. Catat ketidakhadiran hanya setelah jadwalnya lewat.</p>
-        {(["firstCall", "secondCall"] as const).map((key, index) => <section key={key} className="space-y-3 rounded-lg border p-4">
+        <p className="text-sm text-muted-foreground">Panggilan II juga bisa digunakan untuk pemeriksaan lanjutan jika PNS hadir pada Panggilan I. Catat kehadiran setelah jadwalnya lewat.</p>
+        {disciplineCalls.map((key, index) => <section key={key} className="space-y-3 rounded-lg border p-4">
           <h3 className="font-medium">Panggilan {index === 0 ? "I" : "II"}</h3>
           <Fields fields={callFields} values={values[key]} change={(field, value) => nested(key, field, value)} />
         </section>)}
@@ -270,49 +276,51 @@ export function DisciplineCaseForm({ initial, initialStep = 0, employees }: { in
       {section === "Tim pemeriksa" && <>
         <p className="text-sm text-muted-foreground">Tim dapat dibentuk untuk dugaan hukuman sedang dan wajib untuk dugaan hukuman berat. Isi pejabat pembentuk berdasarkan penetapan atau penunjukan yang berlaku.</p>
         <Fields fields={[["number", "Nomor surat pembentukan"], ["date", "Tanggal pembentukan", "date"]]} values={values.team} change={(field, value) => nested("team", field, value)} />
-        {editPerson("Atasan langsung atau ketua tim pemeriksa", "examiner")}
+        {examinerFields}
         {([["oversight", "Unsur pengawasan"], ["hr", "Unsur kepegawaian"], ["other", "Pejabat lain yang ditunjuk (opsional)"], ["issuer", "PPK atau pejabat yang ditunjuk"]] as const)
           .map(([key, title]) => <PersonFields key={key} title={title} person={values.team[key]} employees={employees}
             disabled={busy !== null} change={p => nested("team", key, p)} />)}
       </>}
       {section === "Pemeriksaan" && <>
-        <Fields fields={[["date", "Tanggal pemeriksaan", "date"], ["place", "Tempat atau media pemeriksaan"],
-          ["signature", "Pencatatan berita acara", [["ditandatangani", "Ditandatangani"], ["menolak", "PNS menolak menandatangani"], ["dua-kali-tidak-hadir", "Tidak hadir pada dua panggilan"]]],
-          ["outcome", "Kesimpulan", [["terbukti", "Terbukti"], ["tidak-terbukti", "Tidak terbukti"]]],
-          ["questions", "Pertanyaan dan jawaban (beri nomor setiap butir)", "multiline"], ["evidence", "Alat bukti dan keterangan", "multiline"],
-          ["findings", "Uraian hasil pemeriksaan atau penelaahan bukti", "multiline"],
-          ["reportDate", "Tanggal laporan hasil pemeriksaan", "date"], ["recipient", "Pejabat tujuan laporan"], ["recipientPlace", "Tempat tujuan laporan"],
-          ["recommendation", "Rekomendasi pemeriksa"], ["aggravating", "Faktor memberatkan", "multiline"],
-          ["mitigating", "Faktor meringankan", "multiline"], ["impact", "Dampak perbuatan", "multiline"]]}
-          values={values.review} change={(field, value) => nested("review", field, value)} />
-      </>}
-      {section === "Keputusan" && <>
-        <p className="text-sm text-muted-foreground">Pilih jenis hukuman dan pejabat berdasarkan kewenangan yang berlaku. Untuk hukuman sedang, periksa ketentuan peralihan Pasal 42 sebelum memilih jenisnya.</p>
-        <Fields fields={[["number", "Nomor keputusan"], ["date", "Tanggal keputusan", "date"], ["place", "Tempat penetapan"],
-          ["sanction", "Jenis hukuman", availableSanctions.map(item => [item.id, item.label] as const)],
-          ["consideration", "Pertimbangan tambahan", "multiline"], ["extraBasis", "Dasar hukum tambahan"]]}
-          values={values.decision} change={(field, value) => nested("decision", field, value)} />
-        {editPerson("Pejabat yang berwenang menghukum", "authority")}
-        <label className="flex items-start gap-2 rounded-lg border p-3 text-sm"><input type="checkbox" checked={values.decision.issued}
-          disabled={Boolean(record?.values.decision.issued) || (!isLegacy && !level)} onChange={e => nested("decision", "issued", e.target.checked)} />
-          <span>Keputusan sudah ditetapkan oleh pejabat berwenang</span></label>
+        <p className="text-sm text-muted-foreground">Tanggal dan tempat terisi dari jadwal masing-masing panggilan. Sesuaikan dengan pelaksanaan sebenarnya sebelum menyimpan BAP.</p>
+        {disciplineCalls.map((key, index) => {
+          const call = values[key];
+          const session = sessions[key];
+          const examination: DisciplineExamination = session ?? { date: call.date, place: call.place, questions: "", signature: "" };
+          const canRecord = Boolean(call.date && call.attendance !== "tidak-hadir");
+          return <fieldset key={key} className="min-w-0 space-y-3 rounded-lg border p-4">
+            <legend className="px-1 font-medium">Pemeriksaan Panggilan {index === 0 ? "I" : "II"}</legend>
+            {call.attendance && <p className="text-sm text-muted-foreground">Kehadiran PNS pada panggilan {call.attendance === "hadir" ? "tercatat hadir." : "tercatat tidak hadir."}</p>}
+            {canRecord || session
+              ? <Fields fields={examinationFields} values={examination} change={(field, value) => changeExamination(key, { ...examination, [field]: value })} />
+              : <p className="text-sm text-muted-foreground">{call.date ? "Panggilan ini tidak menghasilkan BAP." : "Isi jadwal di langkah Pemanggilan untuk mencatat pemeriksaan."}</p>}
+            {session && !canRecord && <Button type="button" variant="outline" size="sm" onClick={() => changeExamination(key)}>
+              Kosongkan catatan pemeriksaan
+            </Button>}
+          </fieldset>;
+        })}
+        {(missedBoth || evidenceOnly) && <label className="flex items-start gap-2 rounded-lg border p-3 text-sm">
+          <input type="checkbox" className="mt-0.5 size-4" checked={evidenceOnly}
+            onChange={e => nested("review", "signature", e.target.checked ? "dua-kali-tidak-hadir" : "")} />
+          <span>Telaah bukti karena PNS tidak hadir pada kedua panggilan</span>
+        </label>}
         <section className="space-y-3 rounded-lg border p-4">
-          <h3 className="font-medium">Panggilan untuk menerima keputusan</h3>
-          <Fields fields={[["letterDate", "Tanggal surat panggilan", "date"], ...appointmentFields, ["recipientPlace", "Tempat tujuan surat"]]}
-            values={values.decision.delivery} change={(field, value) => change({ decision: { ...values.decision, delivery: { ...values.decision.delivery, [field]: value } } })} />
+          <h3 className="font-medium">Laporan hasil pemeriksaan</h3>
+          <Fields fields={[["outcome", "Kesimpulan", [["terbukti", "Terbukti"], ["tidak-terbukti", "Tidak terbukti"]]],
+            ["evidence", "Alat bukti dan keterangan", "multiline"], ["findings", "Uraian hasil pemeriksaan atau penelaahan bukti", "multiline"],
+            ["reportDate", "Tanggal laporan hasil pemeriksaan", "date"], ["recipient", "Pejabat tujuan laporan"], ["recipientPlace", "Tempat tujuan laporan"],
+            ["recommendation", "Rekomendasi pemeriksa"], ["aggravating", "Faktor memberatkan", "multiline"],
+            ["mitigating", "Faktor meringankan", "multiline"], ["impact", "Dampak perbuatan", "multiline"]]}
+            values={values.review} change={(field, value) => nested("review", field, value)} />
         </section>
-        <Fields fields={[["sent", "Tanggal disampaikan atau dikirim", "date"], ["received", "Tanggal diterima", "date"],
-          ["effective", "Tanggal berlaku (setelah diverifikasi)", "date"],
-          ["appeal", "Upaya administratif", [["tidak-diajukan", "Tidak diajukan"], ["keberatan", "Keberatan dalam proses"], ["banding", "Banding dalam proses"], ["diputus", "Sudah diputus"]]],
-          ["appealDate", "Tanggal pengajuan upaya administratif", "date"], ["appealResult", "Hasil upaya administratif", "multiline"]]}
-          values={values.decision} change={(field, value) => nested("decision", field, value)} />
       </>}
       {section === "Draf surat" && <>
-        <p className="text-sm text-muted-foreground">Unduh Word dari data perkara yang sudah disimpan. Format keputusan tersedia untuk tiga jenis hukuman ringan. Untuk hukuman sedang dan berat, catat keputusan yang ditetapkan oleh pejabat berwenang.</p>
+        <p className="text-sm text-muted-foreground">Unduh surat panggilan, pembentukan tim, BAP setiap panggilan, dan laporan hasil untuk diteruskan kepada pejabat yang berwenang.</p>
         {(!record || dirty) && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">Simpan perkara sebelum mengunduh.</p>}
         <div className="grid gap-2 lg:grid-cols-2">
           {disciplineDocuments.map(item => <Button key={item.id} type="button" variant="outline"
-            className="h-auto min-h-10 justify-start whitespace-normal text-left" disabled={!record || dirty}
+            className="h-auto min-h-10 justify-start whitespace-normal text-left"
+            disabled={!record || dirty || (item.id === "bap-1" && !sessions.firstCall) || (item.id === "bap-2" && !sessions.secondCall)}
             onClick={() => download(item.id)}>{busy === item.id ? <LoaderCircle className="animate-spin" /> : <Download />}{item.label}</Button>)}
         </div>
       </>}

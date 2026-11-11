@@ -11,7 +11,6 @@ const weekday = new Intl.DateTimeFormat("id-ID", { weekday: "long", timeZone: "U
 const dateText = (date: string) => date ? dateFormat.format(new Date(`${date}T00:00:00Z`)) : "";
 const dayText = (date: string) => date ? weekday.format(new Date(`${date}T00:00:00Z`)) : "";
 const official = (p: DisciplinePerson) => Boolean(p.name && p.nip && p.position);
-const sig = (p: DisciplinePerson) => p.name ? `${p.name}\nNIP ${p.nip}\nTanda tangan: ____________________` : "";
 const personTags = (key: string, person: DisciplinePerson) => ({
   [`${key}_name`]: person.name || "—",
   [`${key}_nip`]: person.nip || "—",
@@ -32,7 +31,9 @@ export async function generateDisciplineDocument(record: DisciplineCase, kind: D
   const reportedDates = Object.values(sessions).flatMap(item => item?.signature && item.date && item.questions ? [item.date] : []).sort();
   const evidenceOnly = review.signature === "dua-kali-tidak-hadir";
   const teamNeeded = Boolean(team.number) || values.level === "Berat";
-  const fullTeam = Boolean(team.number && team.date && official(examiner) && official(team.oversight) && official(team.hr) && official(team.issuer));
+  const fullTeam = Boolean(team.number && team.date && official(examiner) && official(team.oversight) && official(team.hr)
+    && official(team.issuer) && (!team.other.name || official(team.other)));
+  const examiners = teamNeeded ? [examiner, team.oversight, team.hr, team.other].filter(person => person.name) : [examiner];
   const missing = (message: string) => { throw new DisciplineCaseError(message, 422); };
   if (isCall && (!call.number || !call.date || !call.letterDate || !call.time || !call.place || !official(examiner)))
     missing("Lengkapi nomor, tanggal surat, jadwal panggilan, dan identitas pemeriksa.");
@@ -61,9 +62,9 @@ export async function generateDisciplineDocument(record: DisciplineCase, kind: D
     review_date: dateText(session?.date ?? ""), review_day: dayText(session?.date ?? ""), review_place: session?.place ?? "",
     questions: session?.questions ?? "", signature_note: session?.signature === "menolak" ? "PNS yang diperiksa tidak bersedia menandatangani berita acara pemeriksaan." : "",
     examination_basis: team.number ? `surat pembentukan Tim Pemeriksa Nomor ${team.number}` : "wewenang pemeriksaan sebagai atasan langsung",
-    employee_signature: sig(employee),
-    bap_signatures: [examiner, team.oversight, team.hr, team.other].map(sig).filter(Boolean).join("\n\n"),
-    bap_other: [team.oversight, team.hr, team.other].filter(p => p.name).map((p, i) => `${i + 2}. Nama: ${p.name}\nNIP: ${p.nip}\nPangkat: ${p.rank}\nJabatan: ${p.position}`).join("\n"),
+    bap_examiners: examiners.map((person, index) => ({ name: person.name, nip: person.nip, rank: person.rank || "—", position: person.position,
+      identity_label: teamNeeded ? `${index + 1}. Nama` : "Nama" })),
+    bap_signer_heading: teamNeeded ? "Tim Pemeriksa" : "Pejabat Pemeriksa",
     findings: review.findings,
     incident_date_heading: isAttendanceCase ? "HARI" : "WAKTU",
     incident_place_heading: isAttendanceCase ? "POLA" : "TEMPAT",
@@ -71,7 +72,7 @@ export async function generateDisciplineDocument(record: DisciplineCase, kind: D
     incident_place: isAttendanceCase ? (values.consecutiveAbsence ? "Min. 10 hari beruntun" : "Kumulatif") : values.incidentPlace || "—",
     aggravating: review.aggravating || "—", mitigating: review.mitigating || "—", impact: review.impact || "—",
     report_date: dateText(review.reportDate), recipient: review.recipient, recipient_place: review.recipientPlace,
-    report_basis: evidenceOnly ? "penelaahan alat bukti dan keterangan karena ketidakhadiran pada kedua panggilan dilakukan" : `pemeriksaan telah dilakukan pada ${reportDates}`,
+    report_basis: evidenceOnly ? "karena ketidakhadiran pada kedua panggilan, penelaahan alat bukti dan keterangan telah dilakukan" : `pemeriksaan telah dilakukan pada ${reportDates}`,
     report_enclosure: evidenceOnly ? `Alat bukti dan keterangan yang digunakan: ${review.evidence}` : "Berita acara pemeriksaan disertakan sebagai bahan tindak lanjut.",
     report_conclusion: review.outcome === "terbukti" ? `Pelanggaran disiplin terbukti. Rekomendasi: ${review.recommendation}.` : "Dugaan pelanggaran disiplin tidak terbukti.",
   };

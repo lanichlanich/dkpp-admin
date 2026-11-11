@@ -145,6 +145,12 @@ const team = await create({ ...base, absenceDays: 10, consecutiveAbsence: true,
     oversight: { ...official, name: "Unsur Pengawasan", position: "Auditor" },
     hr: { ...official, name: "Unsur Kepegawaian", position: "Analis SDM" } },
 });
+const teamExamination = await create({ ...caseData, absenceDays: 10, consecutiveAbsence: true,
+  team: { ...team.values.team, other: { ...official, name: "Pejabat Tambahan Contoh", nip: "198101012006011099", position: "Pejabat yang Ditunjuk" } },
+});
+const unformedTeam = await create({ ...caseData, team: { ...base.team, hr: { ...official, name: "Pegawai Belum Ditetapkan" } } });
+const incompleteOther = await create({ ...teamExamination.values, team: { ...teamExamination.values.team, other: { ...official, nip: "" } } });
+assert.equal((await download(incompleteOther, "bap-1")).status, 422);
 const legacy = { ...final, id: "10000000-0000-4000-8000-000000000099", version: 1, values: { ...caseData,
   firstCall: { ...firstCall, attendance: "tidak-hadir" },
   review: { ...caseData.review, ...sessions.secondCall, sessions: undefined },
@@ -164,7 +170,7 @@ const output = ".tmp/hukdis-examination-output";
 const write = process.argv.includes("--render-fixtures");
 if (write) mkdirSync(output, { recursive: true });
 for (const [record, kind, suffix] of [[final, "panggilan-1"], [final, "panggilan-2"], [team, "tim"], [final, "bap-1"], [final, "bap-2"],
-  [final, "laporan"], [evidence, "laporan", "-bukti"]]) {
+  [final, "laporan"], [evidence, "laporan", "-bukti"], [teamExamination, "bap-1", "-tim"], [unformedTeam, "bap-1", "-atasan"]]) {
   const response = await download(record, kind);
   assert.equal(response.status, 200, response.status === 200 ? undefined : await response.text());
   assert.match(response.headers.get("content-disposition"), /Draf-/);
@@ -179,6 +185,12 @@ for (const [record, kind, suffix] of [[final, "panggilan-1"], [final, "panggilan
   if (kind === "panggilan-1") assert(text.includes("4 hari kerja secara kumulatif"));
   if (kind === "panggilan-2") assert(text.includes("PANGGILAN II (PEMERIKSAAN LANJUTAN)"));
   if (kind === "bap-1") assert(text.includes("sesi pertama") && !text.includes("sesi kedua") && text.includes("14 Oktober 2026"));
+  if (kind.startsWith("bap-")) {
+    const examiners = record.values.team.number ? 4 : 1;
+    assert.equal((text.match(/Tanda tangan/g) ?? []).length, examiners + 1);
+    assert(!text.includes("Pegawai Belum Ditetapkan"));
+    if (suffix === "-tim") assert(text.includes("Pejabat Tambahan Contoh") && text.includes("Unsur Kepegawaian"));
+  }
   if (kind === "bap-2") assert(text.includes("sesi kedua") && !text.includes("sesi pertama") && text.includes("27 Oktober 2026") && text.includes("tidak bersedia"));
   if (kind === "laporan") {
     assert(text.includes("HARIPOLA") && text.includes("4 hari kerja") && text.includes("Kumulatif"));

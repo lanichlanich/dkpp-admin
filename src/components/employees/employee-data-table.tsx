@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeftRight, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Columns3, LoaderCircle, Search, Trash2, UserCheck, UserMinus } from "lucide-react";
+import { ArrowDown, ArrowLeftRight, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Columns3, FileSpreadsheet, LoaderCircle, Search, Trash2, UserCheck, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { type ColumnFiltersState, type ColumnVisibilityState, type PaginationState, type RowSelectionState, type SortingState, flexRender } from "@tanstack/react-table";
 import { type LegacyColumnDef, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useLegacyTable } from "@tanstack/react-table/legacy";
@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Employee } from "@/lib/db";
@@ -53,6 +53,7 @@ export function EmployeeDataTable({ data, options }: { data: Employee[]; options
   const [globalFilter, setGlobalFilter] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const columns = useMemo<LegacyColumnDef<Employee>[]>(() => [
     {
@@ -106,6 +107,33 @@ export function EmployeeDataTable({ data, options }: { data: Employee[]; options
   });
 
   const selectedNips = table.getSelectedRowModel().rows.map((row) => row.original.nip);
+  const filteredNips = table.getSortedRowModel().rows.map(row => row.original.nip);
+
+  async function exportExcel(nips: string[]) {
+    if (exporting || pending || !nips.length) return;
+    setExporting(true);
+    try {
+      const response = await fetch("/api/employees/export", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nips }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        throw new Error(result?.message ?? "Excel daftar pegawai gagal dibuat.");
+      }
+      const filename = response.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1] ?? "Daftar-Pegawai.xlsx";
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success(`${nips.length} data pegawai berhasil diekspor ke Excel.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Excel daftar pegawai gagal dibuat.");
+    } finally { setExporting(false); }
+  }
 
   function runBulk(operation: "activate" | "retire" | "mutate" | "delete") {
     if (selectedNips.length === 0) {
@@ -134,10 +162,23 @@ export function EmployeeDataTable({ data, options }: { data: Employee[]; options
           <select value={(table.getColumn("status")?.getFilterValue() as string) ?? ""} onChange={(event) => table.getColumn("status")?.setFilterValue(event.target.value || undefined)} className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"><option value="">Semua status</option>{options.statuses.map((status) => <option key={status} value={status}>{status}</option>)}</select>
           <select value={(table.getColumn("asnType")?.getFilterValue() as string) ?? ""} onChange={(event) => table.getColumn("asnType")?.setFilterValue(event.target.value || undefined)} className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"><option value="">Semua ASN</option>{options.asnTypes.map((asn) => <option key={asn} value={asn}>{asn}</option>)}</select>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="outline" disabled={exporting || pending || !data.length} className="text-emerald-800" />}>
+            {exporting ? <LoaderCircle className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
+            {exporting ? "Menyiapkan Excel..." : "Export Excel"}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuItem onClick={() => exportExcel(data.map(employee => employee.nip))}>Semua pegawai ({data.length})</DropdownMenuItem>
+            <DropdownMenuItem disabled={!filteredNips.length} onClick={() => exportExcel(filteredNips)}>Sesuai filter ({filteredNips.length})</DropdownMenuItem>
+            <DropdownMenuItem disabled={!selectedNips.length} onClick={() => exportExcel(selectedNips)}>Pegawai terpilih ({selectedNips.length})</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="outline" />}><Columns3 className="size-4" />Kolom</DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">{table.getAllColumns().filter((column) => column.getCanHide()).map((column) => <DropdownMenuCheckboxItem key={column.id} checked={column.getIsVisible()} onCheckedChange={(value) => column.toggleVisibility(Boolean(value))}>{columnLabels[column.id] ?? column.id}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
 
       {selectedNips.length > 0 && (

@@ -31,6 +31,7 @@
     "smoke:pak": "node scripts/smoke-pak.mjs",
     "smoke:dpcp": "node scripts/smoke-dpcp.mjs",
     "smoke:employee-documents": "node scripts/smoke-employee-documents.mjs",
+    "smoke:employee-export": "node scripts/smoke-employee-export.mjs",
     "smoke:wfh": "node scripts/smoke-wfh.mjs",
     "smoke:wfh-schedule": "node scripts/smoke-wfh-schedule.mjs",
     "smoke:wfh-schedule-export": "node scripts/smoke-wfh-schedule-export.mjs",

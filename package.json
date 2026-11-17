@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "smoke:retirement-projection": "node scripts/smoke-retirement-projection.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

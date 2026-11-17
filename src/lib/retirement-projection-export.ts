@@ -7,7 +7,7 @@ import { buildProjectionHierarchy, employeeHierarchyLevel, selectProjectionHiera
 
 type Column = { title: string; width: number; weight: number; numeric?: boolean; text?: boolean };
 type Section = { title: string; columns: Column[]; rows: (string | number)[][] };
-type PdfRowStyle = { depth: number; bold: boolean; context: boolean };
+type PdfRowStyle = { depth: number; bold: boolean; context: boolean; highlighted: boolean };
 type PdfSection = Section & { rowStyles?: PdfRowStyle[]; indentColumn?: number };
 const c = (title: string, width: number, weight: number, numeric = false): Column => ({ title, width, weight, numeric });
 const organization = "DINAS KETAHANAN PANGAN DAN PERTANIAN KABUPATEN INDRAMAYU";
@@ -94,7 +94,8 @@ export async function createProjectionExcel(p: RetirementProjection) {
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
-export async function createProjectionPdf(p: RetirementProjection) {
+export async function createProjectionPdf(p: RetirementProjection, highlightedIds: readonly string[] = []) {
+  const highlighted = new Set(highlightedIds);
   const pdf = new PDFDocument({ size: "A4", layout: "landscape", margin: 0, bufferPages: true,
     info: { Title: `Proyeksi Pensiun ${p.years[0]}-${p.years[4]}`, Author: organization } });
   const chunks: Buffer[] = [];
@@ -118,7 +119,7 @@ export async function createProjectionPdf(p: RetirementProjection) {
       const nodes = selectProjectionHierarchy(hierarchy, [...selected.keys()]);
       let number = 0;
       return { ...section, columns: [c("No.", 6, 24, true), ...columns], indentColumn: 1,
-        rowStyles: nodes.map(node => ({ depth: node.depth, bold: node.position.kind === "Struktural", context: node.context })),
+        rowStyles: nodes.map(node => ({ depth: node.depth, bold: node.position.kind === "Struktural", context: node.context, highlighted: highlighted.has(node.position.id) })),
         rows: nodes.map(node => {
           const row = selected.get(node.position.id);
           return row ? [++number, row.name, row.unit, row.kind, row.required, row.active, ...row.retirements,
@@ -128,7 +129,8 @@ export async function createProjectionPdf(p: RetirementProjection) {
     }
     const employees = section.title === "Pegawai Pensiun" ? sorted.retirees : section.title === "Perlu Verifikasi" ? sorted.review : null;
     return { ...section, columns, rows, ...(employees ? { indentColumn: 3,
-      rowStyles: employees.map(employee => ({ depth: employeeHierarchyLevel(hierarchy, employee).depth, bold: employee.kind === "Struktural", context: false })) } : {}) };
+      rowStyles: employees.map(employee => ({ depth: employeeHierarchyLevel(hierarchy, employee).depth, bold: employee.kind === "Struktural", context: false,
+        highlighted: employee.requirementId !== null && highlighted.has(employee.requirementId) })) } : {}) };
   });
   for (const [sectionIndex, section] of pdfSections.entries()) {
     const yearColumns = section.columns.map((column, i) => column.title.startsWith("Pensiun ") ? i : -1).filter(i => i >= 0);
@@ -176,7 +178,8 @@ export async function createProjectionPdf(p: RetirementProjection) {
         for (const [i, title] of headings.entries()) pdf.font("Times-Bold").fontSize(11).text(title, left, 31 + i * 15, { width, align: "center" });
         pdf.fontSize(10).text(sectionTitle, left, 100, { width, align: "center" });
         const contextNote = section.rowStyles?.some(style => style.context) ? " Baris induk di luar filter hanya menjadi konteks, tanpa angka rekap." : "";
-        const scope = `Keadaan data: ${date}. Jenis jabatan: ${p.filters.kind === "all" ? "Semua" : p.filters.kind}. Unit: ${p.filters.unit || "Semua"}. ASN: ${p.filters.asn === "all" ? "Semua" : p.filters.asn}. Pencarian: ${p.filters.search || "-"}.${contextNote}`;
+        const highlightNote = section.rowStyles?.some(style => style.highlighted) ? " Baris oranye menandai jabatan pilihan." : "";
+        const scope = `Keadaan data: ${date}. Jenis jabatan: ${p.filters.kind === "all" ? "Semua" : p.filters.kind}. Unit: ${p.filters.unit || "Semua"}. ASN: ${p.filters.asn === "all" ? "Semua" : p.filters.asn}. Pencarian: ${p.filters.search || "-"}.${contextNote}${highlightNote}`;
         const scopeHeight = measure(scope, "Times-Roman", 8.5, width);
         pdf.text(scope, left, 121, { width, lineGap: 1 });
         top = 121 + scopeHeight + 10;
@@ -217,6 +220,7 @@ export async function createProjectionPdf(p: RetirementProjection) {
       const next = section.rows[index + 1], nextStyle = section.rowStyles?.[index + 1];
       const following = next && style?.bold && nextStyle && nextStyle.depth > style.depth ? rowHeight(next, index + 1) : 0;
       if (y + height + following > bottom) y = header(true);
+      if (style?.highlighted) pdf.rect(left, y, width, height).fill("#fed7aa");
       pdf.lineWidth(0.5).strokeColor("black").rect(left, y, width, height).stroke();
       for (let j = 0; j < values.length; j++) {
         if (j > 0) pdf.moveTo(cols[j].x, y).lineTo(cols[j].x, y + height).stroke();

@@ -105,6 +105,11 @@ actor.menuPermissions = ["proyeksi-pensiun"];
 for (const q of ["format=csv&startYear=2027", "format=xlsx&startYear=2096", "format=pdf&startYear=abc", "format=pdf&startYear=2027&kind=bad"]) {
   assert.equal((await GET(req(q))).status, 422);
 }
+const readsBeforeInvalidHighlights = reads;
+for (const highlight of ["unknown-position", `${source.positions[0].id},${source.positions[0].id}`, "x".repeat(3001)]) {
+  assert.equal((await GET(req(`format=pdf&startYear=2027&highlight=${encodeURIComponent(highlight)}`))).status, 422);
+}
+assert.equal(reads, readsBeforeInvalidHighlights, "Invalid highlight IDs rejected before reading employees");
 mkdirSync(".tmp/retirement-projection", { recursive: true });
 const xlsx = await GET(req("format=xlsx&startYear=2027"));
 assert.equal(xlsx.status, 200); assert.equal(xlsx.headers.get("cache-control"), "private, no-store");
@@ -120,6 +125,15 @@ const pdf = await GET(req("format=pdf&startYear=2027"));
 assert.equal(pdf.status, 200); assert.equal(pdf.headers.get("content-type"), "application/pdf");
 const pdfBytes = Buffer.from(await pdf.arrayBuffer()); assert.equal(pdfBytes.subarray(0, 5).toString(), "%PDF-");
 writeFileSync(".tmp/retirement-projection/sample.xlsx", bytes); writeFileSync(".tmp/retirement-projection/sample.pdf", pdfBytes);
+const orangeIds = [source.positions[0].id, requirements[0].id].join(",");
+for (const [query, file] of [
+  [`highlight=${encodeURIComponent(orangeIds)}`, "highlighted.pdf"],
+  [`kind=Fungsional&search=Ahli+Madya&highlight=${encodeURIComponent(orangeIds)}`, "highlighted-filtered.pdf"],
+  [`highlight=${encodeURIComponent(source.positions.map(position => position.id).join(","))}`, "highlighted-all.pdf"],
+]) {
+  const response = await GET(req(`format=pdf&startYear=2027&${query}`)); assert.equal(response.status, 200);
+  writeFileSync(`.tmp/retirement-projection/${file}`, Buffer.from(await response.arrayBuffer()));
+}
 for (const [query, file] of [
   ["kind=Fungsional&search=Ahli+Madya", "hierarchy-filtered.pdf"],
   [`unit=${encodeURIComponent(subbag.position.unit)}`, "hierarchy-unit.pdf"],

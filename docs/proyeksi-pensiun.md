@@ -69,6 +69,16 @@ UPTD, subbagian, dan pegawai di bawahnya). Jika filter menghilangkan induk,
 baris induk tetap menjadi konteks dengan angka kosong/dash; baris itu tidak
 menambah nomor maupun jumlah rekap. Daftar pegawai PDF diurutkan mengikuti
 hierarki yang sama dan kolom jabatannya juga menggunakan inden bertingkat.
+Kotak centang pada rekap halaman menandai jabatan dan unit tertentu dengan
+latar oranye (`#fed7aa`) pada halaman dan PDF. Tombol **Tandai semua hasil**
+mencakup seluruh hasil filter, sedangkan kotak centang header hanya untuk
+halaman pagination saat ini. **Hapus tanda** mengosongkan pilihan. Pilihan
+bertahan saat filter/pagination berubah selama halaman tetap terbuka.
+Penandaan berlaku tepat pada penempatan yang dipilih (termasuk induk yang
+menjadi konteks); tidak otomatis menandai turunannya. Pegawai pada penempatan
+yang sama juga ditandai pada bagian detail PDF. Parameter `highlight` pada
+API berisi ID penempatan, divalidasi terhadap peta dan harus unik. Penandaan
+tidak membatasi jumlah baris hasil filter atau mengubah angka perhitungan.
 NIP tetap teks di Excel. Kedua format memuat seluruh
 hasil filter, tidak dibatasi halaman pagination. Data dibaca kembali di
 server saat unduhan sehingga perubahan pegawai terbaru langsung berlaku.

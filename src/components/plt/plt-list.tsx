@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BellRing, CalendarClock, Check, CheckCheck, ChevronsUpDown, Download, FileUp, LoaderCircle, Pencil, Plus, RotateCw, Search, Sparkles, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, BellRing, CalendarClock, Check, CheckCheck, ChevronsUpDown, Download, FileUp, LoaderCircle, Pencil, Plus, RotateCw, Search, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +24,12 @@ const colors: Record<PltStatus, string> = {
   upcoming: "bg-sky-100 text-sky-900", active: "bg-emerald-100 text-emerald-900", expiring: "bg-amber-100 text-amber-900",
   expired: "bg-rose-100 text-rose-900", renewed: "bg-indigo-100 text-indigo-900", closed: "bg-zinc-100 text-zinc-700",
 };
+const sortLabels = {
+  employeeName: "Nama pegawai", employeeNip: "NIP", actingPosition: "Jabatan Plt.", actingUnit: "Unit kerja",
+  skNumber: "Nomor SK", startDate: "Tanggal mulai", endDate: "Tanggal berakhir", status: "Status",
+};
+type PltSortKey = keyof typeof sortLabels;
+const collator = new Intl.Collator("id-ID", { numeric: true, sensitivity: "base" });
 function useToday(initial: string) {
   const [today, setToday] = useState(initial);
   const router = useRouter();
@@ -173,14 +179,34 @@ export function PltList({ assignments, employees, initialToday }: { assignments:
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [sorting, setSorting] = useState<{ key: PltSortKey; direction: "asc" | "desc" }>({ key: "endDate", direction: "asc" });
   const [editor, setEditor] = useState<Editor | null>(null);
   const [confirm, setConfirm] = useState<{ row: PltAssignment; action: "delete" | "close" } | null>(null);
   const [busy, setBusy] = useState(false);
   const counts = useMemo(() => assignments.reduce((result, row) => { result[pltStatus(row, today).status]++; return result; }, { upcoming: 0, active: 0, expiring: 0, expired: 0, renewed: 0, closed: 0 }), [assignments, today]);
-  const filtered = assignments.filter(row => (filter === "all" || pltStatus(row, today).status === filter) && `${row.employeeName} ${row.employeeNip} ${row.actingPosition} ${row.actingUnit} ${row.skNumber}`.toLocaleLowerCase("id-ID").includes(search.toLocaleLowerCase("id-ID")));
+  const filtered = assignments.filter(row => (filter === "all" || pltStatus(row, today).status === filter) && `${row.employeeName} ${row.employeeNip} ${row.actingPosition} ${row.actingUnit} ${row.skNumber}`.toLocaleLowerCase("id-ID").includes(search.toLocaleLowerCase("id-ID")))
+    .sort((left, right) => {
+      const leftValue = sorting.key === "status" ? PLT_STATUS_LABELS[pltStatus(left, today).status] : left[sorting.key];
+      const rightValue = sorting.key === "status" ? PLT_STATUS_LABELS[pltStatus(right, today).status] : right[sorting.key];
+      const result = collator.compare(leftValue, rightValue) * (sorting.direction === "asc" ? 1 : -1);
+      return result || collator.compare(left.employeeName, right.employeeName) || collator.compare(left.id, right.id);
+    });
   const pages = Math.max(1, Math.ceil(filtered.length / 10));
   const currentPage = Math.min(page, pages);
   const pageRows = filtered.slice((currentPage - 1) * 10, currentPage * 10);
+  function toggleSort(key: PltSortKey) {
+    setSorting(current => ({ key, direction: current.key === key && current.direction === "asc" ? "desc" : "asc" }));
+    setPage(1);
+  }
+  function sortHeading(key: PltSortKey, label: string) {
+    const active = sorting.key === key;
+    const Icon = active ? (sorting.direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+    return <TableHead aria-sort={active ? (sorting.direction === "asc" ? "ascending" : "descending") : undefined}>
+      <Button type="button" variant="ghost" size="sm" className="-ml-2" aria-label={`Urutkan ${sortLabels[key]}`} onClick={() => toggleSort(key)}>
+        {label}<Icon className="size-3.5" aria-hidden="true" />
+      </Button>
+    </TableHead>;
+  }
   function rowActions(row: PltAssignment) {
     return <>
       {!row.hasNext && <Button variant="outline" size="sm" onClick={() => setEditor({ row })}><Pencil className="size-3.5" />Edit</Button>}
@@ -207,6 +233,20 @@ export function PltList({ assignments, employees, initialToday }: { assignments:
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{(["active", "expiring", "expired", "upcoming"] as const).map(status => <button key={status} type="button" onClick={() => { setFilter(status); setPage(1); }} aria-pressed={filter === status} className={`rounded-xl border p-4 text-left transition-shadow hover:shadow-md ${filter === status ? "ring-2 ring-indigo-500" : ""} ${colors[status]}`}><span className="text-sm font-medium">{PLT_STATUS_LABELS[status]}</span><strong className="mt-2 block text-3xl tabular-nums">{counts[status]}</strong><span className="mt-1 block text-xs">{status === "expiring" ? `Berakhir dalam ${PLT_REMINDER_DAYS} hari` : status === "expired" ? "Perlu tindak lanjut" : status === "upcoming" ? "Jadwal mendatang" : "Lebih dari 14 hari tersisa"}</span></button>)}</div>
     <Card><CardContent className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row"><div className="relative min-w-0 flex-1"><Search className="absolute top-3 left-3 size-4 text-zinc-400" /><Input value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} aria-label="Cari penugasan Plt." placeholder="Cari pegawai, NIP, jabatan, unit, nomor SK…" className="pl-9" /></div><select aria-label="Filter status Plt." value={filter} onChange={event => { setFilter(event.target.value); setPage(1); }} className="h-10 rounded-lg border border-input bg-white px-3 text-sm"><option value="all">Semua status</option>{Object.entries(PLT_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><Button onClick={() => setEditor({})}><Plus className="size-4" />Tambah Plt.</Button></div>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex min-w-0 items-center gap-2 text-sm text-zinc-600">
+          Urutkan
+          <select aria-label="Urutkan daftar Plt." value={sorting.key} onChange={event => {
+            setSorting({ key: event.target.value as PltSortKey, direction: "asc" }); setPage(1);
+          }} className="h-9 min-w-0 rounded-lg border border-input bg-white px-3 text-sm text-zinc-900">
+            {Object.entries(sortLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        <Button type="button" variant="outline" size="sm" aria-label="Balik arah pengurutan Plt." onClick={() => toggleSort(sorting.key)}>
+          {sorting.direction === "asc" ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />}
+          {sorting.direction === "asc" ? "Menaik" : "Menurun"}
+        </Button>
+      </div>
       {assignments.length === 0 ? <div className="rounded-xl border border-dashed px-6 py-14 text-center"><CalendarClock className="mx-auto size-10 text-indigo-500" /><h2 className="mt-3 font-semibold">Belum ada penugasan Plt.</h2><p className="mx-auto mt-2 max-w-lg text-sm text-zinc-500">Tambahkan pegawai yang mendapat tugas Plt. beserta tanggal mulai sesuai SK. Tanggal akhir dan pengingat akan dihitung otomatis.</p><Button className="mt-5" onClick={() => setEditor({})}><Plus className="size-4" />Tambah penugasan pertama</Button></div> : <>
         <div className="space-y-3 md:hidden">{pageRows.map(row => <article data-plt-card key={row.id} className="rounded-xl border p-4">
           <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold text-zinc-950">{row.employeeName}</p><StatusBadge row={row} today={today} /></div>
@@ -214,7 +254,7 @@ export function PltList({ assignments, employees, initialToday }: { assignments:
           <div className="mt-3 rounded-lg bg-zinc-50 p-3"><p className="text-xs text-zinc-500">{pltDateLabel(row.startDate)} – {pltDateLabel(row.endDate)}</p><p className="mt-1 text-sm font-semibold text-zinc-900">{pltTimeLabel(row, today)}</p></div>
           <p className="mt-3 break-words text-xs text-zinc-500">SK: {row.skNumber}</p>{documentLink(row)}{row.notes && <p className="mt-1 break-words text-xs text-zinc-500">{row.notes}</p>}<div className="mt-3 flex flex-wrap gap-1.5">{rowActions(row)}</div>
         </article>)}{!filtered.length && <p className="py-8 text-center text-sm text-zinc-500">Tidak ada penugasan sesuai pencarian atau filter.</p>}</div>
-        <div className="hidden overflow-x-auto md:block"><Table className="min-w-[1050px]"><TableHeader><TableRow><TableHead>Pegawai</TableHead><TableHead>Penugasan Plt.</TableHead><TableHead>Periode tiga bulan</TableHead><TableHead>Status & pengingat</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader><TableBody>{pageRows.map(row => <TableRow key={row.id}>
+        <div className="hidden overflow-x-auto md:block"><Table className="min-w-[1050px]"><TableHeader><TableRow>{sortHeading("employeeName", "Pegawai")}{sortHeading("actingPosition", "Penugasan Plt.")}{sortHeading("endDate", "Periode tiga bulan")}{sortHeading("status", "Status & pengingat")}<TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader><TableBody>{pageRows.map(row => <TableRow key={row.id}>
           <TableCell className="max-w-60 whitespace-normal"><p className="font-medium">{row.employeeName}</p><p className="mt-1 text-xs text-zinc-500">{row.employeeNip}</p></TableCell>
           <TableCell className="max-w-72 whitespace-normal"><p className="font-medium">{row.actingPosition}</p><p className="mt-1 text-xs text-zinc-600">{row.actingUnit}</p><p className="mt-2 break-words text-xs text-zinc-500">SK: {row.skNumber}</p>{documentLink(row)}{row.notes && <p className="mt-1 break-words text-xs text-zinc-500">{row.notes}</p>}</TableCell>
           <TableCell><p>{pltDateLabel(row.startDate)}</p><p className="my-1 text-xs text-zinc-400">sampai dengan</p><p className="font-medium">{pltDateLabel(row.endDate)}</p></TableCell>

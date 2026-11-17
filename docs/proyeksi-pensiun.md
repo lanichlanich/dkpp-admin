@@ -63,6 +63,12 @@ Perlu Verifikasi. PDF berisi bagian yang sama dengan gaya lampiran peraturan:
 huruf Times, judul kapital rata tengah, tabel hitam-putih bergaris penuh,
 header tahun bertingkat, header tabel berulang, dan nomor halaman rata tengah.
 Kolom Sumber hanya ada pada Excel; kolom tersebut dihilangkan pada PDF.
+Rekap PDF mengikuti hierarki pada peta jabatan. Nama jabatan induk dicetak
+tebal, dan turunannya menjorok 10 poin per tingkat (dinas, sekretariat/bidang/
+UPTD, subbagian, dan pegawai di bawahnya). Jika filter menghilangkan induk,
+baris induk tetap menjadi konteks dengan angka kosong/dash; baris itu tidak
+menambah nomor maupun jumlah rekap. Daftar pegawai PDF diurutkan mengikuti
+hierarki yang sama dan kolom jabatannya juga menggunakan inden bertingkat.
 NIP tetap teks di Excel. Kedua format memuat seluruh
 hasil filter, tidak dibatasi halaman pagination. Data dibaca kembali di
 server saat unduhan sehingga perubahan pegawai terbaru langsung berlaku.

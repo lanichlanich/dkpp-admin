@@ -29,6 +29,7 @@ function load(file) {
 }
 const source = load("src/data/retirement-position-map-2026.json");
 const { buildRetirementProjection, normalizePosition } = load("src/lib/retirement-projection.ts");
+const { buildProjectionHierarchy, selectProjectionHierarchy, sortProjectionEmployees, employeeHierarchyLevel } = load("src/lib/retirement-projection-hierarchy.ts");
 assert.equal(source.positions.length, 179);
 assert.equal(source.positions.reduce((n, row) => n + row.required, 0), 253);
 for (const [kind, count] of [["Fungsional", 108], ["Pelaksana", 97], ["Struktural", 48]]) {
@@ -39,6 +40,26 @@ assert.equal(source.positions.filter(row => row.sourceRow === "Tanpa nomor").len
 assert(source.positions.some(row => row.sourceRow === "100" && row.name.endsWith("LOHBENER")));
 assert(source.positions.some(row => row.sourceRow === "108" && row.name.endsWith("KRANGKENG")));
 assert.equal(new Set(source.positions.map(row => `${normalizePosition(row.name)}|${row.unit}`)).size, 179);
+const hierarchy = buildProjectionHierarchy(source.positions);
+assert.equal(hierarchy.positions.length, 179);
+assert.equal(new Set(hierarchy.positions.map(node => node.position.id)).size, 179);
+for (const node of hierarchy.positions) {
+  if (!node.parentId) { assert.equal(node.depth, 0); continue; }
+  const parent = hierarchy.byId.get(node.parentId);
+  assert.equal(node.depth, parent.depth + 1); assert(parent.order < node.order);
+}
+const secretariat = hierarchy.positions.find(node => node.position.name === "SEKRETARIS DINAS");
+const subbag = hierarchy.positions.find(node => node.position.name === "KEPALA SUB BAGIAN UMUM DAN KEPEGAWAIAN");
+const staff = hierarchy.positions.find(node => node.position.name === "Pengolah Data Dan Informasi" && node.position.unit === subbag.position.unit);
+assert.equal(secretariat.depth, 1); assert.equal(subbag.parentId, secretariat.position.id); assert.equal(subbag.depth, 2);
+assert.equal(staff.parentId, subbag.position.id); assert.equal(staff.depth, 3);
+const uptdStaff = hierarchy.positions.find(node => node.position.name === "Pengolah Data Dan Informasi" && node.position.unit.endsWith("UPTD KETAHANAN PANGAN DAN PERTANIAN INDRAMAYU"));
+assert.equal(uptdStaff.depth, 3);
+assert.equal(hierarchy.byId.get(uptdStaff.parentId).position.name, "KEPALA SUB BAGIAN TATA USAHA");
+const filteredHierarchy = selectProjectionHierarchy(hierarchy, [staff.position.id]);
+assert.deepEqual(filteredHierarchy.map(node => node.depth), [0, 1, 2, 3]);
+assert.equal(filteredHierarchy.filter(node => !node.context).length, 1, "Filter ancestors are context only");
+assert.equal(selectProjectionHierarchy(hierarchy, []).length, 0);
 const requirements = source.positions.filter(row => row.name === "Pengolah Data Dan Informasi").slice(0, 2);
 assert.equal(requirements.length, 2);
 const employee = (birth, row, extra = {}) => ({ nip: `${birth}2000011001`, name: `Pegawai ${birth}`, position: row.name,
@@ -68,6 +89,10 @@ const functional = source.positions.find(row => row.name === "JF Perencana Ahli 
 const alias = buildRetirementProjection([functional], [employee("19681215", functional, { position: "AHLI PERTAMA - PERENCANA" })], filters, "2026-11-17");
 assert.equal(alias.mappedActive, 1); assert.equal(alias.employees[0].kind, "Fungsional");
 assert(alias.review[0].issues.some(issue => issue.includes("Jenis jabatan")));
+const subordinate = { ...p.employees[0], requirementId: staff.position.id };
+const supervisor = { ...p.employees[0], requirementId: subbag.position.id };
+assert.equal(employeeHierarchyLevel(hierarchy, subordinate).depth, 3);
+assert.equal(sortProjectionEmployees(hierarchy, [subordinate, supervisor])[0].requirementId, subbag.position.id);
 const chief = source.positions[0];
 assert.equal(buildRetirementProjection([chief], [employee("19661215", chief, { positionType: "JS", echelon: "II.b" })], filters, "2026-11-17").retirees[0].retirementAge, 60);
 const { GET } = load("src/app/api/retirement-projection/export/route.ts");
@@ -95,6 +120,14 @@ const pdf = await GET(req("format=pdf&startYear=2027"));
 assert.equal(pdf.status, 200); assert.equal(pdf.headers.get("content-type"), "application/pdf");
 const pdfBytes = Buffer.from(await pdf.arrayBuffer()); assert.equal(pdfBytes.subarray(0, 5).toString(), "%PDF-");
 writeFileSync(".tmp/retirement-projection/sample.xlsx", bytes); writeFileSync(".tmp/retirement-projection/sample.pdf", pdfBytes);
+for (const [query, file] of [
+  ["kind=Fungsional&search=Ahli+Madya", "hierarchy-filtered.pdf"],
+  [`unit=${encodeURIComponent(subbag.position.unit)}`, "hierarchy-unit.pdf"],
+]) {
+  const response = await GET(req(`format=pdf&startYear=2027&${query}`));
+  assert.equal(response.status, 200);
+  writeFileSync(`.tmp/retirement-projection/${file}`, Buffer.from(await response.arrayBuffer()));
+}
 console.log("PASS proyeksi: 179 penempatan/253 kebutuhan, periode/TMT, alias jenjang, unit terpisah, ASN, data belum pasti, izin API, NIP teks, dan ekspor Excel/PDF.");
 if (process.env.SMOKE_RETIREMENT_EMPLOYEES) {
   employees = JSON.parse(readFileSync(process.env.SMOKE_RETIREMENT_EMPLOYEES, "utf8"));

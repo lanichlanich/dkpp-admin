@@ -3,9 +3,12 @@ import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 import source from "@/data/retirement-position-map-2026.json";
 import type { ProjectedEmployee, RetirementProjection } from "@/lib/retirement-projection";
+import { buildProjectionHierarchy, employeeHierarchyLevel, selectProjectionHierarchy, sortProjectionEmployees } from "@/lib/retirement-projection-hierarchy";
 
 type Column = { title: string; width: number; weight: number; numeric?: boolean; text?: boolean };
 type Section = { title: string; columns: Column[]; rows: (string | number)[][] };
+type PdfRowStyle = { depth: number; bold: boolean; context: boolean };
+type PdfSection = Section & { rowStyles?: PdfRowStyle[]; indentColumn?: number };
 const c = (title: string, width: number, weight: number, numeric = false): Column => ({ title, width, weight, numeric });
 const organization = "DINAS KETAHANAN PANGAN DAN PERTANIAN KABUPATEN INDRAMAYU";
 
@@ -104,13 +107,28 @@ export async function createProjectionPdf(p: RetirementProjection) {
     .format(new Date(`${p.today}T00:00:00Z`));
   let first = true;
   // Keep the Excel columns intact; the PDF has its own appendix-style layout.
-  const pdfSections = sections(p).map(section => {
+  const hierarchy = buildProjectionHierarchy(source.positions);
+  const sorted = { ...p, retirees: sortProjectionEmployees(hierarchy, p.retirees), review: sortProjectionEmployees(hierarchy, p.review) };
+  const pdfSections: PdfSection[] = sections(sorted).map(section => {
     const indices = section.columns.map((_, i) => i).filter(i => section.columns[i].title !== "Sumber");
     const columns = indices.map(i => section.columns[i]);
     const rows = section.rows.map(row => indices.map(i => row[i]));
-    return section.title === "Rekap Jabatan"
-      ? { ...section, columns: [c("No.", 6, 24, true), ...columns], rows: rows.map((row, i) => [i + 1, ...row]) }
-      : { ...section, columns, rows };
+    if (section.title === "Rekap Jabatan") {
+      const selected = new Map(p.rows.map(row => [row.id, row]));
+      const nodes = selectProjectionHierarchy(hierarchy, [...selected.keys()]);
+      let number = 0;
+      return { ...section, columns: [c("No.", 6, 24, true), ...columns], indentColumn: 1,
+        rowStyles: nodes.map(node => ({ depth: node.depth, bold: node.position.kind === "Struktural", context: node.context })),
+        rows: nodes.map(node => {
+          const row = selected.get(node.position.id);
+          return row ? [++number, row.name, row.unit, row.kind, row.required, row.active, ...row.retirements,
+            row.totalRetirements, row.remaining[4], row.shortage[4]]
+            : ["", node.position.name, node.position.unit, node.position.kind, ...Array<string>(10).fill("-")];
+        }) };
+    }
+    const employees = section.title === "Pegawai Pensiun" ? sorted.retirees : section.title === "Perlu Verifikasi" ? sorted.review : null;
+    return { ...section, columns, rows, ...(employees ? { indentColumn: 3,
+      rowStyles: employees.map(employee => ({ depth: employeeHierarchyLevel(hierarchy, employee).depth, bold: employee.kind === "Struktural", context: false })) } : {}) };
   });
   for (const [sectionIndex, section] of pdfSections.entries()) {
     const yearColumns = section.columns.map((column, i) => column.title.startsWith("Pensiun ") ? i : -1).filter(i => i >= 0);
@@ -139,11 +157,11 @@ export async function createProjectionPdf(p: RetirementProjection) {
       pdf.font(font).fontSize(size);
       return pdf.heightOfString(text, { width: cellWidth, lineGap: 1 });
     };
-    const textInCell = (text: string, i: number, top: number, height: number, bold = false, center = false) => {
+    const textInCell = (text: string, i: number, top: number, height: number, bold = false, center = false, indent = 0) => {
       const font = bold ? "Times-Bold" : "Times-Roman", size = bold ? headerSize : bodySize;
-      const textHeight = measure(text, font, size, inner(i));
-      pdf.fillColor("black").text(text, cols[i].x + padding, top + (height - textHeight) / 2,
-        { width: inner(i), lineGap: 1, align: center || cols[i].numeric ? "center" : "left" });
+      const textHeight = measure(text, font, size, inner(i) - indent);
+      pdf.fillColor("black").text(text, cols[i].x + padding + indent, top + (height - textHeight) / 2,
+        { width: inner(i) - indent, lineGap: 1, align: center || cols[i].numeric ? "center" : "left" });
     };
     const header = (continuation = false) => {
       if (!first) pdf.addPage(); first = false;
@@ -157,7 +175,8 @@ export async function createProjectionPdf(p: RetirementProjection) {
         const headings = ["PROYEKSI PENSIUN PEGAWAI", "DINAS KETAHANAN PANGAN DAN PERTANIAN", "KABUPATEN INDRAMAYU", `TAHUN ${p.years[0]} - ${p.years[4]}`];
         for (const [i, title] of headings.entries()) pdf.font("Times-Bold").fontSize(11).text(title, left, 31 + i * 15, { width, align: "center" });
         pdf.fontSize(10).text(sectionTitle, left, 100, { width, align: "center" });
-        const scope = `Keadaan data: ${date}. Jenis jabatan: ${p.filters.kind === "all" ? "Semua" : p.filters.kind}. Unit: ${p.filters.unit || "Semua"}. ASN: ${p.filters.asn === "all" ? "Semua" : p.filters.asn}. Pencarian: ${p.filters.search || "-"}.`;
+        const contextNote = section.rowStyles?.some(style => style.context) ? " Baris induk di luar filter hanya menjadi konteks, tanpa angka rekap." : "";
+        const scope = `Keadaan data: ${date}. Jenis jabatan: ${p.filters.kind === "all" ? "Semua" : p.filters.kind}. Unit: ${p.filters.unit || "Semua"}. ASN: ${p.filters.asn === "all" ? "Semua" : p.filters.asn}. Pencarian: ${p.filters.search || "-"}.${contextNote}`;
         const scopeHeight = measure(scope, "Times-Roman", 8.5, width);
         pdf.text(scope, left, 121, { width, lineGap: 1 });
         top = 121 + scopeHeight + 10;
@@ -187,14 +206,22 @@ export async function createProjectionPdf(p: RetirementProjection) {
       pdf.lineWidth(0.5).rect(left, y, width, 30).stroke("black");
       pdf.font("Times-Roman").fontSize(bodySize).text("Tidak ada data dalam cakupan ini.", left + padding, y + 10, { width: width - 2 * padding, align: "center" }); y += 30;
     }
-    for (const values of section.rows) {
-      const height = Math.max(section.title === "Ringkasan" ? 24 : 26,
-        ...values.map((value, j) => measure(String(value), "Times-Roman", bodySize, inner(j)) + 2 * padding));
-      if (y + height > bottom) y = header(true);
+    const rowHeight = (values: (string | number)[], index: number) => Math.max(section.title === "Ringkasan" ? 24 : 26,
+      ...values.map((value, j) => {
+        const style = section.rowStyles?.[index], indented = j === section.indentColumn;
+        return measure(String(value), indented && style?.bold ? "Times-Bold" : "Times-Roman", bodySize,
+          inner(j) - (indented ? (style?.depth ?? 0) * 10 : 0)) + 2 * padding;
+      }));
+    for (const [index, values] of section.rows.entries()) {
+      const style = section.rowStyles?.[index], height = rowHeight(values, index);
+      const next = section.rows[index + 1], nextStyle = section.rowStyles?.[index + 1];
+      const following = next && style?.bold && nextStyle && nextStyle.depth > style.depth ? rowHeight(next, index + 1) : 0;
+      if (y + height + following > bottom) y = header(true);
       pdf.lineWidth(0.5).strokeColor("black").rect(left, y, width, height).stroke();
       for (let j = 0; j < values.length; j++) {
         if (j > 0) pdf.moveTo(cols[j].x, y).lineTo(cols[j].x, y + height).stroke();
-        textInCell(String(values[j]), j, y, height);
+        const indented = j === section.indentColumn;
+        textInCell(String(values[j]), j, y, height, indented && !!style?.bold, false, indented ? (style?.depth ?? 0) * 10 : 0);
       }
       y += height;
     }

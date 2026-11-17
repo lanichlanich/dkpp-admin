@@ -63,6 +63,7 @@ Perlu Verifikasi. PDF berisi bagian yang sama dengan gaya lampiran peraturan:
 huruf Times, judul kapital rata tengah, tabel hitam-putih bergaris penuh,
 header tahun bertingkat, header tabel berulang, dan nomor halaman rata tengah.
 Kolom Sumber hanya ada pada Excel; kolom tersebut dihilangkan pada PDF.
+PDF tidak mencetak keterangan perbedaan jenis jabatan data pegawai dengan peta.
 Rekap PDF mengikuti hierarki pada peta jabatan. Nama jabatan induk dicetak
 tebal, dan turunannya menjorok 10 poin per tingkat (dinas, sekretariat/bidang/
 UPTD, subbagian, dan pegawai di bawahnya). Jika filter menghilangkan induk,

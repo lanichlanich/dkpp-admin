@@ -12,7 +12,7 @@ type PdfSection = Section & { rowStyles?: PdfRowStyle[]; indentColumn?: number }
 const c = (title: string, width: number, weight: number, numeric = false): Column => ({ title, width, weight, numeric });
 const organization = "DINAS KETAHANAN PANGAN DAN PERTANIAN KABUPATEN INDRAMAYU";
 
-function sections(p: RetirementProjection): Section[] {
+function sections(p: RetirementProjection, options: { hidePositionTypeWarning?: boolean } = {}): Section[] {
   const details = (employees: ProjectedEmployee[], review: boolean): Section => ({
     title: review ? "Perlu Verifikasi" : "Pegawai Pensiun",
     columns: [c("No", 6, 24, true), { ...c("NIP", 23, 104), text: true }, c("Nama pegawai", 34, 130),
@@ -20,7 +20,8 @@ function sections(p: RetirementProjection): Section[] {
       c("BUP", 9, 30, true), c("TMT pensiun", 16, 68), c("Keterangan", 58, review ? 170 : 100)],
     rows: employees.map((e, i) => [i + 1, e.nip, e.name, e.position, e.mappedUnit, e.kind, e.asnType,
       e.retirementAge ?? "Belum diketahui", e.retirementTmt ?? "Belum diketahui",
-      [...e.issues, ...(e.asnType !== "PNS" ? ["Proyeksi BUP jabatan; bukan akhir kontrak PPPK"] : [])].join("; ") || "Terpetakan"]),
+      [...e.issues.filter(issue => !options.hidePositionTypeWarning || !issue.startsWith("Jenis jabatan data pegawai berbeda")),
+        ...(e.asnType !== "PNS" ? ["Proyeksi BUP jabatan; bukan akhir kontrak PPPK"] : [])].join("; ") || "Terpetakan"]),
   });
   return [{ title: "Ringkasan", columns: [c("Jenis jabatan", 20, 100), c("Tahun", 12, 55, true),
     c("Kebutuhan", 15, 70, true), c("Aktif terpetakan", 20, 95, true), c("Pensiun tahun ini", 21, 105, true),
@@ -110,7 +111,7 @@ export async function createProjectionPdf(p: RetirementProjection, highlightedId
   // Keep the Excel columns intact; the PDF has its own appendix-style layout.
   const hierarchy = buildProjectionHierarchy(source.positions);
   const sorted = { ...p, retirees: sortProjectionEmployees(hierarchy, p.retirees), review: sortProjectionEmployees(hierarchy, p.review) };
-  const pdfSections: PdfSection[] = sections(sorted).map(section => {
+  const pdfSections: PdfSection[] = sections(sorted, { hidePositionTypeWarning: true }).map(section => {
     const indices = section.columns.map((_, i) => i).filter(i => section.columns[i].title !== "Sumber");
     const columns = indices.map(i => section.columns[i]);
     const rows = section.rows.map(row => indices.map(i => row[i]));

@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 const personnelNavigation = [
   { label: "Daftar Pegawai", href: "/dashboard/pegawai", icon: UsersRound },
+  { label: "Profil Kepegawaian Dinas", href: "/dashboard/profil-kepegawaian", icon: FileBarChart2 },
   { label: "Daftar Unit Organisasi", href: "/dashboard/unit-organisasi", icon: Building2 },
   { label: "Daftar Jabatan", href: "/dashboard/jabatan", icon: Network },
   { label: "Proyeksi Pensiun", href: "/dashboard/proyeksi-pensiun", icon: CalendarDays },

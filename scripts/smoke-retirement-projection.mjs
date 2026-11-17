@@ -79,6 +79,9 @@ assert.equal(p.rows[0].retirements[4], 1, "December2031 TMT included");
 assert.equal(p.rows[0].remaining[4], 2, "Before-period departures removed; unknown TMT remains explicit");
 assert.equal(p.rows[1].active, 0, "No assignment across units with same position name");
 assert.equal(p.rows[1].shortage[4], requirements[1].required, "Vacant placements remain visible");
+assert.equal(p.rows[0].balance[0], 1, "Surplus appears as a positive difference");
+assert.equal(p.rows[0].balance[4], 0, "Exactly filled requirement appears as zero");
+assert.equal(p.rows[1].balance[4], -requirements[1].required, "Vacant requirement appears as a negative difference");
 assert.equal(p.summaries.find(g => g.kind === "Pelaksana").shortage[0], requirements[1].required,
   "Surplus in one unit must not cancel shortages in a different unit");
 assert.equal(p.unmapped, 1); assert.equal(p.unknownDates, 1); assert.equal(p.beforePeriod, 2);
@@ -117,6 +120,25 @@ const bytes = Buffer.from(await xlsx.arrayBuffer());
 const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(bytes);
 assert.deepEqual(workbook.worksheets.map(sheet => sheet.name), ["Ringkasan", "Rekap Jabatan", "Pegawai Pensiun", "Perlu Verifikasi"]);
 assert.equal(workbook.getWorksheet("Rekap Jabatan").getCell("N4").text, "Sumber", "Source column is retained in Excel; PDF has an independent layout");
+const recapSheet = workbook.getWorksheet("Rekap Jabatan");
+assert.equal(recapSheet.getCell("M4").text, "Lebih / kurang 2031");
+let negativeRows = 0, zeroRows = 0;
+for (let index = 0; index < source.positions.length; index++) {
+  const row = recapSheet.getRow(index + 5);
+  assert.equal(row.getCell(13).type, ExcelJS.ValueType.Number);
+  assert.equal(row.getCell(13).value, row.getCell(12).value - row.getCell(4).value);
+  if (row.getCell(13).value < 0) negativeRows++; else if (row.getCell(13).value === 0) zeroRows++;
+}
+assert(negativeRows > 0 && zeroRows > 0, "Export contains negative deficits and exact matches");
+const surplusExport = await GET(req("format=xlsx&startYear=2023"));
+assert.equal(surplusExport.status, 200);
+const surplusBook = new ExcelJS.Workbook(); await surplusBook.xlsx.load(Buffer.from(await surplusExport.arrayBuffer()));
+const surplusIndex = source.positions.findIndex(position => position.id === requirements[0].id) + 5;
+assert.equal(surplusBook.getWorksheet("Rekap Jabatan").getCell(surplusIndex, 13).value, 1, "Surplus exported as a positive numeric difference");
+const summarySheet = workbook.getWorksheet("Ringkasan");
+const allPlacements = buildRetirementProjection(source.positions, employees, filters, "2026-11-17");
+assert.equal(summarySheet.getCell("G10").value, -allPlacements.summaries.find(group => group.kind === "Pelaksana").shortage[0]);
+assert.equal(summarySheet.getCell("H10").value, 1, "Surplus remains separate from another placement's deficit");
 const details = workbook.getWorksheet("Pegawai Pensiun");
 assert.equal(details.getCell("B5").value, employees[0].nip); assert.equal(details.getCell("B5").type, ExcelJS.ValueType.String);
 assert.equal(details.getCell("B5").numFmt, "@"); assert.equal(details.getCell("C5").value, "=1+1");

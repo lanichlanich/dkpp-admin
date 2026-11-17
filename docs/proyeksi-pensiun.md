@@ -46,8 +46,10 @@ atau perubahan skema database yang diperlukan.
 - Sisa akhir tahun = keterisian aktif terpetakan dikurangi pegawai dengan
   TMT sampai akhir tahun tersebut, termasuk TMT sebelum awal periode.
   TMT yang belum diketahui tetap termasuk sisa, disertai catatan verifikasi.
-- Kekurangan = `max(0, kebutuhan - sisa)` untuk **setiap penempatan**, lalu
-  dijumlahkan. Kelebihan pada penempatan lain tidak menghapus kekurangan.
+- Lebih/kurang = `sisa - kebutuhan` untuk **setiap penempatan**. Nilai negatif
+  menunjukkan kekurangan, positif menunjukkan kelebihan, dan nol berarti sesuai.
+  Pada ringkasan, total kekurangan ditampilkan negatif dan kelebihan positif,
+  dijumlah secara terpisah agar kelebihan penempatan lain tidak menutup kekurangan.
 - Pegawai belum terpetakan tetap masuk detail pensiun/verifikasi. Mereka
   tidak otomatis mengisi formasi suatu penempatan. Angka pensiun keseluruhan
   dapat lebih besar daripada total pensiun pada rekap yang terpetakan.

@@ -17,7 +17,7 @@ export type ProjectedEmployee = ProjectionEmployee & {
 };
 export type ProjectionRow = PositionRequirement & {
   active: number; retirements: number[]; totalRetirements: number; remaining: number[];
-  shortage: number[]; surplus: number[]; beforePeriod: number; employees: ProjectedEmployee[];
+  shortage: number[]; surplus: number[]; balance: number[]; beforePeriod: number; employees: ProjectedEmployee[];
 };
 
 export function normalizePosition(value: string) {
@@ -82,6 +82,7 @@ export function buildRetirementProjection(requirements: PositionRequirement[], i
     return { ...row, active: members.length, retirements, remaining,
       shortage: remaining.map(count => Math.max(0, row.required - count)),
       surplus: remaining.map(count => Math.max(0, count - row.required)),
+      balance: remaining.map(count => count - row.required),
       totalRetirements: retirements.reduce((a, b) => a + b, 0),
       beforePeriod: members.filter(e => e.retirementTmt && e.retirementTmt < start).length, employees: members };
   }).filter(row => !search || `${row.name} ${row.unit} ${row.kind}`.toLocaleLowerCase("id-ID").includes(search)

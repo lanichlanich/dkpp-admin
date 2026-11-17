@@ -28,13 +28,13 @@ function sections(p: RetirementProjection, options: { hidePositionTypeWarning?: 
     c("Sisa terpetakan akhir tahun", 27, 130, true), c("Kekurangan per penempatan", 27, 135, true), c("Kelebihan per penempatan", 27, 130, true)],
     rows: p.summaries.flatMap(group => p.years.map((year, i) => [group.kind, year, group.required, group.mappedActive,
       p.rows.filter(row => row.kind === group.kind).reduce((n, row) => n + row.retirements[i], 0),
-      p.rows.filter(row => row.kind === group.kind).reduce((n, row) => n + row.remaining[i], 0), group.shortage[i], group.surplus[i]])),
+      p.rows.filter(row => row.kind === group.kind).reduce((n, row) => n + row.remaining[i], 0), 0 - group.shortage[i], group.surplus[i]])),
   }, { title: "Rekap Jabatan", columns: [c("Jabatan", 51, 135), c("Unit penempatan", 48, 125), c("Jenis", 17, 54),
     c("Kebutuhan", 13, 55, true), c("Aktif", 10, 35, true), ...p.years.map(year => c(`Pensiun ${year}`, 15, 40, true)),
-    c("Total pensiun", 16, 44, true), c(`Sisa ${p.years[4]}`, 15, 42, true), c(`Kurang ${p.years[4]}`, 16, 44, true),
+    c("Total pensiun", 16, 44, true), c(`Sisa ${p.years[4]}`, 15, 42, true), c(`Lebih / kurang ${p.years[4]}`, 22, 44, true),
     c("Sumber", 24, 72)],
     rows: p.rows.map(row => [row.name, row.unit, row.kind, row.required, row.active, ...row.retirements,
-      row.totalRetirements, row.remaining[4], row.shortage[4], `Hal. ${row.page}, No. ${row.sourceRow}`]),
+      row.totalRetirements, row.remaining[4], row.balance[4], `Hal. ${row.page}, No. ${row.sourceRow}`]),
   }, details(p.retirees, false), details(p.review, true)];
 }
 
@@ -44,7 +44,7 @@ export function projectionReportNotes(p: RetirementProjection) {
     `Data per ${p.today}. Periode ${p.years[0]}-${p.years[4]}. Jenis: ${p.filters.kind === "all" ? "Semua" : p.filters.kind}; unit: ${p.filters.unit || "Semua"}; ASN: ${p.filters.asn}; pencarian: ${p.filters.search || "-"}.`,
     `${p.employees.length} pegawai aktif; ${p.mappedActive} terpetakan; ${p.unmapped} belum terpetakan; ${p.unknownDates} TMT belum diketahui; ${p.retirees.length} proyeksi pensiun (termasuk yang belum terpetakan).`,
     `Rekap kebutuhan/sisa/kekurangan hanya memakai penempatan yang cocok. ${p.beforePeriod} pegawai dengan TMT sebelum periode dikurangkan dari sisa. TMT yang belum diketahui tetap dihitung dalam sisa dan perlu diverifikasi.`,
-    "Sisa akhir tahun = aktif terpetakan dikurangi seluruh TMT sampai akhir tahun. Kekurangan dijumlah per penempatan; kelebihan di unit lain tidak menutup kekurangan tersebut. Asumsi belum ada penerimaan, mutasi, atau perubahan jabatan.",
+    "Sisa akhir tahun = aktif terpetakan dikurangi seluruh TMT sampai akhir tahun. Lebih/kurang = sisa dikurangi kebutuhan: negatif berarti kurang, positif berarti lebih, nol berarti sesuai. Total kekurangan (negatif) dan kelebihan dijumlah terpisah per penempatan. Asumsi belum ada penerimaan, mutasi, atau perubahan jabatan.",
     "PPPK: proyeksi BUP jabatan, bukan akhir kontrak. Jika ASN/pencarian difilter, keterisian dan selisih hanya mencerminkan cakupan yang dipilih.",
   ];
 }
@@ -124,7 +124,7 @@ export async function createProjectionPdf(p: RetirementProjection, highlightedId
         rows: nodes.map(node => {
           const row = selected.get(node.position.id);
           return row ? [++number, row.name, row.unit, row.kind, row.required, row.active, ...row.retirements,
-            row.totalRetirements, row.remaining[4], row.shortage[4]]
+            row.totalRetirements, row.remaining[4], row.balance[4]]
             : ["", node.position.name, node.position.unit, node.position.kind, ...Array<string>(10).fill("-")];
         }) };
     }

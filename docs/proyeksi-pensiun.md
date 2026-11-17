@@ -59,8 +59,11 @@ atau perubahan skema database yang diperlukan.
 ## Unduhan dan pemeriksaan
 
 Excel memiliki empat sheet: Ringkasan, Rekap Jabatan, Pegawai Pensiun,
-Perlu Verifikasi. PDF berisi bagian yang sama dengan header tabel berulang
-dan nomor halaman. NIP tetap teks di Excel. Kedua format memuat seluruh
+Perlu Verifikasi. PDF berisi bagian yang sama dengan gaya lampiran peraturan:
+huruf Times, judul kapital rata tengah, tabel hitam-putih bergaris penuh,
+header tahun bertingkat, header tabel berulang, dan nomor halaman rata tengah.
+Kolom Sumber hanya ada pada Excel; kolom tersebut dihilangkan pada PDF.
+NIP tetap teks di Excel. Kedua format memuat seluruh
 hasil filter, tidak dibatasi halaman pagination. Data dibaca kembali di
 server saat unduhan sehingga perubahan pegawai terbaru langsung berlaku.
 Respons dokumen `private, no-store` dan `nosniff`.

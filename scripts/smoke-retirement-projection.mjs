@@ -86,6 +86,7 @@ assert.equal(xlsx.status, 200); assert.equal(xlsx.headers.get("cache-control"), 
 const bytes = Buffer.from(await xlsx.arrayBuffer());
 const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(bytes);
 assert.deepEqual(workbook.worksheets.map(sheet => sheet.name), ["Ringkasan", "Rekap Jabatan", "Pegawai Pensiun", "Perlu Verifikasi"]);
+assert.equal(workbook.getWorksheet("Rekap Jabatan").getCell("N4").text, "Sumber", "Source column is retained in Excel; PDF has an independent layout");
 const details = workbook.getWorksheet("Pegawai Pensiun");
 assert.equal(details.getCell("B5").value, employees[0].nip); assert.equal(details.getCell("B5").type, ExcelJS.ValueType.String);
 assert.equal(details.getCell("B5").numFmt, "@"); assert.equal(details.getCell("C5").value, "=1+1");

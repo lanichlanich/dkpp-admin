@@ -98,45 +98,121 @@ export async function createProjectionPdf(p: RetirementProjection) {
   const result = new Promise<Buffer>((resolve, reject) => {
     pdf.on("data", (chunk: Buffer) => chunks.push(chunk)); pdf.on("end", () => resolve(Buffer.concat(chunks))); pdf.on("error", reject);
   });
-  const left = 28, width = pdf.page.width - 56, bottom = pdf.page.height - 38;
+  const left = 42, width = pdf.page.width - 84, bottom = pdf.page.height - 42;
+  const bodySize = 9, headerSize = 9, padding = 5;
+  const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "UTC" })
+    .format(new Date(`${p.today}T00:00:00Z`));
   let first = true;
-  for (const section of sections(p)) {
-    const weight = section.columns.reduce((n, column) => n + column.weight, 0);
+  // Keep the Excel columns intact; the PDF has its own appendix-style layout.
+  const pdfSections = sections(p).map(section => {
+    const indices = section.columns.map((_, i) => i).filter(i => section.columns[i].title !== "Sumber");
+    const columns = indices.map(i => section.columns[i]);
+    const rows = section.rows.map(row => indices.map(i => row[i]));
+    return section.title === "Rekap Jabatan"
+      ? { ...section, columns: [c("No.", 6, 24, true), ...columns], rows: rows.map((row, i) => [i + 1, ...row]) }
+      : { ...section, columns, rows };
+  });
+  for (const [sectionIndex, section] of pdfSections.entries()) {
+    const yearColumns = section.columns.map((column, i) => column.title.startsWith("Pensiun ") ? i : -1).filter(i => i >= 0);
+    const grouped = section.title === "Rekap Jabatan" && yearColumns.length === 5;
+    const minimumWidths = section.columns.map((column, i) => {
+      const label = grouped && yearColumns.includes(i) ? column.title.replace("Pensiun ", "") : column.title.toUpperCase();
+      pdf.font("Times-Bold").fontSize(headerSize);
+      const headingWidth = Math.max(...label.split(/\s+/).map(word => pdf.widthOfString(word)));
+      pdf.font("Times-Roman").fontSize(bodySize);
+      const atomic = column.numeric || column.text || ["Jenis", "Jenis jabatan", "Jenis ASN", "TMT pensiun"].includes(column.title);
+      const valueWidth = atomic ? Math.max(0, ...section.rows.flatMap(row => String(row[i]).split(/\s+/).map(word => pdf.widthOfString(word)))) : 50;
+      return Math.max(headingWidth, valueWidth) + 2 * padding + 1;
+    });
+    const remainingWidth = Math.max(0, width - minimumWidths.reduce((n, value) => n + value, 0));
+    const flexible = section.columns.map(column => ["Nama pegawai", "Jabatan", "Unit penempatan", "Keterangan"].includes(column.title));
+    const hasFlexible = flexible.some(Boolean);
+    const weight = section.columns.reduce((n, column, i) => n + (!hasFlexible || flexible[i] ? column.weight : 0), 0);
     let x = left;
-    const cols = section.columns.map(column => { const item = { ...column, x, w: width * column.weight / weight }; x += item.w; return item; });
-    const header = () => {
+    const cols = section.columns.map((column, i) => {
+      const extra = !hasFlexible || flexible[i] ? remainingWidth * column.weight / weight : 0;
+      const item = { ...column, x, w: minimumWidths[i] + extra }; x += item.w; return item;
+    });
+    const sectionTitle = `${["I", "II", "III", "IV"][sectionIndex]}. ${section.title.toUpperCase()}`;
+    const inner = (i: number) => cols[i].w - 2 * padding;
+    const measure = (text: string, font: string, size: number, cellWidth: number) => {
+      pdf.font(font).fontSize(size);
+      return pdf.heightOfString(text, { width: cellWidth, lineGap: 1 });
+    };
+    const textInCell = (text: string, i: number, top: number, height: number, bold = false, center = false) => {
+      const font = bold ? "Times-Bold" : "Times-Roman", size = bold ? headerSize : bodySize;
+      const textHeight = measure(text, font, size, inner(i));
+      pdf.fillColor("black").text(text, cols[i].x + padding, top + (height - textHeight) / 2,
+        { width: inner(i), lineGap: 1, align: center || cols[i].numeric ? "center" : "left" });
+    };
+    const header = (continuation = false) => {
       if (!first) pdf.addPage(); first = false;
-      pdf.font("Helvetica-Bold").fontSize(9).fillColor("#4338ca").text(organization, left, 24, { width });
-      pdf.fontSize(18).fillColor("#18181b").text(`Proyeksi Pensiun ${p.years[0]}-${p.years[4]}`, left, 43, { width });
-      pdf.fontSize(11).fillColor("#4338ca").text(section.title, left, 69, { width });
-      pdf.font("Helvetica").fontSize(8).fillColor("#52525b").text(`Data per ${p.today} | ${p.filters.kind === "all" ? "Semua jenis jabatan" : p.filters.kind} | ${p.filters.unit || "Semua unit"} | ASN: ${p.filters.asn === "all" ? "Semua" : p.filters.asn} | Cari: ${p.filters.search || "-"}`, left, 87, { width, height: 22 });
-      pdf.rect(left, 115, width, 32).fill("#3730a3");
-      for (const column of cols) pdf.font("Helvetica-Bold").fontSize(7.5).fillColor("white").text(column.title, column.x + 4, 123, { width: column.w - 8, align: column.numeric ? "center" : "left" });
-      return 147;
+      pdf.fillColor("black").strokeColor("black");
+      let top: number;
+      if (continuation) {
+        pdf.font("Times-Bold").fontSize(11).text(`${sectionTitle} (LANJUTAN)`, left, 34, { width, align: "center" });
+        pdf.font("Times-Roman").fontSize(9).text(`TAHUN ${p.years[0]} - ${p.years[4]}`, left, 51, { width, align: "center" });
+        top = 73;
+      } else {
+        const headings = ["PROYEKSI PENSIUN PEGAWAI", "DINAS KETAHANAN PANGAN DAN PERTANIAN", "KABUPATEN INDRAMAYU", `TAHUN ${p.years[0]} - ${p.years[4]}`];
+        for (const [i, title] of headings.entries()) pdf.font("Times-Bold").fontSize(11).text(title, left, 31 + i * 15, { width, align: "center" });
+        pdf.fontSize(10).text(sectionTitle, left, 100, { width, align: "center" });
+        const scope = `Keadaan data: ${date}. Jenis jabatan: ${p.filters.kind === "all" ? "Semua" : p.filters.kind}. Unit: ${p.filters.unit || "Semua"}. ASN: ${p.filters.asn === "all" ? "Semua" : p.filters.asn}. Pencarian: ${p.filters.search || "-"}.`;
+        const scopeHeight = measure(scope, "Times-Roman", 8.5, width);
+        pdf.text(scope, left, 121, { width, lineGap: 1 });
+        top = 121 + scopeHeight + 10;
+      }
+      const height = Math.max(grouped ? 46 : 32, ...cols.map((column, i) =>
+        yearColumns.includes(i) && grouped ? 0 : measure(column.title.toUpperCase(), "Times-Bold", headerSize, inner(i)) + 2 * padding));
+      pdf.rect(left, top, width, height).fill("#e6e6e6");
+      pdf.lineWidth(0.7).rect(left, top, width, height).stroke("black");
+      const groupStart = grouped ? yearColumns[0] : -1, groupEnd = grouped ? yearColumns[4] : -1;
+      for (const [i, column] of cols.entries()) {
+        if (i > 0) pdf.moveTo(column.x, top + (grouped && i > groupStart && i <= groupEnd ? height / 2 : 0))
+          .lineTo(column.x, top + height).stroke();
+        if (grouped && yearColumns.includes(i)) textInCell(String(p.years[i - groupStart]), i, top + height / 2, height / 2, true, true);
+        else textInCell(column.title.toUpperCase(), i, top, height, true, true);
+      }
+      if (grouped) {
+        const groupLeft = cols[groupStart].x, groupWidth = cols.slice(groupStart, groupEnd + 1).reduce((n, col) => n + col.w, 0);
+        pdf.moveTo(groupLeft, top + height / 2).lineTo(groupLeft + groupWidth, top + height / 2).stroke();
+        const text = "JUMLAH PEGAWAI PENSIUN", textHeight = measure(text, "Times-Bold", headerSize, groupWidth - 2 * padding);
+        pdf.text(text, groupLeft + padding, top + (height / 2 - textHeight) / 2,
+          { width: groupWidth - 2 * padding, align: "center", lineGap: 1 });
+      }
+      return top + height;
     };
     let y = header();
-    if (!section.rows.length) { pdf.font("Helvetica").fontSize(10).fillColor("#52525b").text("Tidak ada data dalam cakupan ini.", left + 6, y + 12, { width }); y += 38; }
-    for (const [i, values] of section.rows.entries()) {
-      pdf.font("Helvetica").fontSize(7.5);
-      const height = Math.max(25, ...values.map((value, j) => pdf.heightOfString(String(value), { width: cols[j].w - 8 }) + 12));
-      if (y + height > bottom) y = header();
-      pdf.rect(left, y, width, height).fill(i % 2 ? "#ffffff" : "#f5f3ff");
-      for (let j = 0; j < values.length; j++) pdf.font("Helvetica").fontSize(7.5).fillColor("#18181b").text(String(values[j]), cols[j].x + 4, y + 6, { width: cols[j].w - 8, align: cols[j].numeric ? "center" : "left" });
-      pdf.moveTo(left, y + height).lineTo(left + width, y + height).strokeColor("#e4e4e7").lineWidth(0.4).stroke();
+    if (!section.rows.length) {
+      pdf.lineWidth(0.5).rect(left, y, width, 30).stroke("black");
+      pdf.font("Times-Roman").fontSize(bodySize).text("Tidak ada data dalam cakupan ini.", left + padding, y + 10, { width: width - 2 * padding, align: "center" }); y += 30;
+    }
+    for (const values of section.rows) {
+      const height = Math.max(section.title === "Ringkasan" ? 24 : 26,
+        ...values.map((value, j) => measure(String(value), "Times-Roman", bodySize, inner(j)) + 2 * padding));
+      if (y + height > bottom) y = header(true);
+      pdf.lineWidth(0.5).strokeColor("black").rect(left, y, width, height).stroke();
+      for (let j = 0; j < values.length; j++) {
+        if (j > 0) pdf.moveTo(cols[j].x, y).lineTo(cols[j].x, y + height).stroke();
+        textInCell(String(values[j]), j, y, height);
+      }
       y += height;
     }
     if (section.title === "Ringkasan") {
+      let notesStarted = false;
       for (const note of projectionReportNotes(p)) {
-        pdf.font("Helvetica").fontSize(8);
-        const height = pdf.heightOfString(note, { width }) + 10;
-        if (y + height + 12 > bottom) { pdf.addPage(); pdf.font("Helvetica-Bold").fontSize(12).text("Catatan Proyeksi", left, 30, { width }); y = 55; }
-        pdf.font("Helvetica").fontSize(8).fillColor("#52525b").text(note, left, y + 9, { width }); y += height;
+        const height = measure(note, "Times-Roman", 9, width) + 7;
+        if (y + height + (notesStarted ? 7 : 32) > bottom) {
+          pdf.addPage(); pdf.font("Times-Bold").fontSize(11).text("CATATAN PROYEKSI", left, 34, { width, align: "center" }); y = 58; notesStarted = true;
+        }
+        if (!notesStarted) { pdf.font("Times-Bold").fontSize(9).text("Catatan:", left, y + 13, { width }); y += 30; notesStarted = true; }
+        pdf.font("Times-Roman").fontSize(9).fillColor("black").text(note, left, y + 5, { width, lineGap: 1 }); y += height;
       }
     }
   }
   const { count } = pdf.bufferedPageRange();
   for (let page = 0; page < count; page++) {
-    pdf.switchToPage(page); pdf.font("Helvetica").fontSize(8).fillColor("#71717a").text(`DKPP | Peta jabatan 2026 | Halaman ${page + 1} dari ${count}`, left, pdf.page.height - 24, { width, lineBreak: false });
+    pdf.switchToPage(page); pdf.font("Times-Roman").fontSize(10).fillColor("black").text(`- ${page + 1} -`, left, pdf.page.height - 27, { width, align: "center", lineBreak: false });
   }
   pdf.end(); return result;
 }

@@ -27,6 +27,7 @@ const snapshot = {
     wfh_reports: [{ id: "report-1" }],
     wfh_schedule_letters: [{ id: "letter-1", storage_name: "wfh-letter.pdf", original_file_name: "Surat-Tugas.pdf", period: "2026-11" }],
     anjab_abk_plans: [{ year: 2026, data_json: { version: 1, reviewed: true }, revision: 2 }],
+    position_map_plans: [{ year: 2026, data_json: { positions: { "peta-2026-001": { required: 1, staffed: 1 } } }, revision: 3 }],
     surat_perbantuan_documents: [{ id: "perbantuan-1", storage_name: "perbantuan.docx", file_name: "Surat-Perbantuan.docx" }],
     users: [{ id: "user-1", username: "admin1" }],
     library_books: [{ id: "book-1", inventory_code: "000123", copies: 2 }],
@@ -170,7 +171,7 @@ try {
   const result = await actions.runGoogleDriveBackupAction();
   assert.equal(result.status, "success"); assert.match(result.message, /\.tar\.gz/);
   assert.equal(state.snapshots, 1);
-  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 16);
+  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 17);
   assert.equal(result.documentCount, 10); assert.equal(result.unlinkedStorageObjectCount, 1);
   assert.equal(state.tokenCalls, 1, "Reuse the access token across folder creation and uploads");
   assert.deepEqual([...state.downloads].sort(), [...sourceNames].sort());
@@ -189,6 +190,7 @@ try {
     assert.deepEqual(JSON.parse(archives.get("Perpustakaan").get(`database/${table}.json`)), snapshot.tables[table]);
   assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/employees.json")), snapshot.tables.employees);
   assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/anjab_abk_plans.json")), snapshot.tables.anjab_abk_plans);
+  assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/position_map_plans.json")), snapshot.tables.position_map_plans);
   assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/kgb_documents.json")), snapshot.tables.kgb_documents);
   assert.deepEqual(JSON.parse(archives.get("Kepegawaian").get("database/kgb_signed_documents.json")), snapshot.tables.kgb_signed_documents);
   assert.deepEqual(archives.get("Kepegawaian").get("files/kgb_signed_documents/record-kgb-signed-1.pdf"), fixtureBytes("kgb-signed.pdf"));

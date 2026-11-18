@@ -151,6 +151,16 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS anjab_abk_plans_user_idx ON anjab_abk_plans(updated_by);
 
+  CREATE TABLE IF NOT EXISTS position_map_plans (
+    year INTEGER PRIMARY KEY CHECK (year BETWEEN 2000 AND 2099),
+    data_json TEXT NOT NULL CHECK (json_valid(data_json)),
+    revision INTEGER NOT NULL CHECK (revision >= 1),
+    updated_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS position_map_plans_user_idx ON position_map_plans(updated_by);
+
   CREATE TABLE IF NOT EXISTS notifications (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

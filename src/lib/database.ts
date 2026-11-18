@@ -42,6 +42,7 @@ const TABLE_NAMES = [
   "wfh_schedule_entries",
   "wfh_schedule_letters",
   "anjab_abk_plans",
+  "position_map_plans",
   "audit_logs",
 ] as const;
 

@@ -1,0 +1,3373 @@
+{
+  "sourceFile": "peta jabatan bezeting.pdf",
+  "sha256": "809e31514f5ff7a36447125c358e9222038ab71a9f064c8a0ac03a0717800415",
+  "width": 1190.52002,
+  "height": 841.92004,
+  "heads": [
+    {
+      "id": "peta-2026-001",
+      "name": "KEPALA DINAS KETAHANAN PANGAN DAN PERTANIAN",
+      "x": 528.76,
+      "y": 44.56,
+      "width": 156.28,
+      "height": 30.26,
+      "color": "FF0000"
+    },
+    {
+      "id": "peta-2026-007",
+      "name": "SEKRETARIS",
+      "x": 807.77,
+      "y": 135.28,
+      "width": 154.23,
+      "height": 30.25,
+      "color": "00B050"
+    },
+    {
+      "id": null,
+      "name": "JABATAN FUNGSIONAL",
+      "x": 324.89,
+      "y": 165.53,
+      "width": 192.73,
+      "height": 30.25,
+      "color": "BFBFBF"
+    },
+    {
+      "id": "peta-2026-020",
+      "name": "KEPALA SUB BAGIAN UMUM DAN KEPEGAWAIAN",
+      "x": 807.77,
+      "y": 185.69,
+      "width": 154.23,
+      "height": 30.25,
+      "color": "00B0F0"
+    },
+    {
+      "id": "peta-2026-031",
+      "name": "KEPALA SUB BAGIAN KEUANGAN",
+      "x": 984.29,
+      "y": 185.69,
+      "width": 145.11,
+      "height": 30.25,
+      "color": "00B0F0"
+    },
+    {
+      "id": "peta-2026-036",
+      "name": "KEPALA BIDANG KETERSEDIAAN DAN DISTRIBUSI PANGAN",
+      "x": 96.17,
+      "y": 478.0,
+      "width": 150.62,
+      "height": 40.34,
+      "color": "00B050"
+    },
+    {
+      "id": "peta-2026-045",
+      "name": "KEPALA BIDANG KONSUMSI DAN KEAMANAN PANGAN",
+      "x": 269.09,
+      "y": 478.0,
+      "width": 151.94,
+      "height": 40.34,
+      "color": "00B050"
+    },
+    {
+      "id": "peta-2026-055",
+      "name": "KEPALA BIDANG TANAMAN PANGAN",
+      "x": 443.33,
+      "y": 478.0,
+      "width": 152.42,
+      "height": 40.34,
+      "color": "00B050"
+    },
+    {
+      "id": "peta-2026-064",
+      "name": "KEPALA BIDANG HORTIKULTURA, PERKEBUNAN DAN PENYULUHAN",
+      "x": 640.38,
+      "y": 478.0,
+      "width": 145.09,
+      "height": 40.34,
+      "color": "00B050"
+    },
+    {
+      "id": "peta-2026-074",
+      "name": "KEPALA BIDANG PRODUKSI PETERNAKAN",
+      "x": 807.77,
+      "y": 478.0,
+      "width": 154.23,
+      "height": 40.34,
+      "color": "00B050"
+    },
+    {
+      "id": "peta-2026-084",
+      "name": "KEPALA BIDANG KESEHATAN HEWAN DAN KESEHATAN MASYARAKAT VETERINER",
+      "x": 984.29,
+      "y": 478.0,
+      "width": 145.11,
+      "height": 40.34,
+      "color": "00B050"
+    }
+  ],
+  "tables": [
+    {
+      "unit": "SEKRETARIAT DINAS KETAHANAN PANGAN DAN PERTANIAN",
+      "x": 640.38,
+      "y": 185.69,
+      "width": 145.09,
+      "columns": [
+        111.6,
+        11.16,
+        11.16,
+        11.17
+      ],
+      "rowHeights": [
+        10.09,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16
+      ],
+      "rows": [
+        {
+          "id": "peta-2026-008",
+          "label": "JF PERENCANA AHLI MUDA",
+          "required": 1,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-009",
+          "label": "JF ARSIPARIS AHLI MUDA",
+          "required": 1,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-010",
+          "label": "JF ANALIS SUMBER DAYA MANUSIA\nAPARATUR AHLI MUDA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-011",
+          "label": "JF PRANATA KOMPUTER AHLI MUDA",
+          "required": 2,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-012",
+          "label": "JF PRANATA HUBUNGAN MASYARAKAT\nAHLI PERTAMA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-013",
+          "label": "JF PRANATA HUBUNGAN MASYARAKAT\nMAHIR",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-014",
+          "label": "JF PRANATA HUBUNGAN MASYARAKAT\nTERAMPIL",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-015",
+          "label": "JF PERENCANA AHLI PERTAMA",
+          "required": 2,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-016",
+          "label": "JF PRANATA KOMPUTER AHLI PERTAMA",
+          "required": 2,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-017",
+          "label": "JF PRANATA KOMPUTER PENYELIA",
+          "required": 1,
+          "staffed": 0
+        }
+      ]
+    },
+    {
+      "unit": "DINAS KETAHANAN PANGAN DAN PERTANIAN",
+      "x": 324.89,
+      "y": 205.87,
+      "width": 192.73,
+      "columns": [
+        147.37,
+        17.28,
+        14.52,
+        13.57
+      ],
+      "rowHeights": [
+        10.07,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16
+      ],
+      "rows": [
+        {
+          "id": "peta-2026-002",
+          "label": "JF PENATA PERIZINAN AHLI MADYA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-004",
+          "label": "JF MEDIK VETERINER AHLI MADYA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-005",
+          "label": "JF ANALIS KETAHANAN PANGAN AHLI MADYA",
+          "required": 4,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-006",
+          "label": "JF PENGAWAS MUTU HASIL PERTANIAN AHLI\nMADYA",
+          "required": 3,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-003",
+          "label": "JF PERENCANA AHLI MADYA",
+          "required": 1,
+          "staffed": 0
+        }
+      ]
+    },
+    {
+      "unit": "SUB BAGIAN UMUM DAN KEPEGAWAIAN",
+      "x": 807.77,
+      "y": 226.02,
+      "width": 154.23,
+      "columns": [
+        111.61,
+        13.56,
+        13.56,
+        15.5
+      ],
+      "rowHeights": [
+        10.08,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16
+      ],
+      "rows": [
+        {
+          "id": "peta-2026-021",
+          "label": "JF ANALIS SUMBER DAYA MANUSIA\nAPARATUR AHLI PERTAMA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-025",
+          "label": "JF ARSIPARIS AHLI PERTAMA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-022",
+          "label": "JF PRANATA KOMPUTER AHLI PERTAMA",
+          "required": 1,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-023",
+          "label": "JF PRANATA KOMPUTER MAHIR",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-024",
+          "label": "JF PRANATA KOMPUTER TERAMPIL",
+          "required": 3,
+          "staffed": 3
+        },
+        {
+          "id": "peta-2026-027",
+          "label": "JF ARSIPARIS TERAMPIL",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-028",
+          "label": "PENELAAH TEKNIS KEBIJAKAN",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-029",
+          "label": "PENGOLAH DATA DAN INFORMASI",
+          "required": 2,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-026",
+          "label": "JF PUSTAKAWAN AHLI PERTAMA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-030",
+          "label": "PENGADMINISTRASI PERKANTORAN",
+          "required": 1,
+          "staffed": 2
+        }
+      ]
+    },
+    {
+      "unit": "SUB BAGIAN KEUANGAN",
+      "x": 984.29,
+      "y": 226.02,
+      "width": 145.11,
+      "columns": [
+        111.61,
+        11.16,
+        11.16,
+        11.18
+      ],
+      "rowHeights": [
+        10.08,
+        20.16,
+        20.16,
+        20.16,
+        20.16
+      ],
+      "rows": [
+        {
+          "id": "peta-2026-032",
+          "label": "JF PRANATA KOMPUTER MAHIR",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-034",
+          "label": "PENELAAH TEKNIS KEBIJAKAN",
+          "required": 2,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-035",
+          "label": "PENGOLAH DATA DAN INFORMASI",
+          "required": 5,
+          "staffed": 5
+        },
+        {
+          "id": "peta-2026-033",
+          "label": "JF PRANATA KOMPUTER TERAMPIL",
+          "required": 1,
+          "staffed": 1
+        }
+      ]
+    },
+    {
+      "unit": "BIDANG KETERSEDIAAN DAN DISTRIBUSI PANGAN",
+      "x": 96.17,
+      "y": 538.5,
+      "width": 150.62,
+      "columns": [
+        111.61,
+        12.24,
+        12.24,
+        14.53
+      ],
+      "rowHeights": [
+        11.76,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16
+      ],
+      "rows": [
+        {
+          "id": "peta-2026-037",
+          "label": "JF ANALIS KETAHANAN PANGAN AHLI\nMUDA",
+          "required": 3,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-038",
+          "label": "JF ANALIS KETAHANAN PANGAN AHLI\nPERTAMA",
+          "required": 4,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-039",
+          "label": "JF PRANATA KOMPUTER AHLI PERTAMA",
+          "required": 1,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-040",
+          "label": "JF PRANATA KOMPUTER PENYELIA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-041",
+          "label": "JF PRANATA KOMPUTER MAHIR",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-042",
+          "label": "PENELAAH TEKNIS KEBIJAKAN",
+          "required": 2,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-043",
+          "label": "PENGOLAH DATA DAN INFORMASI",
+          "required": 2,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-044",
+          "label": "PENGADMINISTRASI PERKANTORAN",
+          "required": 1,
+          "staffed": 1
+        }
+      ]
+    },
+    {
+      "unit": "BIDANG KONSUMSI DAN KEAMANAN PANGAN",
+      "x": 269.09,
+      "y": 538.5,
+      "width": 151.94,
+      "columns": [
+        111.61,
+        13.56,
+        12.24,
+        14.53
+      ],
+      "rowHeights": [
+        11.76,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16
+      ],
+      "rows": [
+        {
+          "id": "peta-2026-046",
+          "label": "JF ANALIS KETAHANAN PANGAN AHLI\nMUDA",
+          "required": 2,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-047",
+          "label": "JF PENATA PERIZINAN AHLI MUDA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-048",
+          "label": "JF ANALIS KETAHANAN PANGAN AHLI\nPERTAMA",
+          "required": 4,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-049",
+          "label": "JF PRANATA KOMPUTER PENYELIA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-050",
+          "label": "JF PRANATA KOMPUTER MAHIR",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-051",
+          "label": "JF PRANATA KOMPUTER TERAMPIL",
+          "required": 2,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-052",
+          "label": "PENELAAH TEKNIS KEBIJAKAN",
+          "required": 2,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-053",
+          "label": "PENGOLAH DATA DAN INFORMASI",
+          "required": 2,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-054",
+          "label": "PENGELOLA LAYANAN OPERASIONAL",
+          "required": 1,
+          "staffed": 0
+        }
+      ]
+    },
+    {
+      "unit": "BIDANG TANAMAN PANGAN",
+      "x": 443.33,
+      "y": 538.5,
+      "width": 152.42,
+      "columns": [
+        118.93,
+        11.16,
+        11.16,
+        11.17
+      ],
+      "rowHeights": [
+        11.76,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16
+      ],
+      "rows": [
+        {
+          "id": "peta-2026-056",
+          "label": "JF PENGAWAS MUTU HASIL PERTANIAN AHLI\nMUDA",
+          "required": 3,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-057",
+          "label": "JF PENGAWAS MUTU HASIL PERTANIAN AHLI\nPERTAMA",
+          "required": 4,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-058",
+          "label": "JF PENATA PERIZINAN AHLI PERTAMA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-059",
+          "label": "JF PRANATA KOMPUTER PENYELIA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-060",
+          "label": "JF PRANATA KOMPUTER MAHIR",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-061",
+          "label": "JF PRANATA KOMPUTER TERAMPIL",
+          "required": 2,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-062",
+          "label": "PENELAAH TEKNIS KEBIJAKAN",
+          "required": 3,
+          "staffed": 3
+        },
+        {
+          "id": "peta-2026-063",
+          "label": "PENGELOLA LAYANAN OPERASIONAL",
+          "required": 3,
+          "staffed": 0
+        }
+      ]
+    },
+    {
+      "unit": "BIDANG HORTIKULTURA, PERKEBUNAN DAN PENYULUHAN",
+      "x": 640.38,
+      "y": 538.5,
+      "width": 145.09,
+      "columns": [
+        111.6,
+        11.16,
+        11.16,
+        11.17
+      ],
+      "rowHeights": [
+        11.76,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16
+      ],
+      "rows": [
+        {
+          "id": "peta-2026-065",
+          "label": "JF PENGAWAS MUTU HASIL PERTANIAN\nAHLI MUDA",
+          "required": 3,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-066",
+          "label": "JF PENGAWAS MUTU HASIL PERTANIAN\nAHLI PERTAMA",
+          "required": 5,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-067",
+          "label": "JF PRANATA KOMPUTER AHLI PERTAMA",
+          "required": 1,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-068",
+          "label": "JF PRANATA KOMPUTER PENYELIA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-069",
+          "label": "JF PRANATA KOMPUTER MAHIR",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-070",
+          "label": "JF PRANATA KOMPUTER TERAMPIL",
+          "required": 2,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-071",
+          "label": "JF ANALIS PRASARANA DAN SARANA\nPERTANIAN AHLI PERTAMA",
+          "required": 0,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-073",
+          "label": "PENGOLAH DATA DAN INFORMASI",
+          "required": 3,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-072",
+          "label": "PENELAAH TEKNIS KEBIJAKAN",
+          "required": 3,
+          "staffed": 2
+        }
+      ]
+    },
+    {
+      "unit": "BIDANG PRODUKSI PETERNAKAN",
+      "x": 807.77,
+      "y": 538.5,
+      "width": 154.23,
+      "columns": [
+        111.61,
+        13.56,
+        13.56,
+        15.5
+      ],
+      "rowHeights": [
+        11.76,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16
+      ],
+      "rows": [
+        {
+          "id": "peta-2026-075",
+          "label": "JF MEDIK VETERINER AHLI MUDA",
+          "required": 3,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-076",
+          "label": "JF PRANATA KOMPUTER PENYELIA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-077",
+          "label": "JF PRANATA KOMPUTER MAHIR",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-078",
+          "label": "JF PRANATA KOMPUTER TERAMPIL",
+          "required": 1,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-079",
+          "label": "JF PENGAWAS MUTU PAKAN AHLI\nPERTAMA",
+          "required": 0,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-080",
+          "label": "JF PENGAWAS BIBIT TERNAK AHLI\nPERTAMA",
+          "required": 0,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-081",
+          "label": "JF PENGAWAS BIBIT TERNAK TERAMPIL",
+          "required": 0,
+          "staffed": 1
+        },
+        {
+          "id": "peta-2026-082",
+          "label": "PENELAAH TEKNIS KEBIJAKAN",
+          "required": 2,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-083",
+          "label": "PENGELOLA LAYANAN OPERASIONAL",
+          "required": 4,
+          "staffed": 0
+        },
+        {
+          "id": "bezetting-2026-cb2eda3a98",
+          "label": "JF PENATA PERIZINAN AHLI PERTAMA",
+          "required": 1,
+          "staffed": 0
+        }
+      ]
+    },
+    {
+      "unit": "BIDANG KESEHATAN HEWAN DAN KESEHATAN MASYARAKAT VETERINER",
+      "x": 984.29,
+      "y": 538.5,
+      "width": 145.11,
+      "columns": [
+        111.61,
+        11.16,
+        11.16,
+        11.18
+      ],
+      "rowHeights": [
+        11.76,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16,
+        20.16
+      ],
+      "rows": [
+        {
+          "id": "peta-2026-085",
+          "label": "JF MEDIK VETERINER AHLI MUDA",
+          "required": 3,
+          "staffed": 2
+        },
+        {
+          "id": "peta-2026-089",
+          "label": "JF PENATA PERIZINAN AHLI PERTAMA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-086",
+          "label": "JF PRANATA KOMPUTER PENYELIA",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-087",
+          "label": "JF PRANATA KOMPUTER MAHIR",
+          "required": 1,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-088",
+          "label": "JF PRANATA KOMPUTER TERAMPIL",
+          "required": 3,
+          "staffed": 3
+        },
+        {
+          "id": "peta-2026-090",
+          "label": "PENELAAH TEKNIS KEBIJAKAN",
+          "required": 2,
+          "staffed": 0
+        },
+        {
+          "id": "peta-2026-091",
+          "label": "PENGELOLA LAYANAN OPERASIONAL",
+          "required": 4,
+          "staffed": 0
+        }
+      ]
+    }
+  ],
+  "rects": [
+    {
+      "x": 528.72,
+      "y": 44.52,
+      "width": 156.36,
+      "height": 20.28,
+      "color": "FF0000"
+    },
+    {
+      "x": 807.72,
+      "y": 135.24,
+      "width": 154.32,
+      "height": 20.28,
+      "color": "00B050"
+    },
+    {
+      "x": 324.84,
+      "y": 165.48,
+      "width": 192.84,
+      "height": 20.28,
+      "color": "BFBFBF"
+    },
+    {
+      "x": 807.72,
+      "y": 185.64,
+      "width": 154.32,
+      "height": 10.2,
+      "color": "00B0F0"
+    },
+    {
+      "x": 984.24,
+      "y": 185.64,
+      "width": 145.2,
+      "height": 10.2,
+      "color": "00B0F0"
+    },
+    {
+      "x": 807.72,
+      "y": 195.72,
+      "width": 154.32,
+      "height": 10.2,
+      "color": "00B0F0"
+    },
+    {
+      "x": 984.24,
+      "y": 195.72,
+      "width": 145.2,
+      "height": 10.2,
+      "color": "00B0F0"
+    },
+    {
+      "x": 96.12,
+      "y": 477.96,
+      "width": 150.72,
+      "height": 30.36,
+      "color": "00B050"
+    },
+    {
+      "x": 269.04,
+      "y": 477.96,
+      "width": 152.04,
+      "height": 30.36,
+      "color": "00B050"
+    },
+    {
+      "x": 443.28,
+      "y": 477.96,
+      "width": 152.52,
+      "height": 30.36,
+      "color": "00B050"
+    },
+    {
+      "x": 640.32,
+      "y": 477.96,
+      "width": 145.2,
+      "height": 30.36,
+      "color": "00B050"
+    },
+    {
+      "x": 807.72,
+      "y": 477.96,
+      "width": 154.32,
+      "height": 30.36,
+      "color": "00B050"
+    },
+    {
+      "x": 984.24,
+      "y": 477.96,
+      "width": 145.2,
+      "height": 30.36,
+      "color": "00B050"
+    },
+    {
+      "x": 325.2,
+      "y": 165.24,
+      "width": 192.72,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 874.44,
+      "y": 115.44,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 325.2,
+      "y": 185.4,
+      "width": 192.72,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 185.4,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 807.48,
+      "y": 135.0,
+      "width": 0.6,
+      "height": 30.84,
+      "color": "000000"
+    },
+    {
+      "x": 961.68,
+      "y": 135.6,
+      "width": 0.6,
+      "height": 30.24,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 185.4,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 420.72,
+      "y": 114.84,
+      "width": 0.6,
+      "height": 50.4,
+      "color": "000000"
+    },
+    {
+      "x": 325.2,
+      "y": 195.48,
+      "width": 192.72,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.08,
+      "y": 185.4,
+      "width": 0.6,
+      "height": 10.68,
+      "color": "000000"
+    },
+    {
+      "x": 751.68,
+      "y": 186.0,
+      "width": 0.6,
+      "height": 10.08,
+      "color": "000000"
+    },
+    {
+      "x": 324.6,
+      "y": 165.24,
+      "width": 0.6,
+      "height": 30.84,
+      "color": "000000"
+    },
+    {
+      "x": 517.32,
+      "y": 165.84,
+      "width": 0.6,
+      "height": 30.24,
+      "color": "000000"
+    },
+    {
+      "x": 325.2,
+      "y": 205.56,
+      "width": 192.72,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 205.56,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 324.6,
+      "y": 205.56,
+      "width": 0.6,
+      "height": 10.68,
+      "color": "000000"
+    },
+    {
+      "x": 325.2,
+      "y": 215.64,
+      "width": 192.72,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 215.64,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 215.64,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 874.44,
+      "y": 165.84,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 215.64,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1050.96,
+      "y": 175.92,
+      "width": 0.6,
+      "height": 10.08,
+      "color": "000000"
+    },
+    {
+      "x": 807.48,
+      "y": 185.4,
+      "width": 0.6,
+      "height": 30.84,
+      "color": "000000"
+    },
+    {
+      "x": 961.68,
+      "y": 186.0,
+      "width": 0.6,
+      "height": 30.24,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 225.72,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.0,
+      "y": 185.4,
+      "width": 0.6,
+      "height": 30.84,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 225.72,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1129.08,
+      "y": 186.0,
+      "width": 0.6,
+      "height": 30.24,
+      "color": "000000"
+    },
+    {
+      "x": 325.2,
+      "y": 235.8,
+      "width": 146.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 472.56,
+      "y": 235.8,
+      "width": 45.36,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 235.8,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 235.8,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 807.48,
+      "y": 225.72,
+      "width": 0.6,
+      "height": 10.68,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 235.8,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1095.6,
+      "y": 225.72,
+      "width": 0.6,
+      "height": 10.08,
+      "color": "000000"
+    },
+    {
+      "x": 1106.76,
+      "y": 226.32,
+      "width": 0.6,
+      "height": 9.48,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 235.8,
+      "width": 133.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 325.2,
+      "y": 255.96,
+      "width": 146.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 472.56,
+      "y": 255.96,
+      "width": 45.36,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 255.96,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 255.96,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 255.96,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 919.68,
+      "y": 255.96,
+      "width": 42.6,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 255.96,
+      "width": 133.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 325.2,
+      "y": 276.12,
+      "width": 146.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 472.56,
+      "y": 276.12,
+      "width": 45.36,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 276.12,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 276.12,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 276.12,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 919.68,
+      "y": 276.12,
+      "width": 42.6,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 276.12,
+      "width": 133.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 324.6,
+      "y": 216.24,
+      "width": 0.6,
+      "height": 80.04,
+      "color": "000000"
+    },
+    {
+      "x": 325.2,
+      "y": 296.28,
+      "width": 192.72,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 296.28,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 296.28,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 296.28,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 919.68,
+      "y": 296.28,
+      "width": 42.6,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 296.28,
+      "width": 133.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 325.2,
+      "y": 316.44,
+      "width": 192.72,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 316.44,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 316.44,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 316.44,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 919.68,
+      "y": 316.44,
+      "width": 42.6,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 316.44,
+      "width": 133.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 336.6,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 336.6,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 336.6,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 356.76,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 356.76,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 356.76,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 376.92,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 376.92,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 376.92,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 397.08,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 807.48,
+      "y": 236.4,
+      "width": 0.6,
+      "height": 180.84,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 417.24,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 437.4,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 517.32,
+      "y": 206.16,
+      "width": 0.6,
+      "height": 110.88,
+      "color": "000000"
+    },
+    {
+      "x": 874.44,
+      "y": 216.24,
+      "width": 0.6,
+      "height": 9.48,
+      "color": "000000"
+    },
+    {
+      "x": 1050.96,
+      "y": 216.24,
+      "width": 0.6,
+      "height": 10.08,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 477.72,
+      "width": 150.6,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 420.72,
+      "y": 196.08,
+      "width": 0.6,
+      "height": 9.48,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 477.72,
+      "width": 151.92,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 477.72,
+      "width": 152.4,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.08,
+      "y": 196.08,
+      "width": 0.6,
+      "height": 201.6,
+      "color": "000000"
+    },
+    {
+      "x": 785.16,
+      "y": 186.0,
+      "width": 0.6,
+      "height": 211.68,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 477.72,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 807.48,
+      "y": 417.24,
+      "width": 0.6,
+      "height": 20.76,
+      "color": "000000"
+    },
+    {
+      "x": 961.68,
+      "y": 226.32,
+      "width": 0.6,
+      "height": 211.68,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 477.72,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.0,
+      "y": 225.72,
+      "width": 0.6,
+      "height": 91.32,
+      "color": "000000"
+    },
+    {
+      "x": 1129.08,
+      "y": 226.32,
+      "width": 0.6,
+      "height": 90.72,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 507.96,
+      "width": 150.6,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 507.96,
+      "width": 151.92,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 507.96,
+      "width": 152.4,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 507.96,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 507.96,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 162.84,
+      "y": 467.64,
+      "width": 0.6,
+      "height": 10.08,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 518.04,
+      "width": 150.6,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 335.76,
+      "y": 468.24,
+      "width": 0.6,
+      "height": 9.48,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 518.04,
+      "width": 151.92,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 517.32,
+      "y": 468.24,
+      "width": 0.6,
+      "height": 9.48,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 518.04,
+      "width": 152.4,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 707.04,
+      "y": 468.24,
+      "width": 0.6,
+      "height": 9.48,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 518.04,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 874.44,
+      "y": 468.24,
+      "width": 0.6,
+      "height": 9.48,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 518.04,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1050.96,
+      "y": 468.24,
+      "width": 0.6,
+      "height": 10.08,
+      "color": "000000"
+    },
+    {
+      "x": 95.88,
+      "y": 477.72,
+      "width": 0.6,
+      "height": 40.92,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 538.2,
+      "width": 123.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 246.48,
+      "y": 478.32,
+      "width": 0.6,
+      "height": 40.32,
+      "color": "000000"
+    },
+    {
+      "x": 220.32,
+      "y": 538.2,
+      "width": 26.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 268.8,
+      "y": 477.72,
+      "width": 0.6,
+      "height": 40.92,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 538.2,
+      "width": 124.56,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 420.72,
+      "y": 478.32,
+      "width": 0.6,
+      "height": 40.32,
+      "color": "000000"
+    },
+    {
+      "x": 394.56,
+      "y": 538.2,
+      "width": 26.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 443.04,
+      "y": 477.72,
+      "width": 0.6,
+      "height": 40.92,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 538.2,
+      "width": 129.48,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 595.44,
+      "y": 478.32,
+      "width": 0.6,
+      "height": 40.32,
+      "color": "000000"
+    },
+    {
+      "x": 573.72,
+      "y": 538.2,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.08,
+      "y": 477.72,
+      "width": 0.6,
+      "height": 40.92,
+      "color": "000000"
+    },
+    {
+      "x": 751.68,
+      "y": 196.08,
+      "width": 0.6,
+      "height": 201.6,
+      "color": "000000"
+    },
+    {
+      "x": 762.84,
+      "y": 186.0,
+      "width": 0.6,
+      "height": 211.08,
+      "color": "000000"
+    },
+    {
+      "x": 774.0,
+      "y": 186.0,
+      "width": 0.6,
+      "height": 211.68,
+      "color": "000000"
+    },
+    {
+      "x": 785.16,
+      "y": 478.32,
+      "width": 0.6,
+      "height": 40.32,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 538.2,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 807.48,
+      "y": 477.72,
+      "width": 0.6,
+      "height": 40.92,
+      "color": "000000"
+    },
+    {
+      "x": 919.08,
+      "y": 226.32,
+      "width": 0.6,
+      "height": 211.08,
+      "color": "000000"
+    },
+    {
+      "x": 932.64,
+      "y": 226.32,
+      "width": 0.6,
+      "height": 211.68,
+      "color": "000000"
+    },
+    {
+      "x": 946.2,
+      "y": 226.32,
+      "width": 0.6,
+      "height": 211.68,
+      "color": "000000"
+    },
+    {
+      "x": 961.68,
+      "y": 478.32,
+      "width": 0.6,
+      "height": 40.32,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 538.2,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.0,
+      "y": 477.72,
+      "width": 0.6,
+      "height": 40.92,
+      "color": "000000"
+    },
+    {
+      "x": 1095.6,
+      "y": 236.4,
+      "width": 0.6,
+      "height": 80.64,
+      "color": "000000"
+    },
+    {
+      "x": 1106.76,
+      "y": 236.4,
+      "width": 0.6,
+      "height": 80.64,
+      "color": "000000"
+    },
+    {
+      "x": 1117.92,
+      "y": 226.32,
+      "width": 0.6,
+      "height": 90.12,
+      "color": "000000"
+    },
+    {
+      "x": 1129.08,
+      "y": 478.32,
+      "width": 0.6,
+      "height": 40.32,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 549.96,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 11.16,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 549.96,
+      "width": 12.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 220.32,
+      "y": 549.96,
+      "width": 26.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 549.96,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 380.4,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 11.16,
+      "color": "000000"
+    },
+    {
+      "x": 381.0,
+      "y": 549.96,
+      "width": 40.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 443.04,
+      "y": 538.2,
+      "width": 0.6,
+      "height": 12.36,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 549.96,
+      "width": 152.4,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.08,
+      "y": 538.2,
+      "width": 0.6,
+      "height": 12.36,
+      "color": "000000"
+    },
+    {
+      "x": 751.68,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 11.76,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 549.96,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 807.48,
+      "y": 538.2,
+      "width": 0.6,
+      "height": 12.36,
+      "color": "000000"
+    },
+    {
+      "x": 919.08,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 11.76,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 549.96,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.0,
+      "y": 538.2,
+      "width": 0.6,
+      "height": 12.36,
+      "color": "000000"
+    },
+    {
+      "x": 1095.6,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 11.76,
+      "color": "000000"
+    },
+    {
+      "x": 1106.76,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 11.76,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 570.12,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 550.56,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 570.12,
+      "width": 12.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 220.32,
+      "y": 570.12,
+      "width": 26.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 570.12,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 381.0,
+      "y": 570.12,
+      "width": 40.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 570.12,
+      "width": 118.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 562.56,
+      "y": 570.12,
+      "width": 33.48,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 570.12,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 570.12,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 570.12,
+      "width": 124.56,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 933.24,
+      "y": 570.12,
+      "width": 29.04,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 570.12,
+      "width": 133.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 590.28,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 570.72,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 590.28,
+      "width": 12.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 220.32,
+      "y": 590.28,
+      "width": 26.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 590.28,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 381.0,
+      "y": 590.28,
+      "width": 40.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 590.28,
+      "width": 118.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 562.56,
+      "y": 590.28,
+      "width": 33.48,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 590.28,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 590.28,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 590.28,
+      "width": 124.56,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 933.24,
+      "y": 590.28,
+      "width": 29.04,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 590.28,
+      "width": 133.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 610.44,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 590.88,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 610.44,
+      "width": 12.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 220.32,
+      "y": 610.44,
+      "width": 26.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 610.44,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 381.0,
+      "y": 610.44,
+      "width": 40.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 610.44,
+      "width": 118.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 562.56,
+      "y": 610.44,
+      "width": 33.48,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 610.44,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 610.44,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 610.44,
+      "width": 124.56,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 933.24,
+      "y": 610.44,
+      "width": 29.04,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 610.44,
+      "width": 133.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 630.6,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 611.04,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 630.6,
+      "width": 12.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 220.32,
+      "y": 630.6,
+      "width": 26.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 630.6,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 381.0,
+      "y": 630.6,
+      "width": 40.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 630.6,
+      "width": 118.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 562.56,
+      "y": 630.6,
+      "width": 33.48,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 630.6,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 630.6,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 630.6,
+      "width": 124.56,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 933.24,
+      "y": 630.6,
+      "width": 29.04,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 630.6,
+      "width": 133.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 650.76,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 631.2,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 650.76,
+      "width": 12.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 220.32,
+      "y": 650.76,
+      "width": 26.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 650.76,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 381.0,
+      "y": 650.76,
+      "width": 40.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 650.76,
+      "width": 118.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 562.56,
+      "y": 650.76,
+      "width": 33.48,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 650.76,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 650.76,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 650.76,
+      "width": 124.56,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 933.24,
+      "y": 650.76,
+      "width": 29.04,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 650.76,
+      "width": 133.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 670.92,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 651.36,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 670.92,
+      "width": 12.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 220.32,
+      "y": 670.92,
+      "width": 26.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 670.92,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 381.0,
+      "y": 670.92,
+      "width": 40.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 670.92,
+      "width": 118.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 562.56,
+      "y": 670.92,
+      "width": 33.48,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 670.92,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 670.92,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 670.92,
+      "width": 124.56,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 933.24,
+      "y": 670.92,
+      "width": 29.04,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 670.92,
+      "width": 133.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 691.08,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 671.52,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 691.08,
+      "width": 12.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 220.32,
+      "y": 691.08,
+      "width": 26.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 691.08,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 381.0,
+      "y": 691.08,
+      "width": 40.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 691.08,
+      "width": 118.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 562.56,
+      "y": 691.08,
+      "width": 33.48,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 691.08,
+      "width": 122.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 763.44,
+      "y": 691.08,
+      "width": 22.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 691.08,
+      "width": 124.56,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 933.24,
+      "y": 691.08,
+      "width": 29.04,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 691.08,
+      "width": 133.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 96.48,
+      "y": 711.24,
+      "width": 123.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 219.72,
+      "y": 711.24,
+      "width": 27.36,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 711.24,
+      "width": 111.0,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 381.0,
+      "y": 711.24,
+      "width": 40.32,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 443.64,
+      "y": 711.24,
+      "width": 152.4,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.08,
+      "y": 550.56,
+      "width": 0.6,
+      "height": 160.68,
+      "color": "000000"
+    },
+    {
+      "x": 751.68,
+      "y": 550.56,
+      "width": 0.6,
+      "height": 160.68,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 711.24,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 711.24,
+      "width": 124.56,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 269.4,
+      "y": 731.4,
+      "width": 151.92,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 731.4,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 731.4,
+      "width": 124.56,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 561.96,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 172.44,
+      "color": "000000"
+    },
+    {
+      "x": 562.56,
+      "y": 751.56,
+      "width": 111.6,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 751.56,
+      "width": 124.56,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 528.48,
+      "y": 44.28,
+      "width": 0.6,
+      "height": 30.84,
+      "color": "000000"
+    },
+    {
+      "x": 684.72,
+      "y": 44.88,
+      "width": 0.6,
+      "height": 30.24,
+      "color": "000000"
+    },
+    {
+      "x": 617.76,
+      "y": 75.12,
+      "width": 0.6,
+      "height": 676.44,
+      "color": "000000"
+    },
+    {
+      "x": 420.72,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 193.2,
+      "color": "000000"
+    },
+    {
+      "x": 874.44,
+      "y": 518.64,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 807.48,
+      "y": 550.56,
+      "width": 0.6,
+      "height": 201.6,
+      "color": "000000"
+    },
+    {
+      "x": 961.68,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 213.36,
+      "color": "000000"
+    },
+    {
+      "x": 324.6,
+      "y": 296.28,
+      "width": 0.6,
+      "height": 20.76,
+      "color": "000000"
+    },
+    {
+      "x": 517.32,
+      "y": 518.64,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 718.2,
+      "y": 175.32,
+      "width": 0.6,
+      "height": 10.08,
+      "color": "000000"
+    },
+    {
+      "x": 1050.96,
+      "y": 518.64,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 640.08,
+      "y": 711.24,
+      "width": 0.6,
+      "height": 20.76,
+      "color": "000000"
+    },
+    {
+      "x": 751.68,
+      "y": 711.84,
+      "width": 0.6,
+      "height": 20.16,
+      "color": "000000"
+    },
+    {
+      "x": 762.84,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 193.2,
+      "color": "000000"
+    },
+    {
+      "x": 774.0,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 193.2,
+      "color": "000000"
+    },
+    {
+      "x": 785.16,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 193.2,
+      "color": "000000"
+    },
+    {
+      "x": 984.0,
+      "y": 550.56,
+      "width": 0.6,
+      "height": 141.12,
+      "color": "000000"
+    },
+    {
+      "x": 1129.08,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 152.88,
+      "color": "000000"
+    },
+    {
+      "x": 471.96,
+      "y": 206.16,
+      "width": 0.6,
+      "height": 110.88,
+      "color": "000000"
+    },
+    {
+      "x": 489.24,
+      "y": 206.16,
+      "width": 0.6,
+      "height": 110.88,
+      "color": "000000"
+    },
+    {
+      "x": 503.76,
+      "y": 206.16,
+      "width": 0.6,
+      "height": 110.88,
+      "color": "000000"
+    },
+    {
+      "x": 919.08,
+      "y": 550.56,
+      "width": 0.6,
+      "height": 201.6,
+      "color": "000000"
+    },
+    {
+      "x": 932.64,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 212.76,
+      "color": "000000"
+    },
+    {
+      "x": 946.2,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 213.36,
+      "color": "000000"
+    },
+    {
+      "x": 1095.6,
+      "y": 550.56,
+      "width": 0.6,
+      "height": 141.12,
+      "color": "000000"
+    },
+    {
+      "x": 1106.76,
+      "y": 550.56,
+      "width": 0.6,
+      "height": 141.12,
+      "color": "000000"
+    },
+    {
+      "x": 1117.92,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 152.28,
+      "color": "000000"
+    },
+    {
+      "x": 162.84,
+      "y": 518.64,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 335.76,
+      "y": 518.64,
+      "width": 0.6,
+      "height": 20.16,
+      "color": "000000"
+    },
+    {
+      "x": 707.04,
+      "y": 518.64,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 95.88,
+      "y": 538.2,
+      "width": 0.6,
+      "height": 173.64,
+      "color": "000000"
+    },
+    {
+      "x": 246.48,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 173.04,
+      "color": "000000"
+    },
+    {
+      "x": 268.8,
+      "y": 538.2,
+      "width": 0.6,
+      "height": 193.8,
+      "color": "000000"
+    },
+    {
+      "x": 443.04,
+      "y": 550.56,
+      "width": 0.6,
+      "height": 161.28,
+      "color": "000000"
+    },
+    {
+      "x": 595.44,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 173.04,
+      "color": "000000"
+    },
+    {
+      "x": 207.48,
+      "y": 691.68,
+      "width": 0.6,
+      "height": 19.56,
+      "color": "000000"
+    },
+    {
+      "x": 219.72,
+      "y": 538.2,
+      "width": 0.6,
+      "height": 173.04,
+      "color": "000000"
+    },
+    {
+      "x": 231.96,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 173.04,
+      "color": "000000"
+    },
+    {
+      "x": 380.4,
+      "y": 549.96,
+      "width": 0.6,
+      "height": 181.44,
+      "color": "000000"
+    },
+    {
+      "x": 393.96,
+      "y": 538.2,
+      "width": 0.6,
+      "height": 193.8,
+      "color": "000000"
+    },
+    {
+      "x": 406.2,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 193.2,
+      "color": "000000"
+    },
+    {
+      "x": 561.96,
+      "y": 751.56,
+      "width": 0.6,
+      "height": 20.76,
+      "color": "000000"
+    },
+    {
+      "x": 573.12,
+      "y": 538.2,
+      "width": 0.6,
+      "height": 173.64,
+      "color": "000000"
+    },
+    {
+      "x": 584.28,
+      "y": 538.8,
+      "width": 0.6,
+      "height": 173.04,
+      "color": "000000"
+    },
+    {
+      "x": 673.56,
+      "y": 752.16,
+      "width": 0.6,
+      "height": 20.16,
+      "color": "000000"
+    },
+    {
+      "x": 529.08,
+      "y": 44.28,
+      "width": 156.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 529.08,
+      "y": 64.44,
+      "width": 156.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 529.08,
+      "y": 74.52,
+      "width": 156.24,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 421.32,
+      "y": 114.84,
+      "width": 453.72,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 135.0,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 155.16,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 165.24,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 718.8,
+      "y": 175.32,
+      "width": 332.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 185.4,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 640.68,
+      "y": 195.48,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 205.56,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 215.64,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1096.2,
+      "y": 225.72,
+      "width": 33.48,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1118.52,
+      "y": 235.8,
+      "width": 11.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1118.52,
+      "y": 255.96,
+      "width": 11.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1118.52,
+      "y": 276.12,
+      "width": 11.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1118.52,
+      "y": 296.28,
+      "width": 11.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1117.92,
+      "y": 316.44,
+      "width": 11.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 919.68,
+      "y": 336.6,
+      "width": 42.6,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 919.68,
+      "y": 356.76,
+      "width": 42.6,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 919.68,
+      "y": 376.92,
+      "width": 42.6,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 808.08,
+      "y": 397.08,
+      "width": 154.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 919.68,
+      "y": 417.24,
+      "width": 42.6,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 919.08,
+      "y": 437.4,
+      "width": 43.2,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 163.44,
+      "y": 467.64,
+      "width": 888.12,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 477.72,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 507.96,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 518.04,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 538.2,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 984.6,
+      "y": 549.96,
+      "width": 145.08,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1118.52,
+      "y": 570.12,
+      "width": 11.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1118.52,
+      "y": 590.28,
+      "width": 11.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1118.52,
+      "y": 610.44,
+      "width": 11.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1118.52,
+      "y": 630.6,
+      "width": 11.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1118.52,
+      "y": 650.76,
+      "width": 11.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1118.52,
+      "y": 670.92,
+      "width": 11.16,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 1117.92,
+      "y": 691.08,
+      "width": 11.76,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 933.24,
+      "y": 711.24,
+      "width": 29.04,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 933.24,
+      "y": 731.4,
+      "width": 29.04,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 932.64,
+      "y": 751.56,
+      "width": 29.64,
+      "height": 0.6,
+      "color": "000000"
+    },
+    {
+      "x": 562.56,
+      "y": 771.72,
+      "width": 111.6,
+      "height": 0.6,
+      "color": "000000"
+    }
+  ],
+  "additionalPositions": [
+    {
+      "id": "bezetting-2026-cb2eda3a98",
+      "sourceRow": "Lampiran bezetting",
+      "page": 1,
+      "name": "JF PENATA PERIZINAN AHLI PERTAMA",
+      "unit": "BIDANG PRODUKSI PETERNAKAN",
+      "kind": "Fungsional",
+      "echelon": "",
+      "required": 1
+    }
+  ]
+}

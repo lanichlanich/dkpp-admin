@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "smoke:position-map": "node scripts/smoke-position-map.mjs",
     "smoke:staff-profile": "node scripts/smoke-staff-profile.mjs",
     "smoke:retirement-projection": "node scripts/smoke-retirement-projection.mjs",
     "dev": "next dev",

@@ -3,7 +3,6 @@ import source from "@/data/retirement-position-map-2026.json";
 import reference from "@/data/position-map-reference.json";
 import { buildRetirementProjection, normalizeProjectionUnit, type ProjectionEmployee, type PositionRequirement } from "@/lib/retirement-projection";
 import { buildProjectionHierarchy } from "@/lib/retirement-projection-hierarchy";
-import { signatoryTitle, type Signatory } from "@/lib/signatory";
 
 export const positionMapCatalog: PositionRequirement[] = [...source.positions, ...reference.additionalPositions];
 export const positionMapHierarchy = buildProjectionHierarchy(positionMapCatalog);
@@ -120,50 +119,4 @@ export function buildPositionMapPages(plan: PositionMapPlan, year: number): Posi
   pages.forEach((page, i) => page.labels.push({ x: 40, y: height - 28, width: width - 80,
     text: `K = Kebutuhan    B = Bezetting    +/- = B - K    |    Tahun ${year}    |    Halaman ${i + 1} dari ${pages.length}`, size: 8 }));
   return pages;
-}
-
-export function buildDinasA4PositionMap(plan: PositionMapPlan, year: number, signatory: Signatory): PositionMapPage {
-  const source = buildPositionMapPages(plan, year)[0];
-  const width = 841.89, height = 595.28, margin = 16, signatureWidth = 278;
-  const wrapSignature = (value: string) => {
-    const lines: string[] = [];
-    for (const word of value.trim().split(/\s+/)) {
-      if (!lines.length || `${lines.at(-1)} ${word}`.length > 56) lines.push(word);
-      else lines[lines.length - 1] += ` ${word}`;
-    }
-    return lines.join("\n");
-  };
-  const name = wrapSignature(signatory.name);
-  const signatureRows = [[`${signatoryTitle(signatory).replace(/\s+KABUPATEN INDRAMAYU$/i, "")}\nKABUPATEN INDRAMAYU`], [""], [name],
-    ...(signatory.rank ? [[signatory.rank]] : []), ...(signatory.nip ? [[`NIP. ${signatory.nip}`]] : [])];
-  const signatureHeights = [23, 33, Math.max(12, name.split("\n").length * 10.5 + 2),
-    ...(signatory.rank ? [11] : []), ...(signatory.nip ? [11] : [])];
-  const signatureY = height - margin - signatureHeights.reduce((n, h) => n + h, 0);
-  // The A3 reference has large connector gaps. Compact those gaps before
-  // fitting the dinas chart onto A4; preserve the dimensions of its job rows.
-  const compactY = (y: number) => y <= 75 ? y : y < 135 ? 75 + (y - 75) / 3
-    : y < 438 ? y - 40 : y < 478 ? 398 + (y - 438) * .625 : y - 55;
-  const rects = source.rects.filter(rect => rect.y < 751).map(rect => {
-    // End the central connector at the bidang branch; omit the UPTD marker.
-    const bottom = rect.width < 1.5 && rect.height > 500 ? 467.88 : rect.y + rect.height;
-    return { ...rect, y: compactY(rect.y), height: compactY(bottom) - compactY(rect.y) };
-  });
-  const minX = Math.min(...rects.map(r => r.x), ...source.tables.map(t => t.x));
-  const maxX = Math.max(...rects.map(r => r.x + r.width), ...source.tables.map(t => t.x + t.width));
-  const minY = Math.min(...rects.map(r => r.y), ...source.tables.map(t => compactY(t.y)));
-  const maxY = Math.max(...source.tables.map(t => compactY(t.y) + t.heights.reduce((n, h) => n + h, 0)));
-  const scale = Math.min((width - margin * 2) / (maxX - minX), (signatureY - margin - 8) / (maxY - minY));
-  const offsetX = (width - (maxX - minX) * scale) / 2;
-  const x = (value: number) => offsetX + (value - minX) * scale;
-  const y = (value: number) => margin + (value - minY) * scale;
-  return { title: "Peta Jabatan Dinas A4", width, height,
-    rects: rects.map(rect => ({ ...rect, x: x(rect.x), y: y(rect.y), width: rect.width * scale, height: rect.height * scale })),
-    tables: [...source.tables.map(table => ({ ...table, x: x(table.x), y: y(compactY(table.y)), width: table.width * scale,
-      columns: table.columns.map(value => value * scale), heights: table.heights.map(value => value * scale),
-      fontSize: table.fontSize * scale, numericFontSize: 5.5 * scale })),
-    { x: width - margin - signatureWidth, y: signatureY, width: signatureWidth, columns: [signatureWidth],
-      heights: signatureHeights, rows: signatureRows, fontSize: 9, centered: true, boldRows: [2], roleIds: [] }],
-    labels: [{ x: margin, y: height - 28, width: width - signatureWidth - margin * 3,
-      text: `K = Kebutuhan   B = Bezetting   +/- = B - K   |   Tahun ${year}`, size: 6.5 }],
-  };
 }

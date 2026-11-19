@@ -1,6 +1,7 @@
 import "server-only";
 import PizZip from "pizzip";
-import { buildDinasA4PositionMap, buildPositionMapPages, type MapTable, type PositionMapPlan } from "@/lib/position-map-model";
+import { buildPositionMapPages, type MapTable, type PositionMapPlan } from "@/lib/position-map-model";
+import { createDinasA4PositionMapDocx } from "@/lib/position-map-dinas-docx";
 import type { Signatory } from "@/lib/signatory";
 
 type ExportOptions = { preset?: "all" } | { preset: "dinas-a4"; signatory: Signatory };
@@ -22,8 +23,8 @@ function tableXml(table: MapTable) {
 /** Native Word text boxes and tables preserve the reference geometry while
  * keeping every job name and K/B value editable in the downloaded document. */
 export function createPositionMapDocx(plan: PositionMapPlan, year: number, options: ExportOptions = {}): Buffer {
-  const dinasOnly = options.preset === "dinas-a4";
-  const pages = dinasOnly ? [buildDinasA4PositionMap(plan, year, options.signatory)] : buildPositionMapPages(plan, year), zip = new PizZip();
+  if (options.preset === "dinas-a4") return createDinasA4PositionMapDocx(plan, year, options.signatory);
+  const pages = buildPositionMapPages(plan, year), zip = new PizZip();
   let id = 1;
   const style = (x: number, y: number, width: number, height: number, z: number) => `position:absolute;margin-left:${x}pt;margin-top:${y}pt;width:${width}pt;height:${height}pt;z-index:${z};mso-position-horizontal-relative:page;mso-position-vertical-relative:page`;
   const shape = (x: number, y: number, width: number, height: number, inner: string) => `<w:r><w:pict><v:shape id="MapText${id++}" type="#_x0000_t202" style="${style(x, y, width, height, 2)}" filled="f" stroked="f"><v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:f"><w:txbxContent>${inner}</w:txbxContent></v:textbox><w10:wrap type="none"/></v:shape></w:pict></w:r>`;
@@ -41,7 +42,7 @@ export function createPositionMapDocx(plan: PositionMapPlan, year: number, optio
   const rels = 'xmlns="http://schemas.openxmlformats.org/package/2006/relationships"';
   zip.file("_rels/.rels", `<?xml version="1.0"?><Relationships ${rels}><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`);
   zip.file("word/_rels/document.xml.rels", `<?xml version="1.0"?><Relationships ${rels}><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rIdSettings" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/></Relationships>`);
-  zip.file("docProps/core.xml", `<?xml version="1.0"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Peta Jabatan ${dinasOnly ? "Dinas A4 " : ""}DKPP Tahun ${year}</dc:title><dc:creator>DKPP Kabupaten Indramayu</dc:creator><dc:description>${dinasOnly ? "Bagan dinas A4 landscape dengan blok tanda tangan kepala dinas." : "Bagan dinas dan rincian seluruh UPTD."} Kebutuhan dan bezetting sesuai data peta jabatan tahun ${year}.</dc:description></cp:coreProperties>`);
+  zip.file("docProps/core.xml", `<?xml version="1.0"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Peta Jabatan DKPP Tahun ${year}</dc:title><dc:creator>DKPP Kabupaten Indramayu</dc:creator><dc:description>Bagan dinas dan rincian seluruh UPTD. Kebutuhan dan bezetting sesuai data peta jabatan tahun ${year}.</dc:description></cp:coreProperties>`);
   zip.file("[Content_Types].xml", `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`);
   return zip.generate({ type: "nodebuffer", compression: "DEFLATE" });
 }

@@ -97,19 +97,39 @@ try {
   assert.equal(definitive.nip, employee.nip); assert.equal(definitive.status, "definitif");
   db.prepare("INSERT INTO plt_assignments VALUES(?,?,?,?,?,?,?)").run("active-head",employee.nip,root.name,"2026-10-01","2026-12-31",null,null);
   const plt = await store.getPositionMapHeadSignatory(); assert.equal(plt.status, "plt");
-  const a4 = model.buildDinasA4PositionMap(plan, 2026, plt);
-  assert(a4.width > a4.height && a4.width < 850 && a4.height < 600);
-  const dinasIds = a4.tables.flatMap(t => t.roleIds);
+  const slots = JSON.parse(readFileSync("src/data/position-map-dinas-a4-slots.json", "utf8"));
+  const dinasIds = slots.flatMap(slot => slot.roles);
   assert.equal(dinasIds.length, 92); assert.equal(new Set(dinasIds).size, 92);
   assert(dinasIds.every(id => !model.positionMapIsUptd(model.positionMapCatalog.find(p => p.id === id).unit)));
-  const signature = a4.tables.at(-1);
-  assert(signature.rows.flat().includes(employee.name)); assert(signature.rows.flat().includes(`NIP. ${employee.nip}`));
-  for (const t of a4.tables.slice(0,-1)) assert(t.y + t.heights.reduce((n,h)=>n+h,0) < signature.y, "A4 chart must leave clear space above the signature");
   response = await download.GET(new Request("http://localhost/api/position-map/2026/docx?preset=dinas-a4"), context(2026));
   assert.equal(response.status,200); assert.match(response.headers.get("content-disposition"),/Peta-Jabatan-Dinas-DKPP-2026-A4\.docx/);
   const a4Xml = new PizZip(Buffer.from(await response.arrayBuffer())).file("word/document.xml").asText();
   assert(a4Xml.includes('w:w="16838" w:h="11906"')); assert(!a4Xml.includes("<w:pageBreakBefore/>")); assert(!a4Xml.includes("UPTD"));
-  assert(a4Xml.includes("Plt.")); assert(a4Xml.includes(employee.name)); assert(a4Xml.includes(employee.nip));
+  assert(a4Xml.replace(/<[^>]*>/g, "").includes("Plt.")); assert(a4Xml.includes(employee.name)); assert(a4Xml.includes(employee.nip));
+  const source = new PizZip(readFileSync("src/templates/template-position-map-dinas-a4.docx"));
+  const templateXml = source.file("word/document.xml").asText();
+  const text = xml => [...xml.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(m=>m[1]).join("");
+  const shape = (xml,id) => [...xml.matchAll(/<v:shape(?=[\s>])[^>]*>[\s\S]*?<\/v:shape>/g)].find(m=>m[0].includes(`id="${id}"`))[0];
+  const referencePlan = structuredClone(plan);
+  for (const slot of slots) {
+    const rows = [...shape(templateXml,slot.shape).matchAll(/<w:tr(?=[\s>])[^>]*>[\s\S]*?<\/w:tr>/g)].slice(1);
+    assert.equal(rows.length,slot.roles.length);
+    rows.forEach((row,i)=>{
+      const cells = [...row[0].matchAll(/<w:tc(?=[\s>])[^>]*>[\s\S]*?<\/w:tc>/g)].map(m=>text(m[0]));
+      const values = slot.kind === "head" ? [...cells[0].matchAll(/-?\d+/g)].map(m=>Number(m[0])) : cells.slice(1).map(Number);
+      referencePlan.positions[slot.roles[i]]={required:values[0],staffed:values[1]};
+    });
+  }
+  const referenceSignatory = {name:"RORY FIRMANSYAH, S.STP, M.Si.",nip:"197801011997031003",rank:"Pembina Tk.I / IV/b",title:root.name+" KABUPATEN INDRAMAYU",status:"plt"};
+  const exactBytes = createPositionMapDocx(referencePlan,2026,{preset:"dinas-a4",signatory:referenceSignatory});
+  const exact = new PizZip(exactBytes);
+  for(const [name,file] of Object.entries(source.files)) if(!file.dir) assert.deepEqual(exact.file(name).asNodeBuffer(),file.asNodeBuffer(),`Same-data export must retain ${name} exactly`);
+  const changedBytes = createPositionMapDocx(mutated,2027,{preset:"dinas-a4",signatory:{...referenceSignatory,name:"KEPALA UJI & DATA",nip:"197901011999031002",rank:"Pembina / IV/a",status:"definitif"}});
+  const changed=new PizZip(changedBytes),changedXml=changed.file("word/document.xml").asText(),changedText=text(changedXml);
+  assert(changedText.includes("K: 2     B: 4     +/-: 2"));assert(changedText.includes("Tahun 2027"));assert(changedText.includes("KEPALA UJI &amp; DATA"));assert(changedText.includes("197901011999031002"));assert(!changedText.includes("Plt."));
+  assert.equal(shape(changedXml,"MapText114").match(/<w:tr(?=[\s>])[^>]*>[\s\S]*?<\/w:tr>/g)[1],shape(templateXml,"MapText114").match(/<w:tr(?=[\s>])[^>]*>[\s\S]*?<\/w:tr>/g)[1],"Keep the exact split-run TTE marker row");
+  assert(changedText.includes("${ttd_pengirim}"));
+  for(const [name,file] of Object.entries(source.files)) if(!file.dir&&name!=="word/document.xml")assert.deepEqual(changed.file(name).asNodeBuffer(),file.asNodeBuffer(),`Preserve template part ${name}`);
   assert.equal((await download.GET(new Request("http://localhost/api/position-map/2026/docx?preset=bad"),context(2026))).status,422);
   db.prepare("UPDATE plt_assignments SET end_date='2026-10-30'").run(); assert.equal((await store.getPositionMapHeadSignatory()).status,"definitif");
   db.prepare("UPDATE employees SET status='Pensiun' WHERE nip=?").run(employee.nip);
@@ -124,6 +144,8 @@ try {
     mkdirSync(output, { recursive: true });
     writeFileSync(path.join(output, "map.docx"), createPositionMapDocx(defaultPlan, 2026));
     writeFileSync(path.join(output, "model.json"), JSON.stringify({ plan: defaultPlan, pages: actualPages }));
+    writeFileSync(path.join(output, "reference-match.docx"),exactBytes);
+    writeFileSync(path.join(output, "changed-a4.docx"),changedBytes);
     const head = fixture.employees.find(e => e.name.startsWith("RORY"));
     assert(head, "Real fixture requires the verified current head");
     writeFileSync(path.join(output, "dinas-a4.docx"), createPositionMapDocx(defaultPlan, 2026, { preset: "dinas-a4", signatory: {
@@ -131,5 +153,5 @@ try {
     } }));
     console.log("Real snapshot:", { active: actual.active, mapped: actual.mapped, unmapped: actual.unmapped, ...model.positionMapSummary(defaultPlan) });
   }
-  console.log("Position map passed: 180 placements exactly once, 21 UPTD, 5 landscape pages, numeric validation, authorization, origin checks, persistence, year isolation, stale-write conflicts and native DOCX tables.");
+  console.log("Position map passed: 180 placements, 21 UPTD, 5 A3 pages, 92 dinas A4 slots, exact user-template preservation, TTE marker, dynamic counts/year/signatory, authorization, persistence and conflicts.");
 } finally { db.close(); }

@@ -8,6 +8,7 @@ import { pltFileName } from "@/lib/plt-filename";
 import { LIBRARY_SCHEMA } from "@/lib/library-schema";
 import { SPJ_SCHEMA, SPJ_SEED } from "@/lib/spj-schema";
 import librarySeed from "@/data/library-books.json";
+import { planningSqliteSchema } from "@/lib/planning/sqlite-schema";
 export { mapPublicUser } from "@/lib/db-types";
 export type { Employee, PublicUser } from "@/lib/db-types";
 
@@ -524,6 +525,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS hukdis_records_period_idx
     ON hukdis_records(report_period);
 `);
+db.exec(planningSqliteSchema);
 
 const kgbColumns = db.prepare("PRAGMA table_info(kgb_documents)").all() as Array<{ name: string }>;
 for (const [name, definition] of Object.entries({ input_json: "TEXT", revision: "INTEGER NOT NULL DEFAULT 1 CHECK(revision >= 1)", updated_at: "TEXT", updated_by: "TEXT REFERENCES users(id) ON DELETE SET NULL" })) {

@@ -43,6 +43,12 @@ const TABLE_NAMES = [
   "wfh_schedule_letters",
   "anjab_abk_plans",
   "position_map_plans",
+  "planning_catalog",
+  "planning_years",
+  "planning_records",
+  "planning_access",
+  "planning_audit",
+  "planning_uploads",
   "audit_logs",
 ] as const;
 
@@ -50,6 +56,7 @@ const TABLES = new Set<string>(TABLE_NAMES);
 
 const AUDITED_TABLES = new Set([...TABLES].filter((table) => ![
   "sessions", "notifications", "audit_logs", "service_archive_uploads",
+  "planning_catalog", "planning_years", "planning_records", "planning_access", "planning_audit", "planning_uploads",
 ].includes(table)));
 
 type QueryValue = string | number | boolean | null | Buffer;
@@ -64,7 +71,7 @@ type PreparedQuery = {
 
 type DatabaseAdapter = {
   prepare(sql: string): PreparedQuery;
-  transaction(statements: Array<{ sql: string; values: QueryValue[] }>): Promise<void>;
+  transaction(statements: Array<{ sql: string; values: QueryValue[]; expectChanges?: number }>): Promise<void>;
   backupTables(): Promise<{
     tables: Record<string, Record<string, unknown>[]>;
     storageObjects: Array<{ name: string; metadata: Record<string, unknown> | null }>;
@@ -92,6 +99,8 @@ type AuditRequest = {
 };
 
 type AuditActor = { id: string; name: string; username: string } | null;
+
+export class TransactionConflict extends Error {}
 
 const connectionString = process.env.POSTGRES_URL?.trim();
 
@@ -322,7 +331,7 @@ function createPostgresAdapter(url: string): DatabaseAdapter {
         await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
         const tables: Record<string, Record<string, unknown>[]> = {};
         for (const table of TABLE_NAMES) {
-          if (table === "sessions" || table === "service_archive_uploads") continue;
+          if (table === "sessions" || table === "service_archive_uploads" || table === "planning_uploads") continue;
           const result = await client.query(`SELECT * FROM adminflow.${table}`);
           tables[table] = result.rows;
         }
@@ -360,6 +369,7 @@ function createPostgresAdapter(url: string): DatabaseAdapter {
             await client.query("LOCK TABLE adminflow.library_books, adminflow.library_loans, adminflow.library_visitors IN SHARE ROW EXCLUSIVE MODE");
           }
           const result = await client.query(postgresPlaceholders(qualifyTables(statement.sql)), statement.values);
+          if (statement.expectChanges !== undefined && result.rowCount !== statement.expectChanges) throw new TransactionConflict();
           const mutation = mutations[index];
           if (mutation && (result.rowCount ?? 0) > 0) operations.push({ ...mutation, affectedRows: result.rowCount ?? 0 });
         }
@@ -432,7 +442,7 @@ function createSqliteAdapter(): DatabaseAdapter {
       return database.transaction(() => {
         const tables: Record<string, Record<string, unknown>[]> = {};
         for (const table of TABLE_NAMES) {
-          if (table === "sessions" || table === "service_archive_uploads") continue;
+          if (table === "sessions" || table === "service_archive_uploads" || table === "planning_uploads") continue;
           tables[table] = database.prepare(`SELECT * FROM "${table}"`).all() as Record<string, unknown>[];
         }
         return { tables, storageObjects: [] };
@@ -448,6 +458,7 @@ function createSqliteAdapter(): DatabaseAdapter {
         for (let index = 0; index < statements.length; index += 1) {
           const statement = statements[index];
           const result = database.prepare(statement.sql).run(...statement.values);
+          if (statement.expectChanges !== undefined && result.changes !== statement.expectChanges) throw new TransactionConflict();
           const mutation = mutations[index];
           if (mutation && result.changes > 0) operations.push({ ...mutation, affectedRows: result.changes });
         }

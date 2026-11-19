@@ -34,6 +34,11 @@ const TABLE_CATEGORY: Record<string, Category> = {
   pak_documents: "Kepegawaian",
   kerjaku_request_documents: "Kepegawaian",
   kak_documents: "Perencanaan",
+  planning_catalog: "Perencanaan",
+  planning_years: "Perencanaan",
+  planning_records: "Perencanaan",
+  planning_access: "Perencanaan",
+  planning_audit: "Perencanaan",
   official_statement_documents: "Kepegawaian",
   wfh_documents: "Umum",
   wfh_reports: "Umum",
@@ -56,6 +61,7 @@ const DOCUMENT_TABLES = new Set([
   "library_books",
   "plt_assignments",
   "kak_documents",
+  "planning_records",
   "employee_documents",
   "kgb_documents",
   "kgb_signed_documents",
@@ -76,6 +82,7 @@ const LOCAL_DOCUMENT_DIRECTORIES: Record<string, string> = {
   library_books: LIBRARY_COVER_DIRECTORY,
   plt_assignments: "plt-documents",
   kak_documents: "kak-documents",
+  planning_records: "planning-evidence",
   employee_documents: "employee-documents",
   kgb_documents: "kgb-documents",
   kgb_signed_documents: "kgb-signed-documents",
@@ -321,6 +328,13 @@ export async function createBackupContent() {
     if (!DOCUMENT_TABLES.has(table)) return [];
     return rows.flatMap((row, index) => {
       if (table === "kak_documents") return kakDocumentRows(row).map(documentRow => ({ table, index, row: documentRow }));
+      if (table === "planning_records") {
+        if (row.kind !== "evidence") return [];
+        const data = typeof row.data_json === "string" ? JSON.parse(row.data_json) : row.data_json;
+        if (!data?.storageName) return [];
+        if (!/^ptr-[0-9a-f-]{36}\.(pdf|jpg|png)$/.test(data.storageName)) throw new Error("Referensi berkas bukti perencanaan tidak valid.");
+        return [{ table, index, row: { ...row, id: row.subject, storage_name: data.storageName, file_name: data.filename } }];
+      }
       if (table === "plt_assignments" && !row.storage_name) return [];
       if (table === "library_books") {
         if (!row.cover_storage_name) return [];
@@ -340,7 +354,7 @@ export async function createBackupContent() {
     if (!storageName) throw new Error(`Referensi file pada ${table} tidak memiliki storage_name.`);
     const fallbackDirectory = LOCAL_DOCUMENT_DIRECTORIES[table];
     const filePath = fallbackDirectory ? `data/${fallbackDirectory}/${storageName}` : undefined;
-    const storageBucket = table === "library_books" ? LIBRARY_COVER_BUCKET : undefined;
+    const storageBucket = table === "library_books" ? LIBRARY_COVER_BUCKET : table === "planning_records" ? "dkpp-planning" : undefined;
     const bytes = await downloadStorageObject(storageName, filePath, storageBucket);
     return {
       category: TABLE_CATEGORY[table]!,

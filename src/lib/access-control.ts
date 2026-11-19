@@ -10,6 +10,7 @@ export const MENU_CATALOG = [
   ...[["klasifikasi-surat", "Klasifikasi Surat"], ["arsip-dinas", "Arsip Dinas"], ["surat-pengantar", "Surat Pengantar"], ["surat-perbantuan", "Surat Perbantuan"], ["surat-lupa-absen-pulang", "Surat Lupa Absen Pulang"]]
     .map(([id, label]) => ({ id, label, group: "Persuratan", path: `/dashboard/${id}` })),
   { id: "pembuatan-kak", label: "Pembuatan PO dan KAK", group: "Perencanaan", path: "/dashboard/pembuatan-kak" },
+  { id: "pagu-target-realisasi", label: "Pagu, Target & Realisasi", group: "Perencanaan", path: "/dashboard/pagu-target-realisasi" },
   { id: "simulasi-gaji-pns", label: "Simulasi Gaji PNS", group: "Keuangan", path: "/dashboard/simulasi-gaji-pns" },
   ...[["statistik", "Dashboard Statistik"], ["buku", "Daftar Buku"], ["pengunjung", "Daftar Pengunjung"], ["peminjaman", "Daftar Peminjaman"]]
     .map(([id, label]) => ({ id: `perpustakaan-${id}`, label, group: "Perpustakaan", path: `/dashboard/perpustakaan/${id}` })),

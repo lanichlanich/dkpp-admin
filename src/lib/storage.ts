@@ -10,9 +10,9 @@ export function isStorageConfigured() {
   return Boolean(supabaseUrl && secretKey);
 }
 
-async function signStorageObject(storageName: string, upload: boolean) {
+async function signStorageObject(storageName: string, upload: boolean, bucketName = bucket) {
   if (!supabaseUrl || !secretKey) throw new Error("Supabase Storage belum dikonfigurasi.");
-  const response = await fetch(`${supabaseUrl}/storage/v1/object/${upload ? "upload/sign" : "sign"}/${encodeURIComponent(bucket)}/${encodeURIComponent(storageName)}`, {
+  const response = await fetch(`${supabaseUrl}/storage/v1/object/${upload ? "upload/sign" : "sign"}/${encodeURIComponent(bucketName)}/${encodeURIComponent(storageName)}`, {
     method: "POST",
     headers: { apikey: secretKey, authorization: `Bearer ${secretKey}`, "content-type": "application/json" },
     body: JSON.stringify(upload ? {} : { expiresIn: 60 }),
@@ -27,12 +27,12 @@ async function signStorageObject(storageName: string, upload: boolean) {
 }
 
 // Upload tokens permit one new object only; never enable upsert for staged archives.
-export async function createStorageUploadUrl(storageName: string) {
-  return (await signStorageObject(storageName, true)).toString();
+export async function createStorageUploadUrl(storageName: string, bucketName = bucket) {
+  return (await signStorageObject(storageName, true, bucketName)).toString();
 }
 
-export async function createStorageDownloadUrl(storageName: string, fileName: string) {
-  const url = await signStorageObject(storageName, false);
+export async function createStorageDownloadUrl(storageName: string, fileName: string, bucketName = bucket) {
+  const url = await signStorageObject(storageName, false, bucketName);
   url.searchParams.set("download", fileName);
   return url.toString();
 }

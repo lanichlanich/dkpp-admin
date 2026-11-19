@@ -45,6 +45,11 @@ const correspondenceNavigation = [
   { label: "Surat Lupa Absen Pulang", href: "/dashboard/surat-lupa-absen-pulang", icon: FileSignature },
 ];
 
+const planningNavigation = [
+  { label: "Pembuatan PO dan KAK", href: "/dashboard/pembuatan-kak", icon: FileSignature },
+  { label: "Pagu, Target & Realisasi", href: "/dashboard/pagu-target-realisasi", icon: FileBarChart2 },
+];
+
 const libraryNavigation = [
   { label: "Dashboard Statistik", href: "/dashboard/perpustakaan/statistik", icon: FileBarChart2 },
   { label: "Daftar Buku", href: "/dashboard/perpustakaan/buku", icon: BookOpen },
@@ -92,6 +97,7 @@ function CompactSidebar({ onToggle }: { onToggle?: () => void }) {
   const correspondenceItems = correspondenceNavigation.filter(allowed);
   const navigationItems = navigation.filter(allowed);
   const libraryItems = libraryNavigation.filter(allowed);
+  const planningItems = planningNavigation.filter(allowed);
   const pathname = usePathname();
   return <div className="flex h-full flex-col bg-gradient-to-b from-emerald-600 via-green-700 to-sky-700 text-emerald-50">
     <div className="flex h-20 shrink-0 items-center justify-center border-b border-white/20 bg-white/[0.08]" title="DKPP-Admin · Administrasi DKPP"><span className="grid size-12 place-items-center rounded-xl bg-white p-1 shadow-lg ring-1 ring-amber-200/70"><Image src="/dkpp-admin-logo.png" alt="DKPP-Admin" width={44} height={44} className="size-11 object-contain" priority /></span></div>
@@ -101,7 +107,7 @@ function CompactSidebar({ onToggle }: { onToggle?: () => void }) {
       {personnelItems.length > 0 && <CompactGroup label="Kepegawaian" icon={BriefcaseBusiness} items={personnelItems} />}
       {generalItems.length > 0 && <CompactGroup label="Umum" icon={FolderOpen} items={generalItems} />}
       {correspondenceItems.length > 0 && <CompactGroup label="Persuratan" icon={FileText} items={correspondenceItems} />}
-      {canAccessPath(access, "/dashboard/pembuatan-kak") && <CompactGroup label="Perencanaan" icon={ClipboardList} items={[{ label: "Pembuatan PO dan KAK", href: "/dashboard/pembuatan-kak", icon: FileSignature }]} />}
+      {planningItems.length > 0 && <CompactGroup label="Perencanaan" icon={ClipboardList} items={planningItems} />}
       {canAccessPath(access, "/dashboard/simulasi-gaji-pns") && <CompactGroup label="Keuangan" icon={Wallet} items={[{ label: "Simulasi Gaji PNS", href: "/dashboard/simulasi-gaji-pns", icon: Calculator }]} />}
       {libraryItems.length > 0 && <CompactGroup label="Perpustakaan" icon={BookOpen} items={libraryItems} />}
       {navigationItems.map(item => {
@@ -121,6 +127,7 @@ export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { on
   const correspondenceItems = correspondenceNavigation.filter(allowed);
   const navigationItems = navigation.filter(allowed);
   const libraryItems = libraryNavigation.filter(allowed);
+  const planningItems = planningNavigation.filter(allowed);
   const pathname = usePathname();
   const personnelActive = personnelNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
   const generalActive = generalNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -128,7 +135,7 @@ export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { on
   const [personnelOpen, setPersonnelOpen] = useState(personnelActive);
   const [generalOpen, setGeneralOpen] = useState(generalActive);
   const [correspondenceOpen, setCorrespondenceOpen] = useState(correspondenceActive);
-  const planningActive = pathname.startsWith("/dashboard/pembuatan-kak");
+  const planningActive = planningNavigation.some(item => pathname === item.href);
   const [planningOpen, setPlanningOpen] = useState(planningActive);
   const financeActive = pathname.startsWith("/dashboard/simulasi-gaji-pns");
   const [financeOpen, setFinanceOpen] = useState(financeActive);
@@ -181,10 +188,18 @@ export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { on
         </div>}
         {libraryItems.length > 0 && <button type="button" aria-expanded={libraryOpen} onClick={() => setLibraryOpen(open => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-white/15", libraryActive && "bg-white/15")}><BookOpen aria-hidden="true" className="size-5 shrink-0" /><span className="flex-1">Perpustakaan</span><ChevronDown className={cn("size-4 transition-transform", libraryOpen && "rotate-180")} /></button>}
         {libraryItems.length > 0 && libraryOpen && <div className="ml-3 space-y-1 border-l border-amber-200/45 pl-3">{libraryItems.map(item => <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={pathname === item.href ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium hover:bg-white/15", pathname === item.href && "bg-white text-emerald-800 hover:bg-white")}><NavigationIcon icon={item.icon} className="size-4 shrink-0" />{item.label}</Link>)}</div>}
-        {canAccessPath(access, "/dashboard/pembuatan-kak") && <button type="button" aria-expanded={planningOpen} onClick={() => setPlanningOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", planningActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
+        {planningItems.length > 0 && <button type="button" aria-expanded={planningOpen} onClick={() => setPlanningOpen((open) => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", planningActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
           <ClipboardList aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Perencanaan</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", planningOpen && "rotate-180")} />
         </button>}
-        {canAccessPath(access, "/dashboard/pembuatan-kak") && planningOpen && <div className="ml-3 border-l border-amber-200/45 pl-3"><Link href="/dashboard/pembuatan-kak" onClick={onNavigate} aria-current={planningActive ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", planningActive ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={FileSignature} className="size-4 shrink-0" /><span>Pembuatan PO dan KAK</span></Link></div>}
+        {planningItems.length > 0 && (planningOpen || planningActive) && <div className="ml-3 space-y-1 border-l border-amber-200/45 pl-3">
+          {planningItems.map(item => {
+            const selected = pathname === item.href;
+            return <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={selected ? "page" : undefined}
+              className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-amber-300", selected ? "bg-white text-emerald-800" : "text-emerald-50/90 hover:bg-white/15")}>
+              <NavigationIcon icon={item.icon} className="size-4 shrink-0" /><span>{item.label}</span>
+            </Link>;
+          })}
+        </div>}
         {canAccessPath(access, "/dashboard/simulasi-gaji-pns") && <button type="button" aria-expanded={financeOpen} onClick={() => setFinanceOpen(open => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", financeActive ? "bg-white/[0.18] text-white" : "text-emerald-50 hover:bg-white/[0.12] hover:text-white")}>
           <Wallet aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Keuangan</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", financeOpen && "rotate-180")} />
         </button>}

@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
-import { allowed, budgetFor, calculate, methodFor, type Assignment, type Evidence, type Evaluation, type Money } from "./model";
-import { auditStatement, commitPlanning, PlanningError, requireAdmin, requireObject, requireVersion, requireWrite, type Change, type PlanningContext } from "./store";
+import { budgetFor, calculate, methodFor, type Assignment, type Evidence, type Evaluation, type Money } from "./model";
+import { commitPlanning, PlanningError, requireAdmin, requireObject, requireVersion, requireWrite, type Change, type PlanningContext } from "./store";
 
 const revision = z.number().int().nonnegative();
 const key = z.string().min(1).max(140);
@@ -23,8 +23,7 @@ export const actionSchema = z.discriminatedUnion("action", [
     calculation: z.object({ table: z.number().int(), a: decimal, b: decimal }).nullable() }),
   base.extend({ action: z.literal("review"), nodeId: key, indicatorId: key, status: z.enum(["checked", "returned"]), reviewNote: note, correction: note }),
   base.extend({ action: z.literal("period"), closed: z.boolean(), reason: requiredNote }),
-  base.extend({ action: z.literal("assignment"), nodeId: key, indicatorId: key.optional(), departmentId: short.nullable(), ownerUserId: short.nullable() }),
-  base.extend({ action: z.literal("access"), userId: key, role: z.enum(["head", "operator", "observer", "remove"]), department: short.nullable() }),
+  base.extend({ action: z.literal("assignment"), nodeId: key, indicatorId: key.optional(), ownerUserId: short.nullable() }),
   base.extend({ action: z.literal("archive"), evidenceId: key, archived: z.boolean() }),
 ]);
 type Action = z.infer<typeof actionSchema>;
@@ -34,34 +33,9 @@ export function requireOpenPeriod(ctx: PlanningContext, correction?: string) {
   if (ctx.period.reopened && correction !== undefined && !correction) throw new PlanningError("Isi alasan koreksi untuk periode yang dibuka kembali.");
 }
 
-export function checkEvidenceManagement(ctx: PlanningContext, evidence: Evidence) {
-  if (!ctx.evidenceVisible(evidence) || ctx.scope.role === "observer" || (ctx.scope.role === "operator" && evidence.uploadedBy !== ctx.user.id))
-    throw new PlanningError("Anda tidak berwenang mengelola bukti ini.", 403);
-}
-
 export async function saveAction(ctx: PlanningContext, input: Action) {
   requireVersion(ctx, input.version);
   const { year, quarter } = ctx;
-  if (input.action === "access") {
-    requireAdmin(ctx);
-    if (!ctx.accounts.some(account => account.id === input.userId)) throw new PlanningError("Akun aktif harus memiliki izin menu Pagu, Target & Realisasi.");
-    const old = ctx.scopeRows.find(scope => scope.user_id === input.userId);
-    if ((old?.revision ?? 0) !== input.expectedRevision) throw new PlanningError("Akses akun telah berubah. Muat ulang.", 409);
-    if (input.role !== "remove" && (input.department ? !ctx.catalog.departments.some(dep => dep.id === input.department) : input.role !== "observer"))
-      throw new PlanningError("Pilih bidang yang valid untuk akun ini.");
-    const value = input.role === "remove" ? null : { role: input.role, department: input.department };
-    if (!value && !old) throw new PlanningError("Belum ada cakupan yang ditetapkan.");
-    await commitPlanning(ctx, [], [
-      value ? {
-        sql: `INSERT INTO planning_access(user_id, role, department, revision) VALUES (?, ?, ?, ?)
-          ON CONFLICT(user_id) DO UPDATE SET role = excluded.role, department = excluded.department, revision = excluded.revision
-          WHERE planning_access.revision = ?`,
-        values: [input.userId, value.role, value.department, input.expectedRevision + 1, input.expectedRevision], expectChanges: 1,
-      } : { sql: "DELETE FROM planning_access WHERE user_id = ? AND revision = ?", values: [input.userId, input.expectedRevision], expectChanges: 1 },
-      auditStatement(ctx, "access", input.userId, 0, "Penetapan cakupan akun oleh Admin", old, value),
-    ]);
-    return;
-  }
   if (input.action === "import") {
     requireAdmin(ctx);
     const seen = new Set<string>();
@@ -85,7 +59,7 @@ export async function saveAction(ctx: PlanningContext, input: Action) {
     requireOpenPeriod(ctx);
     const record = ctx.get<Evidence>("evidence", input.evidenceId, quarter);
     if (!record || !ctx.evidenceVisible(record.data)) throw new PlanningError("Bukti tidak ditemukan.", 404);
-    checkEvidenceManagement(ctx, record.data);
+    if (!ctx.canManageEvidence(record.data)) throw new PlanningError("Anda tidak berwenang mengelola bukti ini.", 403);
     if (!input.archived && ctx.evidence.filter(item => item.data.nodeId === record.data.nodeId && !item.data.archived).length >= 20)
       throw new PlanningError("Maksimum 20 bukti aktif per simpul.");
     return save("evidence", record.subject, quarter, { ...record.data, archived: input.archived }, input.archived ? "Arsipkan bukti" : "Pulihkan bukti");
@@ -102,18 +76,13 @@ export async function saveAction(ctx: PlanningContext, input: Action) {
   }
   if (input.action === "assignment") {
     const kind = indicator ? "indicator_assignment" : "node_assignment", subject = indicator?.id ?? node.id;
-    const previous = ctx.get<Assignment>(kind, subject)?.data;
-    if (ctx.scope.role !== "admin" && (ctx.scope.role !== "head" || !allowed(ctx.scope, owner.department) ||
-      input.departmentId !== (previous?.departmentId ?? null))) throw new PlanningError("Penugasan ini di luar wewenang akun.", 403);
-    if (input.departmentId && !ctx.catalog.departments.some(dep => dep.id === input.departmentId))
-      throw new PlanningError("Bidang penugasan tidak ditemukan.");
-    const parent = indicator ? node : node.parent ? ctx.nodes.get(node.parent) : undefined;
-    const effective = input.departmentId ?? (parent ? ctx.assigned(parent).department : null);
-    if (input.ownerUserId && (!ctx.actors.has(input.ownerUserId) || ctx.actors.get(input.ownerUserId)?.department !== effective))
-      throw new PlanningError("Penanggung jawab harus berasal dari bidang efektif.");
-    return save(kind, subject, 0, { departmentId: input.departmentId, ownerUserId: input.ownerUserId }, "Penugasan tahunan");
+    requireAdmin(ctx);
+    if (input.ownerUserId && !ctx.accounts.has(input.ownerUserId))
+      throw new PlanningError("Pilih akun aktif yang memiliki izin menu Pagu, Target & Realisasi.");
+    const { departmentId } = ctx.get<Assignment>(kind, subject)?.data ?? {};
+    return save(kind, subject, 0, { departmentId, ownerUserId: input.ownerUserId }, "Penugasan akun tahunan");
   }
-  requireWrite(ctx, owner.department);
+  requireWrite(ctx, owner);
   requireOpenPeriod(ctx, input.correction);
   if (input.action === "financial") {
     if (node.type !== "subkegiatan") throw new PlanningError("Realisasi anggaran diisi per subkegiatan.");
@@ -126,7 +95,7 @@ export async function saveAction(ctx: PlanningContext, input: Action) {
   }
   const current = ctx.get<Evaluation>("evaluation", indicator!.id, quarter)?.data;
   if (input.action === "review") {
-    if (ctx.scope.role === "operator") throw new PlanningError("Pemeriksaan memerlukan Kepala Bidang atau Admin.", 403);
+    requireAdmin(ctx);
     if (current?.status !== "submitted") throw new PlanningError("Hanya capaian yang diajukan bisa diperiksa.", 409);
     if (input.status === "returned" && !input.reviewNote) throw new PlanningError("Isi catatan pemeriksa saat mengembalikan.");
     return save("evaluation", indicator!.id, quarter, { ...current, status: input.status, reviewNote: input.reviewNote }, input.correction || input.reviewNote);

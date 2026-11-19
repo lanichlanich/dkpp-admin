@@ -5,7 +5,7 @@ import path from "node:path";
 import { z } from "zod";
 import { database } from "@/lib/database";
 import { createStorageDownloadUrl, createStorageUploadUrl, deleteStorageObject, downloadStorageObject, isStorageConfigured } from "@/lib/storage";
-import { allowed, EVIDENCE_LIMIT, EVIDENCE_TYPES, XLSX_LIMIT, type Evidence } from "./model";
+import { EVIDENCE_LIMIT, EVIDENCE_TYPES, XLSX_LIMIT, type Evidence } from "./model";
 import { budgetPreview, XLSX_MIME } from "./files";
 import { requireOpenPeriod } from "./actions";
 import { commitPlanning, PlanningError, requireAdmin, requireObject, requireVersion, requireWrite, type PlanningContext } from "./store";
@@ -35,7 +35,7 @@ function authorizeUpload(ctx: PlanningContext, input: Upload) {
   if (ctx.quarter !== 4) throw new PlanningError("Bukti final hanya tersedia untuk Triwulan IV.");
   requireOpenPeriod(ctx);
   const { node, owner } = requireObject(ctx, input.nodeId, input.indicatorId);
-  requireWrite(ctx, owner.department);
+  requireWrite(ctx, owner);
   if (!input.indicatorId && node.type !== "kegiatan" && node.type !== "subkegiatan")
     throw new PlanningError("Pilih kegiatan, subkegiatan, atau indikator untuk bukti.");
   if (input.sourceEvidence) {
@@ -148,10 +148,7 @@ export async function finishUpload(ctx: PlanningContext, id: string) {
 
 export async function evidenceDownload(ctx: PlanningContext, id: string) {
   const record = ctx.get<Evidence>("evidence", id, ctx.quarter), data = record?.data;
-  if (!data) throw new PlanningError("Bukti tidak ditemukan.", 404);
-  const { owner } = requireObject(ctx, data.nodeId, data.indicatorId ?? undefined);
-  const hidden = data.archived && (ctx.scope.role === "observer" || (ctx.scope.role === "operator" && data.uploadedBy !== ctx.user.id));
-  if (!allowed(ctx.scope, owner.department) || hidden) throw new PlanningError("Bukti tidak ditemukan.", 404);
+  if (!data || !ctx.canReadEvidence(data)) throw new PlanningError("Bukti tidak ditemukan.", 404);
   if (!data.storageName) throw new PlanningError("Berkas belum dipindahkan.", 404);
   const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
   if (isStorageConfigured()) return new Response(null, { status: 302, headers: { ...headers, Location: await createStorageDownloadUrl(data.storageName, data.filename, PLANNING_BUCKET) } });

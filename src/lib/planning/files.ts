@@ -1,6 +1,6 @@
 import "server-only";
 import ExcelJS from "exceljs";
-import { allowed, achievement, budgetFor, isExample, summarize, type Evidence, type Evaluation, type Money } from "./model";
+import { achievement, budgetFor, isExample, summarize, type Evidence, type Evaluation, type Money } from "./model";
 import { PlanningError, requireAdmin, type PlanningContext } from "./store";
 import { rupiah } from "./actions";
 
@@ -81,7 +81,8 @@ function csvCell(value: unknown) {
 
 export function planningCsv(ctx: PlanningContext, kind: "anggaran" | "capaian", department: string | null) {
   const rows: unknown[][] = [];
-  const scope = (id: string | null) => allowed(ctx.scope, id) && (!department || id === department);
+  const inScope = (owner: ReturnType<PlanningContext["assigned"]>) =>
+    ctx.canAccess(owner) && (!department || owner.department === department);
   const depName = (id: string | null) => ctx.catalog.departments.find(dep => dep.id === id)?.name ?? "";
   const sourceLabel = (source: { doc?: string; table?: string; printedPage?: number } | undefined) =>
     [ctx.catalog.documents.find(doc => doc.id === source?.doc)?.kind, source?.table && `Tabel ${source.table}`, source?.printedPage && `hlm. ${source.printedPage}`].filter(Boolean).join(" · ");
@@ -89,7 +90,7 @@ export function planningCsv(ctx: PlanningContext, kind: "anggaran" | "capaian", 
     rows.push(["Kode", "Subkegiatan", "Tahun", "TW", "Pagu", "Sumber pagu", "Realisasi kumulatif", "Serapan (%)", "Sisa", "Bidang", "Penanggung jawab", "Bukti aktif", "Catatan"]);
     for (const node of subactivities(ctx)) {
       const owner = ctx.assigned(node);
-      if (!scope(owner.department)) continue;
+      if (!inScope(owner)) continue;
       const budget = budgetFor(node, ctx.year, ctx.get<Money>("budget", node.id));
       const financial = ctx.get<Money>("financial", node.id, ctx.quarter)?.data;
       const totals = summarize([{ budget: budget.amount, real: financial?.amount ?? null }]);
@@ -101,7 +102,7 @@ export function planningCsv(ctx: PlanningContext, kind: "anggaran" | "capaian", 
     rows.push(["ID simpul", "Kode", "Simpul", "ID indikator", "Indikator", "Satuan", "Arah", "Tahun", "TW", "Target", "Realisasi", "Capaian (%)", "Status", "Kendala", "Tindak lanjut", "Tenggat", "Catatan pemeriksa", "Bidang", "Penanggung jawab", "Sumber"]);
     for (const { node, indicator } of ctx.indicators.values()) {
       const owner = ctx.assigned(node, indicator.id);
-      if (!scope(owner.department) || isExample(node.source) || isExample(indicator.source)) continue;
+      if (!inScope(owner) || isExample(node.source) || isExample(indicator.source)) continue;
       const target = ctx.get<{ value: number | null; source: string }>("target", indicator.id);
       const value = target ? target.data.value : indicator.targets?.[ctx.year] ?? null;
       const e = ctx.get<Evaluation>("evaluation", indicator.id, ctx.quarter)?.data;

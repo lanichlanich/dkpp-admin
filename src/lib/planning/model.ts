@@ -5,8 +5,6 @@ export const EVIDENCE_LIMIT = 10 * 1024 * 1024;
 export const XLSX_LIMIT = 5 * 1024 * 1024;
 export const EVIDENCE_TYPES = ["application/pdf", "image/jpeg", "image/png"] as const;
 
-export type Role = "admin" | "head" | "operator" | "observer";
-export type Scope = { role: Role; department: string | null };
 export type Source = { doc?: string; page?: number; printedPage?: number; table?: string; status?: string };
 export type Indicator = {
   id: string; name: string; unit: string; direction: "higher" | "lower"; iku?: boolean;
@@ -97,21 +95,28 @@ export function methodFor(catalog: Catalog, indicator: Indicator, year: number) 
   return { ...method, kind };
 }
 
-export function allowed(scope: Scope, department: string | null) {
-  return scope.role === "admin" || (scope.department === null ? scope.role === "observer" : scope.department === department);
-}
-
-export function canWrite(scope: Scope, department: string | null) {
-  return scope.role !== "observer" && allowed(scope, department);
-}
-
-export function assignmentFrom(entries: Assignment[], actorDepartment: (id: string) => string | null) {
+export function assignmentFrom(
+  entries: Assignment[],
+  accountName: (id: string) => string | undefined,
+  sourceActor: (id: string) => { displayName: string; departmentId: string | null } | undefined,
+) {
   const department = entries.find(entry => entry.departmentId != null)?.departmentId || null;
   for (const entry of entries) {
     if (entry.ownerUserId === "" || entry.ownerName === "") break;
+    if (entry.ownerUserId) {
+      const imported = sourceActor(entry.ownerUserId);
+      if (!imported) {
+        const ownerName = accountName(entry.ownerUserId);
+        // An unavailable account still overrides the parent assignment.
+        return { department, ownerId: entry.ownerUserId, ownerName: ownerName ?? null, accountId: ownerName === undefined ? null : entry.ownerUserId };
+      }
+      if (imported.departmentId === department && (!entry.departmentId || entry.departmentId === department)) {
+        return { department, ownerId: entry.ownerUserId, ownerName: imported.displayName, accountId: null };
+      }
+      continue;
+    }
     if (entry.departmentId && entry.departmentId !== department) continue;
-    if (entry.ownerUserId && actorDepartment(entry.ownerUserId) === department) return { department, ownerId: entry.ownerUserId, ownerName: null };
-    if (entry.ownerName && entry.departmentId === department) return { department, ownerId: null, ownerName: entry.ownerName };
+    if (entry.ownerName && entry.departmentId === department) return { department, ownerId: null, ownerName: entry.ownerName, accountId: null };
   }
-  return { department, ownerId: null, ownerName: null };
+  return { department, ownerId: null, ownerName: null, accountId: null };
 }

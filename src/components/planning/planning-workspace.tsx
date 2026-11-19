@@ -3,13 +3,12 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, ClipboardList, Download, Lock, Paperclip, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { achievement, canWrite, LEVELS, summarize, YEARS, type Source } from "@/lib/planning/model";
+import { achievement, LEVELS, summarize, YEARS, type Source } from "@/lib/planning/model";
 import type { PlanningView } from "@/lib/planning/store";
 import { buttonStyle, fieldStyle, money, number, PlanningDialog, type DialogState, type ViewEvidence, type ViewIndicator, type ViewNode } from "./planning-dialog";
 
 const endpoint = "/api/pagu-target-realisasi";
 const statuses = { draft: "Draf", submitted: "Diajukan", returned: "Dikembalikan", checked: "Selesai diperiksa" };
-const roleNames = { admin: "Admin", head: "Kepala Bidang", operator: "Operator Bidang", observer: "Pengamat" };
 const quarterNames = ["I", "II", "III", "IV"];
 const labels = { subkegiatan: "Subkegiatan", kegiatan: "Kegiatan", program: "Program", sasaran: "Sasaran", tujuan: "Tujuan", iku: "IKU" };
 const levels = ["subkegiatan", "kegiatan", "program", "sasaran", "tujuan", "iku"] as const;
@@ -32,7 +31,7 @@ function Metric({ label, value, caption }: { label: string; value: string; capti
 
 export function PlanningWorkspace({ initial }: { initial: PlanningView }) {
   const [view, setView] = useState(initial);
-  const [department, setDepartment] = useState(initial.scope.department ?? "");
+  const [department, setDepartment] = useState("");
   const [level, setLevel] = useState<typeof LEVELS[number]>("subkegiatan");
   const [query, setQuery] = useState("");
   const [opened, setOpened] = useState<Set<string>>(() => new Set());
@@ -40,9 +39,7 @@ export function PlanningWorkspace({ initial }: { initial: PlanningView }) {
   const [dialog, setDialog] = useState<DialogState>();
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; error?: boolean }>();
-  const { year, quarter, scope, period } = view;
-  const admin = scope.role === "admin";
-  const reviewer = admin || scope.role === "head";
+  const { year, quarter, isAdmin: admin, period } = view;
   const q = quarterNames[quarter - 1];
   const apiUrl = `${endpoint}?year=${year}&quarter=${quarter}`;
   const depName = (id: string | null | undefined) => view.departments.find(dep => dep.id === id)?.name ?? "Belum ditetapkan";
@@ -102,9 +99,8 @@ export function PlanningWorkspace({ initial }: { initial: PlanningView }) {
     return <Button type="button" className={buttonStyle} disabled={loading} variant={primary ? "default" : "outline"} onClick={() => setDialog(state)}>{title}</Button>;
   }
   function proof(node: ViewNode, indicator?: ViewIndicator) {
-    const owner = indicator?.owner ?? node.owner;
     const records = view.evidence.filter(item => item.data.nodeId === node.id && (item.data.indicatorId ?? null) === (indicator?.id ?? null));
-    const write = !period.closed && !!owner && canWrite(scope, owner.department);
+    const write = !period.closed && (indicator !== undefined || node.visible);
     const eligible = indicator || ["kegiatan", "subkegiatan"].includes(node.type);
     if (quarter !== 4 || (!records.length && !(write && eligible))) return null;
     return <details className="min-w-0 rounded-lg border bg-white px-3">
@@ -117,7 +113,7 @@ export function PlanningWorkspace({ initial }: { initial: PlanningView }) {
   }
   function evidenceCard(record: ViewEvidence, node: ViewNode, indicator?: ViewIndicator) {
     const data = record.data;
-    const manage = !period.closed && (reviewer || (scope.role === "operator" && record.mine));
+    const manage = !period.closed && record.manageable;
     return <div key={record.subject} className="space-y-1 rounded-lg border p-3">
       <p className="break-words font-medium">{data.title}</p>
       {!record.available && <p className="text-amber-900">Berkas belum dipindahkan</p>}
@@ -134,7 +130,7 @@ export function PlanningWorkspace({ initial }: { initial: PlanningView }) {
   function indicatorCard(node: ViewNode, indicator: ViewIndicator) {
     const evaluation = indicator.evaluation?.data;
     const status = evaluation?.status;
-    const canEdit = !period.closed && canWrite(scope, indicator.owner.department);
+    const canEdit = !period.closed;
     const source = indicator.target?.data.source || sourceText(view, indicator.source);
     const metadata = indicator.method;
     return <article key={indicator.id} className="min-w-0 space-y-3 rounded-xl border bg-white p-4">
@@ -160,9 +156,9 @@ export function PlanningWorkspace({ initial }: { initial: PlanningView }) {
       </details>}
       <div className="flex flex-wrap gap-2">
         {admin && action("Edit target", { action: "target", node, indicator })}
-        {reviewer && canWrite(scope, indicator.owner.department) && action("Atur penugasan", { action: "assignment", node, indicator })}
+        {admin && action("Atur penugasan", { action: "assignment", node, indicator })}
         {canEdit && (period.reopened || (status !== "checked" && status !== "submitted")) && action("Isi capaian", { action: "evaluation", node, indicator }, true)}
-        {canEdit && reviewer && status === "submitted" && action("Periksa capaian", { action: "review", node, indicator }, true)}
+        {canEdit && admin && status === "submitted" && action("Periksa capaian", { action: "review", node, indicator }, true)}
       </div>
       {proof(node, indicator)}
     </article>;
@@ -172,7 +168,7 @@ export function PlanningWorkspace({ initial }: { initial: PlanningView }) {
     const open = opened.has(key);
     const totals = summarize(selected.forRow(node).map(item => ({ budget: item.budget?.amount ?? null, real: item.financial?.data.amount ?? null })));
     const children = iku ? [] : selected.children(node);
-    const writable = !!node.owner && canWrite(scope, node.owner.department);
+    const writable = node.visible;
     return <article key={key} className="min-w-0 rounded-xl border bg-white">
       <button type="button" onClick={() => toggle(key)} aria-expanded={open}
         className="grid min-h-14 w-full cursor-pointer gap-3 rounded-xl p-4 text-left hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-emerald-700 lg:grid-cols-[minmax(0,1fr)_10rem_10rem_1.25rem] lg:items-center">
@@ -190,7 +186,7 @@ export function PlanningWorkspace({ initial }: { initial: PlanningView }) {
         {node.financial?.data.note && <p>Catatan realisasi · {node.financial.data.note}</p>}
         <div className="flex flex-wrap gap-2">
           {admin && node.type === "subkegiatan" && action("Atur pagu", { action: "budget", node })}
-          {reviewer && writable && !iku && action("Atur penugasan", { action: "assignment", node })}
+          {admin && writable && !iku && action("Atur penugasan", { action: "assignment", node })}
           {!period.closed && writable && node.type === "subkegiatan" && action("Isi realisasi anggaran", { action: "financial", node }, true)}
         </div>
         {proof(node)}
@@ -236,9 +232,8 @@ export function PlanningWorkspace({ initial }: { initial: PlanningView }) {
         </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <p className="mr-2 text-zinc-700">{roleNames[scope.role]}{scope.department && ` · ${depName(scope.department)}`}{period.reason && ` · ${period.reason}`}</p>
+        <p className="mr-2 text-zinc-700">{admin ? "Admin" : "Penugasan akun"}{period.reason && ` · ${period.reason}`}</p>
         {admin && action("Atur periode", { action: "period" })}
-        {admin && action("Atur cakupan akun", { action: "access" })}
       </div>
     </section>
     {feedback && <p role={feedback.error ? "alert" : "status"} className={`rounded-lg p-3 ${feedback.error ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-950"}`}>{feedback.message}</p>}
@@ -263,7 +258,7 @@ export function PlanningWorkspace({ initial }: { initial: PlanningView }) {
         </label>
         <label className="block space-y-1 font-medium">Bidang
           <select className={fieldStyle} value={department} onChange={event => { setDepartment(event.target.value); setPage(1); }}>
-            {!scope.department && <option value="">Semua bidang dalam cakupan</option>}
+            <option value="">Semua bidang</option>
             {view.departments.map(dep => <option key={dep.id} value={dep.id}>{dep.name}</option>)}
           </select>
         </label>
@@ -273,7 +268,9 @@ export function PlanningWorkspace({ initial }: { initial: PlanningView }) {
       <div className="hidden grid-cols-[minmax(0,1fr)_10rem_10rem_1.25rem] gap-3 px-4 font-medium text-zinc-700 lg:grid">
         <span>{labels[level]}</span><span>Pagu tahunan</span><span>Realisasi TW {q}</span>
       </div>
-      {selected.items.length === 0 && <p className="rounded-xl border bg-white p-5">Tidak ada baris yang sesuai pencarian dan bidang.</p>}
+      {selected.items.length === 0 && <p className="rounded-xl border bg-white p-5">
+        {view.nodes.length === 0 ? `Belum ada penugasan untuk akun Anda pada tahun ${year}.` : "Tidak ada baris yang sesuai pencarian dan bidang."}
+      </p>}
       {selected.items.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map(node => row(node, level === "iku"))}
       {selected.items.length > 0 && <div className="flex flex-wrap items-center justify-between gap-2 p-2">
         <p>{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, selected.items.length)} dari {selected.items.length} baris</p>

@@ -15,7 +15,7 @@ export type ViewNode = PlanningView["nodes"][number];
 export type ViewIndicator = ViewNode["indicators"][number];
 export type ViewEvidence = PlanningView["evidence"][number];
 export type DialogState = {
-  action: "budget" | "financial" | "assignment" | "target" | "evaluation" | "review" | "period" | "access" | "upload" | "import" | "archive";
+  action: "budget" | "financial" | "assignment" | "target" | "evaluation" | "review" | "period" | "upload" | "import" | "archive";
   node?: ViewNode; indicator?: ViewIndicator; evidence?: ViewEvidence;
 };
 type Preview = { version: number; rows: { nodeId: string; code: string; row: number; title: string; old: number | null; amount: number; expectedRevision: number }[]; errors: string[] };
@@ -34,9 +34,11 @@ export async function send<T>(url: string, body: unknown): Promise<T> {
 const titles: Record<DialogState["action"], string> = {
   budget: "Atur pagu", financial: "Isi realisasi anggaran", assignment: "Atur penugasan tahunan",
   target: "Edit target", evaluation: "Isi capaian", review: "Periksa capaian", period: "Atur periode",
-  access: "Atur cakupan akun", upload: "Unggah bukti final", import: "Impor pagu Excel", archive: "Kelola arsip bukti",
+  upload: "Unggah bukti final", import: "Impor pagu Excel", archive: "Kelola arsip bukti",
 };
 const INHERIT = "__inherit__";
+const UNASSIGNED = "__unassigned__";
+const UNAVAILABLE = "__unavailable__";
 
 export function PlanningDialog({ state, view, url, close, saved }: {
   state: DialogState; view: PlanningView; url: string; close: () => void; saved: (message: string) => Promise<void>;
@@ -46,16 +48,18 @@ export function PlanningDialog({ state, view, url, close, saved }: {
   const [problem, setProblem] = useState("");
   const [fields, setFields] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<Preview>();
-  const [accountId, setAccountId] = useState("");
   const [useCalculator, setUseCalculator] = useState(!!indicator?.evaluation?.data.calculation);
   const [a, setA] = useState(String(indicator?.evaluation?.data.calculation?.a ?? ""));
   const [b, setB] = useState(String(indicator?.evaluation?.data.calculation?.b ?? ""));
   const assignment = indicator ? indicator.assignment : node?.assignment;
-  const [department, setDepartment] = useState(assignment?.data.departmentId ?? INHERIT);
-  const account = view.accounts.find(item => item.id === accountId);
-  const selectedDepartment = department === INHERIT
-    ? (indicator ? node?.owner?.department : view.nodes.find(item => item.id === node?.parent)?.owner?.department)
-    : department || null;
+  const assignedId = assignment?.data.ownerUserId;
+  const [owner, setOwner] = useState(() => {
+    if (assignedId === "" || assignment?.data.ownerName === "") return UNASSIGNED;
+    if (assignedId || assignment?.data.ownerName)
+      return view.accounts.some(account => account.id === assignedId) ? assignedId! : UNAVAILABLE;
+    return INHERIT;
+  });
+  const [accountQuery, setAccountQuery] = useState("");
   const current = indicator?.evaluation?.data;
   const method = indicator?.method;
   const computed = method?.kind && a.trim() && b.trim() ? calculate(method.kind, Number(a), Number(b)) : null;
@@ -130,9 +134,9 @@ export function PlanningDialog({ state, view, url, close, saved }: {
           expectedRevision: indicator?.evaluation?.revision ?? 0 }; break;
         case "review": payload = { ...id, status, reviewNote: text("reviewNote"), correction, expectedRevision: indicator?.evaluation?.revision ?? 0 }; break;
         case "period": payload = { closed: !view.period.closed, reason: text("reason"), expectedRevision: view.periodRevision }; break;
-        case "assignment": payload = { ...id, departmentId: department === INHERIT ? null : department,
-          ownerUserId: text("owner") === INHERIT ? null : text("owner"), expectedRevision: assignment?.revision ?? 0 }; break;
-        case "access": payload = { userId: accountId, role: text("role"), department: text("accessDepartment") || null, expectedRevision: account?.access?.revision ?? 0 }; break;
+        case "assignment":
+          payload = { ...id, ownerUserId: owner === INHERIT ? null : owner === UNASSIGNED ? "" : owner, expectedRevision: assignment?.revision ?? 0 };
+          break;
         case "archive": payload = { evidenceId: evidence?.subject, archived: !evidence?.data.archived, expectedRevision: evidence?.revision ?? 0 }; break;
         case "import": payload = { version: preview!.version, rows: preview!.rows, note: text("note") }; break;
       }
@@ -185,34 +189,30 @@ export function PlanningDialog({ state, view, url, close, saved }: {
       submitLabel = view.period.closed ? "Buka kembali periode" : "Tutup periode";
       break;
     case "assignment": {
-      const admin = view.scope.role === "admin";
-      const ownerChoices = view.owners.filter(owner => owner.department === selectedDepartment);
+      const search = accountQuery.trim().toLocaleLowerCase("id");
+      const available = view.accounts.filter(account => account.id === owner ||
+        (account.name + " " + account.username).toLocaleLowerCase("id").includes(search));
+      const currentOwner = indicator?.owner.ownerName ?? node?.owner?.ownerName;
       content = <>
-        {admin && select("department", "Bidang", <>
-          <option value={INHERIT}>Ikuti induk</option><option value="">Belum ditetapkan</option>
-          {view.departments.map(dep => <option key={dep.id} value={dep.id}>{dep.name}</option>)}
-        </>, { value: department, onChange: event => setDepartment(event.target.value) })}
+        <p className="text-zinc-700">Tahun {view.year}. Pilih akun aktif yang memiliki izin menu ini di Manajemen User.</p>
+        {!indicator && node?.type !== "subkegiatan" && <p className="text-zinc-700">Penugasan berlaku juga pada rincian yang mengikuti induk.</p>}
+        {owner === UNAVAILABLE && <p className="rounded-lg bg-amber-50 p-3 text-amber-900">
+          {currentOwner ? `${currentOwner} tercatat sebagai penanggung jawab.` : "Akun penanggung jawab tidak tersedia."} Pilih akun DKPP untuk memberikan akses.
+        </p>}
+        {input("accountQuery", "Cari akun DKPP", {
+          type: "search", value: accountQuery, placeholder: "Nama atau username", onChange: event => setAccountQuery(event.target.value),
+        })}
         {select("owner", "Penanggung jawab", <>
-          <option value={INHERIT}>Ikuti induk</option><option value="">Belum ditetapkan</option>
-          {ownerChoices.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
-        </>, { key: department, defaultValue: assignment?.data.ownerUserId ?? INHERIT } as React.SelectHTMLAttributes<HTMLSelectElement>)}
+          <option value={INHERIT}>Ikuti induk</option>
+          <option value={UNASSIGNED}>Belum ditetapkan</option>
+          {owner === UNAVAILABLE && <option value={UNAVAILABLE} disabled>Akun belum tertaut atau tidak aktif</option>}
+          {available.map(account => <option key={account.id} value={account.id}>{account.name} (@{account.username})</option>)}
+        </>, { value: owner, onChange: event => setOwner(event.target.value) })}
+        {search && !available.some(account => (account.name + " " + account.username).toLocaleLowerCase("id").includes(search)) &&
+          <p className="text-zinc-600">Akun yang cocok tidak ditemukan.</p>}
       </>;
       break;
     }
-    case "access":
-      content = <>
-        <p className="text-zinc-700">Pilih akun aktif yang sudah mendapat izin menu ini di Manajemen User.</p>
-        {select("account", "Akun DKPP", <><option value="">Pilih akun</option>
-          {view.accounts.map(user => <option key={user.id} value={user.id}>{user.name} (@{user.username})</option>)}</>,
-          { required: true, value: accountId, onChange: event => setAccountId(event.target.value) })}
-        {account && <div key={accountId} className="space-y-3">
-          {select("role", "Peran", <><option value="observer">Pengamat</option><option value="operator">Operator Bidang</option><option value="head">Kepala Bidang</option>
-            {account.access && <option value="remove">Cabut cakupan</option>}</>, { defaultValue: account.access?.role ?? "observer" })}
-          {select("accessDepartment", "Cakupan bidang", <><option value="">Semua bidang (Pengamat)</option>
-            {view.departments.map(dep => <option key={dep.id} value={dep.id}>{dep.name}</option>)}</>, { defaultValue: account.access?.department ?? "" })}
-        </div>}
-      </>;
-      break;
     case "upload":
       content = <>{evidence ? <>
         <p>Unggah PDF asli SIPENA. Ukuran dan SHA-256 diperiksa sebelum pengaitan.</p>
@@ -258,7 +258,7 @@ export function PlanningDialog({ state, view, url, close, saved }: {
               <Button className={buttonStyle} type="submit" value="submitted">Ajukan capaian</Button></>}
             {action === "review" && <><Button className={buttonStyle} type="submit" variant="destructive" value="returned">Kembalikan</Button>
               <Button className={buttonStyle} type="submit" value="checked">Tandai selesai</Button></>}
-            {submitLabel && <Button className={buttonStyle} type="submit" disabled={action === "import" && !!preview && (!preview.rows.length || !!preview.errors.length)}>{submitLabel}</Button>}
+            {submitLabel && <Button className={buttonStyle} type="submit" disabled={(action === "assignment" && owner === UNAVAILABLE) || (action === "import" && !!preview && (!preview.rows.length || !!preview.errors.length))}>{submitLabel}</Button>}
           </div>
         </fieldset>
         {pending && <p role="status" className="mt-3 text-zinc-600">Sedang memproses…</p>}

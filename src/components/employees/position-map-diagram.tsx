@@ -10,8 +10,8 @@ export function PositionMapDiagram({ page }: { page: PositionMapPage }) {
         let x = table.x; const rowY = y; y += table.heights[r];
         return <g key={r}>{row.map((value, c) => {
           const cellX = x; x += table.columns[c];
-          const centered = table.centered || c > 0 || (r === 0 && table.header), bold = r === 0 && (table.header || table.centered);
-          const size = !table.centered && c > 0 ? table.fontSize <= 6.5 ? 5.5 : table.fontSize - .5 : table.fontSize;
+          const centered = table.centered || c > 0 || (r === 0 && table.header), bold = table.boldRows?.includes(r) || (r === 0 && (table.header || table.centered));
+          const size = !table.centered && c > 0 ? table.numericFontSize ?? (table.fontSize <= 6.5 ? 5.5 : table.fontSize - .5) : table.fontSize;
           const lines = value.split("\n"), lineHeight = size + 1.2;
           return <g key={c}>
             <rect x={cellX} y={rowY} width={table.columns[c]} height={table.heights[r]} fill={r === 0 && table.fill ? `#${table.fill}` : "transparent"} stroke={table.borders ? "#000" : "none"} strokeWidth={.5} />

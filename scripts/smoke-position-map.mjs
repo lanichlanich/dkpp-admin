@@ -12,6 +12,7 @@ db.exec(`CREATE TABLE users(id TEXT PRIMARY KEY); INSERT INTO users VALUES('test
   CREATE TABLE employees(nip TEXT PRIMARY KEY,name TEXT,position TEXT,position_type TEXT,echelon TEXT,unit TEXT,asn_type TEXT,rank TEXT,status TEXT,job_position_id TEXT);
   CREATE TABLE job_positions(id TEXT PRIMARY KEY,unit TEXT,organization_unit_id TEXT);
   CREATE TABLE organization_units(id TEXT PRIMARY KEY,name TEXT);`);
+db.exec("CREATE TABLE plt_assignments(id TEXT PRIMARY KEY,employee_nip TEXT,acting_position TEXT,start_date TEXT,end_date TEXT,closed_at TEXT,previous_id TEXT)");
 db.exec(readFileSync("src/lib/db.ts", "utf8").match(/CREATE TABLE IF NOT EXISTS position_map_plans \([\s\S]*?\);/)[0]);
 let actor = null, reads = 0, invalidations = 0;
 function load(file) {
@@ -92,14 +93,42 @@ try {
   const zip = new PizZip(Buffer.from(await response.arrayBuffer())), xml = zip.file("word/document.xml").asText();
   assert(xml.includes('w:orient="landscape"')); assert(xml.includes("w:txbxContent")); assert(!zip.folder("word/media").file(/./).length, "The chart must be editable text, not a screenshot");
   assert.equal((xml.match(/<w:pageBreakBefore\/>/g) ?? []).length, 4);
+  const definitive = await store.getPositionMapHeadSignatory();
+  assert.equal(definitive.nip, employee.nip); assert.equal(definitive.status, "definitif");
+  db.prepare("INSERT INTO plt_assignments VALUES(?,?,?,?,?,?,?)").run("active-head",employee.nip,root.name,"2026-10-01","2026-12-31",null,null);
+  const plt = await store.getPositionMapHeadSignatory(); assert.equal(plt.status, "plt");
+  const a4 = model.buildDinasA4PositionMap(plan, 2026, plt);
+  assert(a4.width > a4.height && a4.width < 850 && a4.height < 600);
+  const dinasIds = a4.tables.flatMap(t => t.roleIds);
+  assert.equal(dinasIds.length, 92); assert.equal(new Set(dinasIds).size, 92);
+  assert(dinasIds.every(id => !model.positionMapIsUptd(model.positionMapCatalog.find(p => p.id === id).unit)));
+  const signature = a4.tables.at(-1);
+  assert(signature.rows.flat().includes(employee.name)); assert(signature.rows.flat().includes(`NIP. ${employee.nip}`));
+  for (const t of a4.tables.slice(0,-1)) assert(t.y + t.heights.reduce((n,h)=>n+h,0) < signature.y, "A4 chart must leave clear space above the signature");
+  response = await download.GET(new Request("http://localhost/api/position-map/2026/docx?preset=dinas-a4"), context(2026));
+  assert.equal(response.status,200); assert.match(response.headers.get("content-disposition"),/Peta-Jabatan-Dinas-DKPP-2026-A4\.docx/);
+  const a4Xml = new PizZip(Buffer.from(await response.arrayBuffer())).file("word/document.xml").asText();
+  assert(a4Xml.includes('w:w="16838" w:h="11906"')); assert(!a4Xml.includes("<w:pageBreakBefore/>")); assert(!a4Xml.includes("UPTD"));
+  assert(a4Xml.includes("Plt.")); assert(a4Xml.includes(employee.name)); assert(a4Xml.includes(employee.nip));
+  assert.equal((await download.GET(new Request("http://localhost/api/position-map/2026/docx?preset=bad"),context(2026))).status,422);
+  db.prepare("UPDATE plt_assignments SET end_date='2026-10-30'").run(); assert.equal((await store.getPositionMapHeadSignatory()).status,"definitif");
+  db.prepare("UPDATE employees SET status='Pensiun' WHERE nip=?").run(employee.nip);
+  await assert.rejects(store.getPositionMapHeadSignatory,/Pastikan data kepala dinas/);
+  db.prepare("UPDATE employees SET status='Aktif' WHERE nip=?").run(employee.nip);
   db.prepare("DELETE FROM users WHERE id='tester'").run(); assert.equal(db.prepare("SELECT count(*) n FROM position_map_plans").get().n, 1);
   if (process.argv[2]) {
     const fixture = JSON.parse(readFileSync(process.argv[2], "utf8"));
     const actual = model.currentPositionMapStaff(fixture.employees, "2026-11-18");
     const defaultPlan = model.defaultPositionMapPlan(actual.counts), actualPages = model.buildPositionMapPages(defaultPlan, 2026);
-    mkdirSync(".tmp/position-map", { recursive: true });
-    writeFileSync(".tmp/position-map/map.docx", createPositionMapDocx(defaultPlan, 2026));
-    writeFileSync(".tmp/position-map/model.json", JSON.stringify({ plan: defaultPlan, pages: actualPages }));
+    const output = process.argv[3] ?? ".tmp/position-map";
+    mkdirSync(output, { recursive: true });
+    writeFileSync(path.join(output, "map.docx"), createPositionMapDocx(defaultPlan, 2026));
+    writeFileSync(path.join(output, "model.json"), JSON.stringify({ plan: defaultPlan, pages: actualPages }));
+    const head = fixture.employees.find(e => e.name.startsWith("RORY"));
+    assert(head, "Real fixture requires the verified current head");
+    writeFileSync(path.join(output, "dinas-a4.docx"), createPositionMapDocx(defaultPlan, 2026, { preset: "dinas-a4", signatory: {
+      name: head.name, nip: head.nip, rank: "Pembina Tk.I / IV/b", title: root.name + " KABUPATEN INDRAMAYU", status: "plt",
+    } }));
     console.log("Real snapshot:", { active: actual.active, mapped: actual.mapped, unmapped: actual.unmapped, ...model.positionMapSummary(defaultPlan) });
   }
   console.log("Position map passed: 180 placements exactly once, 21 UPTD, 5 landscape pages, numeric validation, authorization, origin checks, persistence, year isolation, stale-write conflicts and native DOCX tables.");

@@ -41,25 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local SQLite data
-/data/*.db
-/data/*.db-*
-/data/kgb-documents/
-/data/kgb-signed-documents/
-/data/dpcp-documents/
-/data/pak-documents/
-/data/wfh-documents/
-/data/wfh-reports/
-/data/wfh-schedule-letters/
-/data/surat-pengantar-documents/
-/data/surat-perbantuan-documents/
-/data/plt-documents/
-/data/library-book-covers/
-/data/kerjaku-request-documents/
-/data/kak-documents/
-/data/kerjaku-request-documents/
-/data/employee-documents/
-/data/official-statement-documents/
+# local SQLite database, uploads and other runtime data
+/data/*
+!/data/.gitkeep
 
 # local migration backups and restore drills
 /.migration-backups/

@@ -7,3 +7,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Pengembangan melalui Hermes
+
+- Jalankan Hermes dari direktori repo. Gunakan branch pengembangan dan periksa `git status` sebelum mengedit.
+- Gunakan SQLite lokal dengan data uji sintetis. Simpan data dan unggahan runtime di `data/`, serta rahasia pengembangan di `.env.local`.
+- Jalankan server pengembangan pada `127.0.0.1`. Lihat [panduan Hermes di VPS](docs/hermes-vps.md) untuk akses melalui SSH dan perintah verifikasi.

@@ -10,6 +10,8 @@ npm.cmd run dev
 
 Buka http://localhost:3000. Launcher Windows tersedia di scripts/start-adminflow.ps1.
 
+Untuk Linux, lihat [pengembangan melalui Hermes di VPS](docs/hermes-vps.md).
+
 ## OpenAI
 
 Simpan konfigurasi hanya di .env.local (diabaikan Git), lalu mulai ulang server bila diperlukan:

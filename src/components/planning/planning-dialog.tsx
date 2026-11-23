@@ -1,5 +1,7 @@
 "use client";
 
+import { CircleAlert, CircleCheck, Download, LoaderCircle, Save, Send, Undo2, X } from "lucide-react";
+import { actionIcons, tones } from "./planning-style";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,7 +9,7 @@ import { calculate, EVIDENCE_LIMIT, XLSX_LIMIT } from "@/lib/planning/model";
 import type { PlanningView } from "@/lib/planning/store";
 
 export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-export const fieldStyle = "min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base text-zinc-900 focus-visible:outline-2 focus-visible:outline-emerald-700 aria-invalid:border-red-600";
+export const fieldStyle = "min-h-11 w-full rounded-lg border border-input bg-background px-3 py-2 text-base text-foreground focus-visible:outline-2 focus-visible:outline-emerald-700 aria-invalid:border-red-600";
 export const buttonStyle = "min-h-11 whitespace-normal px-3 text-base";
 export const money = (value: number | null | undefined) => value == null ? "—" : "Rp" + new Intl.NumberFormat("id-ID").format(value);
 export const number = (value: number | null | undefined) => value == null ? "—" : new Intl.NumberFormat("id-ID", { maximumFractionDigits: 4 }).format(value);
@@ -44,6 +46,7 @@ export function PlanningDialog({ state, view, url, close, saved }: {
   state: DialogState; view: PlanningView; url: string; close: () => void; saved: (message: string) => Promise<void>;
 }) {
   const { action, node, indicator, evidence } = state;
+  const ActionIcon = actionIcons[action];
   const [pending, setPending] = useState(false);
   const [problem, setProblem] = useState("");
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -154,7 +157,7 @@ export function PlanningDialog({ state, view, url, close, saved }: {
   switch (action) {
     case "budget":
       content = <>{input("amount", "Pagu tahunan dalam Rupiah", { type: "number", min: 0, step: 1, defaultValue: node?.budget?.amount ?? "" })}
-        <p className="text-zinc-600">Kosongkan untuk menandai pagu belum tersedia.</p>{area("note", "Rujukan perubahan anggaran", node?.budget?.note, true)}</>;
+        <p className="text-muted-foreground">Kosongkan untuk menandai pagu belum tersedia.</p>{area("note", "Rujukan perubahan anggaran", node?.budget?.note, true)}</>;
       break;
     case "financial":
       content = <>{input("amount", "Realisasi kumulatif sampai akhir triwulan", { type: "number", min: 0, step: 1, defaultValue: node?.financial?.data.amount ?? "" })}
@@ -194,8 +197,8 @@ export function PlanningDialog({ state, view, url, close, saved }: {
         (account.name + " " + account.username).toLocaleLowerCase("id").includes(search));
       const currentOwner = indicator?.owner.ownerName ?? node?.owner?.ownerName;
       content = <>
-        <p className="text-zinc-700">Tahun {view.year}. Pilih akun aktif yang memiliki izin menu ini di Manajemen User.</p>
-        {!indicator && node?.type !== "subkegiatan" && <p className="text-zinc-700">Penugasan berlaku juga pada rincian yang mengikuti induk.</p>}
+        <p className="text-muted-foreground">Tahun {view.year}. Pilih akun aktif yang memiliki izin menu ini di Manajemen User.</p>
+        {!indicator && node?.type !== "subkegiatan" && <p className="text-muted-foreground">Penugasan berlaku juga pada rincian yang mengikuti induk.</p>}
         {owner === UNAVAILABLE && <p className="rounded-lg bg-amber-50 p-3 text-amber-900">
           {currentOwner ? `${currentOwner} tercatat sebagai penanggung jawab.` : "Akun penanggung jawab tidak tersedia."} Pilih akun DKPP untuk memberikan akses.
         </p>}
@@ -209,7 +212,7 @@ export function PlanningDialog({ state, view, url, close, saved }: {
           {available.map(account => <option key={account.id} value={account.id}>{account.name} (@{account.username})</option>)}
         </>, { value: owner, onChange: event => setOwner(event.target.value) })}
         {search && !available.some(account => (account.name + " " + account.username).toLocaleLowerCase("id").includes(search)) &&
-          <p className="text-zinc-600">Akun yang cocok tidak ditemukan.</p>}
+          <p className="text-muted-foreground">Akun yang cocok tidak ditemukan.</p>}
       </>;
       break;
     }
@@ -228,7 +231,7 @@ export function PlanningDialog({ state, view, url, close, saved }: {
       break;
     case "import":
       content = !preview ? <>
-        <a className="inline-flex min-h-11 items-center font-medium text-emerald-800 underline" href={url + "&file=template"}>Unduh template tahun {view.year}</a>
+        <a className="inline-flex min-h-11 items-center font-medium text-emerald-800 underline" href={url + "&file=template"}><Download className="mr-2 size-4" aria-hidden/>Unduh template tahun {view.year}</a>
         {input("file", "Lembar Pagu dalam .xlsx · maks. 5 MB", { type: "file", accept: ".xlsx", required: true })}
       </> : <>
         {preview.errors.length > 0 && <ul className="list-disc space-y-1 rounded-lg bg-red-50 py-3 pl-7 pr-3 text-red-800">{preview.errors.map((error, i) => <li key={i}>{error}</li>)}</ul>}
@@ -245,23 +248,23 @@ export function PlanningDialog({ state, view, url, close, saved }: {
   }
 
   return <Dialog open onOpenChange={open => { if (!open && !pending) close(); }}>
-    <DialogContent showCloseButton={false} className="max-h-[90dvh] gap-3 overflow-y-auto bg-white p-5 text-base sm:max-w-2xl">
-      <DialogTitle className="text-xl font-semibold">{titles[action]}</DialogTitle>
-      <DialogDescription className="text-base text-zinc-600">{indicator?.name ?? node?.title ?? `Tahun ${view.year} · Triwulan ${view.quarter}`}</DialogDescription>
+    <DialogContent showCloseButton={false} className="max-h-[90dvh] gap-3 overflow-y-auto bg-popover p-5 text-base sm:max-w-2xl">
+      <DialogTitle className="flex items-center gap-2 text-xl font-semibold"><span className={`grid size-9 shrink-0 place-items-center rounded-lg border ${tones.indigo}`}><ActionIcon aria-hidden className="size-4"/></span>{titles[action]}</DialogTitle>
+      <DialogDescription className="text-base text-muted-foreground">{indicator?.name ?? node?.title ?? `Tahun ${view.year} · Triwulan ${view.quarter}`}</DialogDescription>
       <form onSubmit={submit}>
         <fieldset disabled={pending} className="space-y-3">
           {content}
-          {problem && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-800">{problem}</p>}
+          {problem && <p role="alert" className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-destructive"><CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden/>{problem}</p>}
           <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
-            <Button className={buttonStyle} type="button" variant="outline" onClick={close}>Batal</Button>
-            {action === "evaluation" && <><Button className={buttonStyle} type="submit" variant="outline" value="draft">Simpan draf</Button>
-              <Button className={buttonStyle} type="submit" value="submitted">Ajukan capaian</Button></>}
-            {action === "review" && <><Button className={buttonStyle} type="submit" variant="destructive" value="returned">Kembalikan</Button>
-              <Button className={buttonStyle} type="submit" value="checked">Tandai selesai</Button></>}
-            {submitLabel && <Button className={buttonStyle} type="submit" disabled={(action === "assignment" && owner === UNAVAILABLE) || (action === "import" && !!preview && (!preview.rows.length || !!preview.errors.length))}>{submitLabel}</Button>}
+            <Button className={buttonStyle} type="button" variant="outline" onClick={close}><X aria-hidden/>Batal</Button>
+            {action === "evaluation" && <><Button className={buttonStyle} type="submit" variant="outline" value="draft"><Save aria-hidden/>Simpan draf</Button>
+              <Button className={buttonStyle} type="submit" value="submitted"><Send aria-hidden/>Ajukan capaian</Button></>}
+            {action === "review" && <><Button className={buttonStyle} type="submit" variant="destructive" value="returned"><Undo2 aria-hidden/>Kembalikan</Button>
+              <Button className={buttonStyle} type="submit" value="checked"><CircleCheck aria-hidden/>Tandai selesai</Button></>}
+            {submitLabel && <Button className={buttonStyle} type="submit" disabled={(action === "assignment" && owner === UNAVAILABLE) || (action === "import" && !!preview && (!preview.rows.length || !!preview.errors.length))}><ActionIcon aria-hidden/>{submitLabel}</Button>}
           </div>
         </fieldset>
-        {pending && <p role="status" className="mt-3 text-zinc-600">Sedang memproses…</p>}
+        {pending && <p role="status" className="mt-3 flex items-center gap-2 text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden/>Sedang memproses…</p>}
       </form>
     </DialogContent>
   </Dialog>;

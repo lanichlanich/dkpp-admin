@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { LegacyColumnDef } from "@tanstack/react-table/legacy";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NewsTermDialog } from "./news-term-dialog";
 import type { NewsArticle, NewsTerm, NewsTermKind } from "@/lib/news";
 import { NewsDataTable, type NewsTableFilter } from "./news-data-table";
 import { NewsOperation } from "./news-operation";
@@ -50,8 +50,8 @@ export function TermDirectory({ terms, kind }: { terms: NewsTerm[]; kind: NewsTe
   const columns = useMemo<LegacyColumnDef<NewsTerm>[]>(() => [
     { accessorKey: "name", header: "Nama", filterFn: "includesString", cell: ({ row }) => <span className="inline-flex flex-wrap items-center gap-2 font-medium"><TermIcon aria-hidden className={kind === "category" ? "size-4 text-indigo-600 dark:text-indigo-300" : "size-4 text-violet-600 dark:text-violet-300"}/>{row.original.name}{row.original.id === "default" && <Badge variant="secondary">Bawaan</Badge>}</span> },
     { accessorKey: "usage", header: "Jumlah berita", enableGlobalFilter: false, filterFn: (row, _, value) => (row.original.usage > 0) === (value === "used"), cell: ({ row }) => <Badge variant="outline" className={row.original.usage ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300" : "bg-muted text-muted-foreground"}>{row.original.usage} berita</Badge> },
-    { id: "actions", header: "Aksi", cell: ({ row: { original: term } }) => term.id === "default" ? <span className="text-muted-foreground">—</span> : <div className="flex items-start gap-2" key={term.name}>
-      <NewsOperation fields={{ operation: "saveTerm", kind, id: term.id, previousName: term.name }} label="Simpan nama"><Input aria-label={`Nama baru untuk ${term.name}`} name="name" required maxLength={60} defaultValue={term.name} className="w-36"/></NewsOperation>
+    { id: "actions", header: "Aksi", cell: ({ row: { original: term } }) => term.id === "default" ? <span className="text-muted-foreground">—</span> : <div className="flex items-start gap-2">
+      <NewsTermDialog kind={kind} term={term} />
       {(kind === "tag" || !term.usage) && <NewsOperation danger fields={{ operation: "deleteTerm", kind, id: term.id }} confirm={`Hapus ${label.toLowerCase()} “${term.name}”? Berita tidak akan dihapus.`} label="Hapus" />}
     </div> },
   ], [kind, label, TermIcon]);

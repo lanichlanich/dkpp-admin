@@ -4,6 +4,8 @@ import { gzipSync } from "node:zlib";
 import { createBackupSnapshot } from "@/lib/database";
 import { downloadStorageObject } from "@/lib/storage";
 import { kakDocumentRows } from "@/lib/kak-file-metadata";
+import { readNewsImage } from "@/lib/news-media";
+import { NEWS_MEDIA_DIRECTORY, newsMediaNames } from "@/lib/news-media-types";
 import { LIBRARY_COVER_BUCKET, LIBRARY_COVER_DIRECTORY, libraryCoverNamePattern } from "@/lib/library-cover-types";
 
 const ROOT_FOLDER_ID = "18c2-AWmf2K0GKDRgv_g3AQUCicv7J1j4";
@@ -368,6 +370,11 @@ export async function createBackupContent() {
     };
   });
   for (const item of downloadedDocuments) filesByCategory.get(item.category)!.push(item.archiveFile);
+  const newsNames = [...new Set((snapshot.news_articles ?? []).flatMap(row => newsMediaNames(row.cover_url, row.body_html)))];
+  const newsFiles = await mapLimit(newsNames, 5, async storageName => ({
+    storageName, path: `files/news-media/${storageName}`, bytes: await readNewsImage(storageName),
+  }));
+  filesByCategory.get("Umum")!.push(...newsFiles.map(({ path, bytes }) => ({ path, bytes })));
   const downloadedOrphans = await mapLimit(orphanedStorageObjects, 5, async (object, index) => {
     const bytes = await downloadStorageObject(object.name);
     const archivePath = `files/unlinked-storage/object-${String(index + 1).padStart(5, "0")}.${extensionFor({ storage_name: object.name }, "")}`;
@@ -385,9 +392,10 @@ export async function createBackupContent() {
   return {
     filesByCategory,
     tableCount: Object.keys(snapshot).length,
-    documentCount: downloadedDocuments.length,
+    documentCount: downloadedDocuments.length + newsFiles.length,
     unlinkedStorageObjectCount: downloadedOrphans.length,
     storageFiles: [
+      ...newsFiles.map(file => ({ path: `Umum/${file.path}`, storageName: file.storageName, storageDirectory: `data/${NEWS_MEDIA_DIRECTORY}` })),
       ...downloadedDocuments.map(item => ({ path: `${item.category}/${item.archiveFile.path}`, storageName: item.storageName, storageBucket: item.storageBucket })),
       ...downloadedOrphans.map(item => ({ path: `Sistem/${item.archivePath}`, storageName: item.storageName })),
     ],

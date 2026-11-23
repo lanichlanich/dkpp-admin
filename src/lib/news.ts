@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import sanitizeHtml from "sanitize-html";
 import { database, TransactionConflict } from "@/lib/database";
 import { getCurrentUser } from "@/lib/session";
+import { newsImageExists } from "@/lib/news-media";
+import { NEWS_MEDIA_PREFIX, newsMediaNamePattern, newsMediaNames } from "@/lib/news-media-types";
 import { canAccessMenu } from "@/lib/access-control";
 
 export type NewsArticle = { id: string; slug: string; title: string; summary: string; category: string; bodyHtml: string; coverUrl: string; status: "draft" | "published"; publishedAt: string | null; updatedAt: string; revision: number };
@@ -21,7 +23,14 @@ function https(value: string) {
   try { const url = new URL(value); return !!url.hostname && !url.username && !url.password; } catch { return false; }
 }
 function imageUrl(value: string) {
+  if (value.startsWith(NEWS_MEDIA_PREFIX)) return newsMediaNamePattern.test(value.slice(NEWS_MEDIA_PREFIX.length));
   return https(value) || /^\/(?:news|api\/news\/cover)\/[a-z\d_-][a-z\d_.-]*\.(?:webp|png|jpe?g|gif|avif)$/i.test(value);
+}
+export async function isPublishedNewsImage(name: string) {
+  if (!newsMediaNamePattern.test(name)) return false;
+  const url = `${NEWS_MEDIA_PREFIX}${name}`;
+  const records = await database.prepare("SELECT cover_url AS cover, body_html AS body FROM news_articles WHERE status = 'published' AND (cover_url = ? OR body_html LIKE ?)").all<{ cover: string; body: string }>(url, `%${url}%`);
+  return records.some(({ cover, body }) => newsMediaNames(cover, body).includes(name));
 }
 function cleanHtml(html: string) {
   return sanitizeHtml(html, {
@@ -116,6 +125,7 @@ export async function saveNews(input: Input): Promise<NewsArticle> {
   if (input.status !== "draft" && input.status !== "published") throw new NewsValidationError("Status berita tidak valid.");
   if (cover && !imageUrl(cover)) throw new NewsValidationError("Gunakan URL gambar HTTPS yang valid.");
   const html = cleanHtml(input.bodyHtml);
+  if (!(await Promise.all(newsMediaNames(cover, html).map(newsImageExists))).every(Boolean)) throw new NewsValidationError("Gambar unggahan tidak ditemukan. Unggah ulang sebelum menyimpan.");
   if (input.status === "published" && !sanitizeHtml(html, {allowedTags: [], allowedAttributes: {}}).replace(/&nbsp;|&#160;/g, " ").trim()) throw new NewsValidationError("Isi berita wajib diisi sebelum diterbitkan.");
   const now = new Date().toISOString();
   const id = input.id || randomUUID();

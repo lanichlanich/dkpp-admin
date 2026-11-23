@@ -88,6 +88,36 @@ try {
     }
   }
   cookie = "editor";
+  const uploadImage = load("src/app/api/news/media/route.ts").POST;
+  const getImage = load("src/app/api/news/media/[name]/route.ts").GET;
+  const imageBytes = await require("sharp")({ create: { width: 8, height: 8, channels: 3, background: "#157454" } }).png().toBuffer();
+  const uploadRequest = (bytes, origin = "http://localhost") => new Request("http://localhost/api/news/media", { method: "POST", headers: { "content-type": "image/png", origin }, body: bytes });
+  cookie = undefined;
+  assert.equal((await uploadImage(uploadRequest(imageBytes))).status, 401);
+  cookie = "owner";
+  assert.equal((await uploadImage(uploadRequest(imageBytes, "https://other.test"))).status, 403);
+  assert.equal((await uploadImage(uploadRequest(Buffer.from("not png")))).status, 415);
+  assert.equal((await uploadImage(uploadRequest(Buffer.alloc(2 * 1024 * 1024 + 1)))).status, 413);
+  const uploaded = await uploadImage(uploadRequest(imageBytes));
+  assert.equal(uploaded.status, 201);
+  const { url } = await uploaded.json();
+  const get = () => getImage(new Request(`http://localhost${url}`), { params: Promise.resolve({ name: url.split("/").at(-1) }) });
+  assert.equal((await get()).headers.get("content-type"), "image/webp");
+  const withImage = await saveNews({ ...article, coverUrl: url, bodyHtml: `<p>Isi</p><img src="${url}" alt="Gambar uji">` });
+  cookie = undefined;
+  assert.equal((await get()).status, 404);
+  cookie = "owner";
+  const liveImage = await saveNews({ ...withImage, revision: withImage.revision, coverUrl: "", status: "published" });
+  assert.match(liveImage.bodyHtml, /Gambar uji/);
+  cookie = undefined;
+  const publicImage = await get();
+  assert.equal(publicImage.status, 200);
+  assert.equal(Buffer.from(await publicImage.arrayBuffer()).toString("ascii", 8, 12), "WEBP");
+  cookie = "owner";
+  await load("src/lib/news.ts").deleteNews(liveImage.id, liveImage.revision);
+  cookie = undefined;
+  assert.equal((await get()).status, 404);
+  cookie = "editor";
   const { saveNewsTerm, listNewsTerms, deleteNewsTerm, deleteNews } = load("src/lib/news.ts");
   const tag = await saveNewsTerm("tag", "Panen");
   await assert.rejects(() => saveNewsTerm("tag", "panen"), { name: "NewsValidationError" });

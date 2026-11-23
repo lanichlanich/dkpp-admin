@@ -1,3 +1,5 @@
+import { Newspaper, Plus } from "lucide-react";
+import { NewsListHeader } from "@/components/news/news-list-header";
 import Link from "next/link";
 import { requireMenuAccess } from "@/lib/authorization";
 import { listNews } from "@/lib/news";
@@ -12,7 +14,9 @@ export default async function NewsList({ searchParams }: { searchParams: Promise
   const status = query.status === "published" ? "Terbit" : query.status === "draft" ? "Draf" : "";
   const rows = articles.map(({ id, slug, title, category, status, updatedAt, revision }) => ({ id, slug, title, category, status, updatedAt, revision }));
   return <main className="mx-auto min-w-0 max-w-6xl space-y-5">
-    <header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-3xl font-bold">Daftar Berita</h1><p className="text-sm text-muted-foreground">Kelola draf dan berita yang tampil di portal publik.</p></div><Link href="/dashboard/berita/buat" className={buttonVariants({ size: "lg" })}>+ Buat Berita</Link></header>
+    <NewsListHeader icon={Newspaper} tone="emerald" title="Daftar Berita" description="Kelola draf dan berita yang tampil di portal publik.">
+      <Link href="/dashboard/berita/buat" className={buttonVariants({ size: "lg" })}><Plus aria-hidden/> Buat Berita</Link>
+    </NewsListHeader>
     <ArticleDirectory key={JSON.stringify([q, status])} articles={rows} query={q} status={status} />
   </main>;
 }

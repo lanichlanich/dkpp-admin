@@ -31,3 +31,15 @@ ssh -N -L 3000:127.0.0.1:3000 user@vps
 ## Verifikasi perubahan
 
 Jalankan smoke test fitur yang diubah dan `npm run build -- --webpack`. Periksa diff sebelum push dan sertakan migrasi yang diperlukan jika skema ikut berubah. Untuk menguji ekstraksi dokumen, simpan API key khusus pengembangan di `.env.local` dan gunakan dokumen uji sintetis.
+
+## Storage rilis produksi VPS
+
+Setelah mengekstrak checkout ke direktori rilis baru, sebelum mengganti `WorkingDirectory` layanan, jalankan:
+
+```bash
+bash scripts/smoke-release-storage.sh
+bash scripts/link-release-storage.sh "$release" /var/lib/dkpp-admin/data
+(cd "$release" && runuser -u dkpp-admin -- bash -c '[[ -L data && data -ef /var/lib/dkpp-admin/data ]]')
+```
+
+Jangan memakai `ln -s TARGET RILIS/data` tanpa `-T`: `data/.gitkeep` dari arsip Git membuat direktori `data` sudah ada, sehingga tautan akan bersarang di `data/data`. Skrip menolak menimpa direktori yang berisi data runtime atau tautan ke lokasi lain. Pertahankan pemeriksaan `ExecStartPre` untuk tautan langsung ke storage VPS saat mengganti konfigurasi rilis. Setelah aktivasi, uji minimal satu URL cover publik yang benar-benar dirujuk katalog dan periksa status serta tipe gambarnya; untuk dokumen privat, pertahankan pemeriksaan otorisasi.

@@ -527,6 +527,28 @@ db.exec(`
 `);
 db.exec(planningSqliteSchema);
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS wfh_reports (
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  nip TEXT NOT NULL, employee_name TEXT NOT NULL, report_date TEXT NOT NULL,
+  payload TEXT NOT NULL, file_name TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS wfh_reports_user_date_idx ON wfh_reports(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS news_articles (
+  id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL, summary TEXT NOT NULL,
+  category TEXT NOT NULL, body_html TEXT NOT NULL, cover_url TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('draft','published')),
+  revision INTEGER NOT NULL DEFAULT 1 CHECK (revision > 0),
+  published_at TEXT, updated_at TEXT NOT NULL,
+  CHECK ((status = 'published') = (published_at IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS news_publication_idx ON news_articles(status, published_at DESC);
+`);
+if (!(db.prepare("PRAGMA table_info(news_articles)").all() as { name: string }[]).some(column => column.name === "revision")) {
+  db.exec("ALTER TABLE news_articles ADD COLUMN revision INTEGER NOT NULL DEFAULT 1 CHECK (revision > 0)");
+}
+
 const kgbColumns = db.prepare("PRAGMA table_info(kgb_documents)").all() as Array<{ name: string }>;
 for (const [name, definition] of Object.entries({ input_json: "TEXT", revision: "INTEGER NOT NULL DEFAULT 1 CHECK(revision >= 1)", updated_at: "TEXT", updated_by: "TEXT REFERENCES users(id) ON DELETE SET NULL" })) {
   if (!kgbColumns.some(column => column.name === name)) db.exec(`ALTER TABLE kgb_documents ADD COLUMN ${name} ${definition}`);

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480">
+  <defs><pattern id="weave" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 2h8M2 0v8" stroke="#5d5041" stroke-width=".8" opacity=".22"/></pattern></defs>
+  <path fill="#d6ad79" d="M0 0h800v480H0z"/><path d="M0 0h800v306H0z" fill="#d8c295"/><path d="M0 82h800M0 166h800M0 248h800" stroke="#a58c66" stroke-width="3" opacity=".4"/>
+  <path d="M90 371h620v43H90z" fill="#805b45"/><path d="M124 412h44v30h-44zm253 0h44v30h-44zm253 0h44v30h-44z" fill="#624735"/>
+  <g><path id="sack" d="M195 167q-33-31-25-53l43 10 46-10q1 24-25 51 53 48 70 131t-93 83q-109 0-91-83t75-129z" fill="#ddbd88"/><path d="M195 167q-33-31-25-53l43 10 46-10q1 24-25 51 53 48 70 131t-93 83q-109 0-91-83t75-129z" fill="url(#weave)"/><path d="M187 168h53" stroke="#875d45" stroke-width="8" stroke-linecap="round"/><path d="M178 262h66v50h-66z" fill="#eee2ae"/><path d="M193 281h36m-36 11h19" stroke="#9b744f" stroke-width="3"/></g>
+  <use href="#sack" x="361" fill="#ddbd88"/><path d="M556 168h48" stroke="#875d45" stroke-width="8" stroke-linecap="round"/><path d="M539 262h66v50h-66z" fill="#eee2ae"/><path d="M554 281h36m-36 11h19" stroke="#9b744f" stroke-width="3"/>
+  <path d="M324 355q105 51 207 0l-22 25H347z" fill="#705141"/><path d="M324 354q105-53 207 0-101 51-207 0z" fill="#edd09a"/><path d="M352 355l8-4m13 9 8-4m10-8 9-4m15 17 8-4m10-10 8-4m11 13 8-4m18 6 8-4m-95 15 8-4" stroke="#ad7f56" stroke-width="3" stroke-linecap="round"/>
+</svg>

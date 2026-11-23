@@ -55,6 +55,7 @@ const TABLE_CATEGORY: Record<string, Category> = {
   app_roles: "Sistem",
   notifications: "Sistem",
   audit_logs: "Sistem",
+  news_articles: "Umum",
 };
 
 const DOCUMENT_TABLES = new Set([

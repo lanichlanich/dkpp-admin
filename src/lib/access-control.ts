@@ -1,5 +1,6 @@
 export const MENU_CATALOG = [
   { id: "dashboard", label: "Dashboard", group: "Utama", path: "/dashboard" },
+  { id: "berita", label: "Berita", group: "Utama", path: "/dashboard/berita" },
   ...[
     ["pegawai", "Daftar Pegawai"], ["profil-kepegawaian", "Profil Kepegawaian Dinas"], ["unit-organisasi", "Daftar Unit Organisasi"], ["jabatan", "Daftar Jabatan"], ["peta-jabatan", "Peta Jabatan"], ["proyeksi-pensiun", "Proyeksi Pensiun"], ["anjab-abk", "Anjab-ABK"], ["daftar-plt", "Daftar Plt."],
     ["hukdis", "Daftar Hukdis"], ["penjatuhan-hukdis", "Penjatuhan Hukuman Disiplin"], ["surat-hukdis-hukda", "Surat HUKDIS & HUKDA"], ["dpcp", "DPCP"],

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480">
+  <defs><pattern id="tiles" width="84" height="28" patternUnits="userSpaceOnUse"><path d="M0 0h84M0 14h84M42 0v14M0 14v14" stroke="#93a282" stroke-width="2" fill="none" opacity=".4"/></pattern></defs>
+  <path fill="#e2d9b1" d="M0 0h800v480H0z"/><path fill="#c5c8a1" d="M0 0h800v311H0z"/><path fill="url(#tiles)" d="M0 0h800v311H0z"/>
+  <path d="M0 328h800v152H0z" fill="#b69c73"/><path d="M0 387h800M0 440h800" stroke="#907a5e" stroke-width="2" opacity=".5"/>
+  <g fill="#a35e46"><path d="M138 305h154l-24 99H162z"/><path d="M325 343h147l-20 84H349z"/><path d="M523 295h149l-22 101H545z"/></g><path d="M138 303h154m33 40h147m51-48h149" stroke="#d58b63" stroke-width="12" stroke-linecap="round"/>
+  <g fill="none" stroke="#385e42" stroke-width="6" stroke-linecap="round"><path d="M217 299q-12-78 18-167m-13 117-59-65m58 49 45-52m134 155q-16-74 9-134m-9 94-56-38m56 27 48-48m147 50q-3-94 32-177m-27 114-63-39m69 23 59-45"/></g>
+  <g fill="#588658"><path d="M234 170q-40-28 3-78 37 49-3 78m-56 36q-62 8-66-52 51-2 66 52m63 18q1-61 63-59-1 49-63 59m102 46q-48-4-37-43 46-1 52 46m49-35q-21-32 11-59 24 35-11 59m27 39q-2-43 48-53-1 43-48 53m112-62q-53-10-53-53 56 0 66 59m60-74q-33-31 14-78 31 51-14 78m17 54q11-60 65-57-19 46-65 57"/></g>
+</svg>

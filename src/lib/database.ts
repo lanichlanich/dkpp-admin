@@ -49,6 +49,7 @@ const TABLE_NAMES = [
   "planning_access",
   "planning_audit",
   "planning_uploads",
+  "news_articles",
   "audit_logs",
 ] as const;
 

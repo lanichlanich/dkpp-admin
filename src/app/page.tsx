@@ -1,7 +1,11 @@
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import type { Metadata } from "next";
+import { NewsHome, publicNews } from "@/components/news/public-news";
 
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: { absolute: "DKPP Kabupaten Indramayu" },
+  description: "Portal informasi dan berita Dinas Ketahanan Pangan dan Pertanian Kabupaten Indramayu.",
+};
 export default async function HomePage() {
-  const user = await getCurrentUser();
-  redirect(user ? "/dashboard" : "/login");
+  return <NewsHome entries={await publicNews.list()} />;
 }

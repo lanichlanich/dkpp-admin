@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480">
+  <defs><pattern id="rows" width="55" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(-14)"><path d="M0 10h55" stroke="#aac198" stroke-width="2" opacity=".45"/></pattern></defs>
+  <path fill="#65866d" d="M0 0h800v480H0z"/><path fill="url(#rows)" d="M0 0h800v480H0z"/><ellipse cx="401" cy="338" rx="250" ry="95" fill="#314e43" opacity=".35"/>
+  <g transform="rotate(-11 389 240)"><rect x="213" y="73" width="352" height="341" rx="14" fill="#9c5d48"/><rect x="223" y="70" width="335" height="331" rx="12" fill="#f5e3b6"/><path d="M269 77v319" stroke="#c3886e" stroke-width="2"/><path d="M275 145h266m-266 33h266m-266 33h266m-266 33h266m-266 33h266m-266 33h266m-266 33h266" stroke="#c4b38f" stroke-width="2"/><path d="M293 122h130m-130 43h187m-187 32h102m-102 32h156m-156 31h135" stroke="#527762" stroke-width="4" stroke-linecap="round"/><path d="M312 342l41-32 36 13 62-45 55 18" fill="none" stroke="#ad664b" stroke-width="4" stroke-linecap="round"/><path d="M213 110h26m-26 44h26m-26 44h26m-26 44h26m-26 44h26m-26 44h26m-26 44h26" stroke="#434c3b" stroke-width="5" stroke-linecap="round"/></g>
+  <path d="M645 121l19 10-111 212-25 23 6-34z" fill="#e6a858"/><path d="M534 332l19 11-25 23z" fill="#ead7a4"/><path d="M529 354l7 5-8 7z" fill="#303a30"/>
+</svg>

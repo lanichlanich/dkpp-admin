@@ -8,7 +8,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import Image from "@tiptap/extension-image";
 import { TableKit } from "@tiptap/extension-table";
 import { saveNewsAction } from "@/app/dashboard/berita/actions";
-import type { NewsArticle } from "@/lib/news";
+import type { NewsArticle, NewsTerm } from "@/lib/news";
 import styles from "./news-editor.module.css";
 
 function httpsUrl(value: string) {
@@ -16,9 +16,9 @@ function httpsUrl(value: string) {
   catch { return null; }
 }
 
-export function NewsEditor({ article }: { article?: NewsArticle }) {
+export function NewsEditor({ article, categories, tags, selectedTags }: { article?: NewsArticle & { categoryId: string }; categories: NewsTerm[]; tags: NewsTerm[]; selectedTags: string[] }) {
   const router = useRouter();
-  const [meta, setMeta] = useState({ title: article?.title ?? "", summary: article?.summary ?? "", category: article?.category ?? "", coverUrl: article?.coverUrl ?? "" });
+  const [meta, setMeta] = useState({ title: article?.title ?? "", summary: article?.summary ?? "", category: article?.category ?? "Umum", coverUrl: article?.coverUrl ?? "" });
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refreshing, startRefresh] = useTransition();
@@ -62,7 +62,7 @@ export function NewsEditor({ article }: { article?: NewsArticle }) {
     try {
       const result = await saveNewsAction(form); setMessage(result);
       if (result.ok) startRefresh(() => {
-        if (!article) router.replace(`/dashboard/berita?edit=${encodeURIComponent(result.id)}`);
+        if (!article) router.replace(`/dashboard/berita/buat?edit=${encodeURIComponent(result.id)}`);
         else router.refresh();
       });
     } catch { setMessage({ ok: false, message: "Berita belum tersimpan. Silakan coba lagi." }); }
@@ -92,13 +92,17 @@ export function NewsEditor({ article }: { article?: NewsArticle }) {
     ["Urungkan", () => editor.chain().focus().undo().run()],
     ["Ulangi", () => editor.chain().focus().redo().run()],
   ] as [string, () => unknown, boolean?][] : [];
-  const fields = [{key:"title",label:"Judul berita",max:160},{key:"category",label:"Kategori",max:60},{key:"summary",label:"Ringkasan",max:320},{key:"coverUrl",label:"Gambar sampul (URL HTTPS)",max:1000}] as const;
+  const fields = [{key:"title",label:"Judul berita",max:160},{key:"summary",label:"Ringkasan",max:320},{key:"coverUrl",label:"Gambar sampul (URL HTTPS)",max:1000}] as const;
   const cover = httpsUrl(meta.coverUrl) ?? (/^\/news\/[a-z0-9_.-]+$/i.test(meta.coverUrl) ? meta.coverUrl : null);
   return <form onSubmit={save} className={styles.form} aria-busy={pending}>
     <fieldset disabled={pending} className={styles.fieldset}>
     <input name="revision" type="hidden" value={article?.revision ?? ""}/>
     <input name="id" type="hidden" value={article?.id ?? ""}/>
     <div className={styles.fields}>{fields.map(({key,label,max}) => <label key={key} className={key === "title" || key === "summary" ? styles.wide : ""}>{label}{key === "summary" ? <textarea name={key} rows={3} maxLength={max} value={meta[key]} onChange={event => setMeta({...meta,[key]:event.target.value})} /> : <input name={key} required={key === "title"} maxLength={max} value={meta[key]} onChange={event => setMeta({...meta,[key]:event.target.value})}/>}</label>)}</div>
+    <div className={styles.fields}>
+      <label>Kategori<select name="categoryId" defaultValue={article?.categoryId ?? "default"} onChange={event => setMeta({...meta, category: categories.find(term => term.id === event.target.value)?.name ?? "Umum"})}>{categories.map(term => <option key={term.id} value={term.id}>{term.name}</option>)}</select></label>
+      <div><p className="mb-1 text-sm font-semibold">Tag <span className="font-normal text-muted-foreground">(maks. 20)</span></p><div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto">{tags.map(term => <label key={term.id} className={styles.tag}><input type="checkbox" name="tagIds" value={term.id} defaultChecked={selectedTags.includes(term.id)} />{term.name}</label>)}{!tags.length && <p className="text-sm text-muted-foreground">Belum ada tag. Tambahkan dari menu Tag.</p>}</div></div>
+    </div>
     <div className={styles.mode}><h2>{preview ? "Pratinjau berita" : "Isi berita"}</h2><button type="button" disabled={!editor} onClick={() => { editor?.setEditable(preview); setPreview(!preview); setInsert(null); }}>{preview ? "Kembali menyunting" : "Pratinjau"}</button></div>
     {preview && <div className={styles.preview}><p>{meta.category}</p><h3>{meta.title || "Judul belum diisi"}</h3><p>{meta.summary}</p>{cover && <CardCover url={cover} title={meta.title} />}</div>}
     {!preview && <div className={styles.toolbar} role="group" aria-label="Format berita"><label><span className="sr-only">Terapkan gaya paragraf</span><select disabled={!editor} value="" onChange={event => { const level = Number(event.target.value) as 2 | 3 | 4; if (level) editor?.chain().focus().toggleHeading({ level }).run(); else editor?.chain().focus().setParagraph().run(); }}><option value="" disabled>Gaya paragraf</option><option value="0">Paragraf</option><option value="2">Judul 2</option><option value="3">Judul 3</option><option value="4">Judul 4</option></select></label>{tools.map(([label, handler, value]) => <button key={label} type="button" aria-pressed={value} onMouseDown={event => event.preventDefault()} onClick={() => handler()}>{label}</button>)}</div>}

@@ -11,6 +11,9 @@ const sourceNames = ["employee.pdf", "kak.docx", "rka.pdf", poName, "report-1.do
 const fixtureBytes = name => Buffer.from(`Fixture content: ${name}`);
 const snapshot = {
   tables: {
+    news_categories: [{ id: "default", name: "Umum" }],
+    news_tags: [{ id: "tag-1", name: "Panen" }],
+    news_article_tags: [{ article_id: "article-1", tag_id: "tag-1" }],
     news_articles: [{ id: "article-1", status: "draft", body_html: "<p>Berita uji</p>" }],
     app_roles: [{ id: "administrator", name: "Administrator", is_administrator: 1, menu_permissions: "[]" }],
     employees: [{ id: "employee-1", name: "Pegawai Contoh" }],
@@ -172,7 +175,7 @@ try {
   const result = await actions.runGoogleDriveBackupAction();
   assert.equal(result.status, "success"); assert.match(result.message, /\.tar\.gz/);
   assert.equal(state.snapshots, 1);
-  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 18);
+  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 21);
   assert.equal(result.documentCount, 10); assert.equal(result.unlinkedStorageObjectCount, 1);
   assert.equal(state.tokenCalls, 1, "Reuse the access token across folder creation and uploads");
   assert.deepEqual([...state.downloads].sort(), [...sourceNames].sort());
@@ -203,6 +206,9 @@ try {
     assert.deepEqual(planning.get(`files/kak_documents/record-kak-1${suffix}.${extension}`), fixtureBytes(source));
   }
   assert.deepEqual(JSON.parse(archives.get("Umum").get("database/news_articles.json")), snapshot.tables.news_articles);
+  assert.deepEqual(JSON.parse(archives.get("Umum").get("database/news_categories.json")), snapshot.tables.news_categories);
+  assert.deepEqual(JSON.parse(archives.get("Umum").get("database/news_tags.json")), snapshot.tables.news_tags);
+  assert.deepEqual(JSON.parse(archives.get("Umum").get("database/news_article_tags.json")), snapshot.tables.news_article_tags);
   assert.deepEqual(archives.get("Umum").get("files/wfh_reports/record-report-1.docx"), fixtureBytes("report-1.docx"));
   assert.deepEqual(archives.get("Umum").get("files/wfh_schedule_letters/record-letter-1.pdf"), fixtureBytes("wfh-letter.pdf"));
   assert.deepEqual(JSON.parse(archives.get("Umum").get("database/wfh_schedule_letters.json")), snapshot.tables.wfh_schedule_letters);

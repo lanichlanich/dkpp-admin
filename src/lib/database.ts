@@ -50,6 +50,7 @@ const TABLE_NAMES = [
   "planning_audit",
   "planning_uploads",
   "news_articles",
+  "news_categories", "news_tags", "news_article_tags",
   "audit_logs",
 ] as const;
 

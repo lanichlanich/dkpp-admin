@@ -549,6 +549,27 @@ if (!(db.prepare("PRAGMA table_info(news_articles)").all() as { name: string }[]
   db.exec("ALTER TABLE news_articles ADD COLUMN revision INTEGER NOT NULL DEFAULT 1 CHECK (revision > 0)");
 }
 
+db.exec(`CREATE TABLE IF NOT EXISTS news_categories (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, name_key TEXT NOT NULL UNIQUE);
+CREATE TABLE IF NOT EXISTS news_tags (id TEXT PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE);
+CREATE TABLE IF NOT EXISTS news_article_tags (
+  article_id TEXT NOT NULL REFERENCES news_articles(id) ON DELETE CASCADE,
+  tag_id TEXT NOT NULL REFERENCES news_tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (article_id, tag_id)
+);
+CREATE INDEX IF NOT EXISTS news_article_tags_tag_idx ON news_article_tags(tag_id);
+`);
+if (!(db.prepare("PRAGMA table_info(news_articles)").all() as { name: string }[]).some(column => column.name === "category_id")) {
+  db.transaction(() => {
+    db.exec("ALTER TABLE news_articles ADD COLUMN category_id TEXT REFERENCES news_categories(id) ON DELETE RESTRICT");
+    db.exec(`INSERT INTO news_categories (id, name, name_key) VALUES ('default', 'Umum', 'umum') ON CONFLICT DO NOTHING;
+INSERT INTO news_categories (id, name, name_key)
+SELECT 'legacy:' || LOWER(TRIM(category)), MIN(category), LOWER(TRIM(category)) FROM news_articles
+WHERE TRIM(category) <> '' GROUP BY LOWER(TRIM(category)) ON CONFLICT DO NOTHING;
+UPDATE news_articles SET category_id = COALESCE((SELECT id FROM news_categories WHERE name_key = LOWER(TRIM(news_articles.category))), 'default') WHERE category_id IS NULL;
+CREATE INDEX IF NOT EXISTS news_articles_category_idx ON news_articles(category_id);`);
+  })();
+}
+
 const kgbColumns = db.prepare("PRAGMA table_info(kgb_documents)").all() as Array<{ name: string }>;
 for (const [name, definition] of Object.entries({ input_json: "TEXT", revision: "INTEGER NOT NULL DEFAULT 1 CHECK(revision >= 1)", updated_at: "TEXT", updated_by: "TEXT REFERENCES users(id) ON DELETE SET NULL" })) {
   if (!kgbColumns.some(column => column.name === name)) db.exec(`ALTER TABLE kgb_documents ADD COLUMN ${name} ${definition}`);

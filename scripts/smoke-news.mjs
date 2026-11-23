@@ -88,6 +88,24 @@ try {
     }
   }
   cookie = "editor";
+  const { saveNewsTerm, listNewsTerms, deleteNewsTerm, deleteNews } = load("src/lib/news.ts");
+  const tag = await saveNewsTerm("tag", "Panen");
+  await assert.rejects(() => saveNewsTerm("tag", "panen"), { name: "NewsValidationError" });
+  const category = await saveNewsTerm("category", "Hortikultura");
+  assert((await listNewsTerms()).some(row => row.id === category.id));
+  const tagged = await saveNews({ ...article, category: "Hortikultura", tagIds: [tag.id] });
+  assert.deepEqual(await load("src/lib/news.ts").getNewsTagIds(tagged.id), [tag.id]);
+  await assert.rejects(() => deleteNews(tagged.id, tagged.revision + 1), { name: "NewsValidationError" });
+  await assert.rejects(() => deleteNewsTerm("category", category.id), { name: "NewsValidationError" });
+  await saveNewsTerm("category", "Horti", category.id, "Hortikultura");
+  assert.equal((await listNews()).find(row => row.id === tagged.id).category, "Horti");
+  await assert.rejects(() => saveNewsTerm("category", "Lama", category.id, "Hortikultura"), { name: "NewsValidationError" });
+  await assert.rejects(() => saveNews({ ...article, id: tagged.id, revision: tagged.revision, tagIds: ["12345678-1234-1234-1234-123456789012"] }), { name: "NewsValidationError" });
+  assert.deepEqual(await load("src/lib/news.ts").getNewsTagIds(tagged.id), [tag.id]);
+  await deleteNews(tagged.id, tagged.revision);
+  assert.deepEqual(await load("src/lib/news.ts").getNewsTagIds(tagged.id), []);
+  await deleteNewsTerm("tag", tag.id);
+  await deleteNewsTerm("category", category.id);
   assert.equal((await requireNewsEditor()).id, "editor");
   assert.deepEqual(await listNews(), []);
   const draft = await saveNews(article);

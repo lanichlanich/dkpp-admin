@@ -17,6 +17,9 @@ const contents = new Map(["employee.pdf", "kak.docx", "rka.pdf", poName, "report
 contents.set("orphan.pdf", randomBytes(5 * 1024 * 1024));
 contents.set(coverName, Buffer.from("Cover fixture bytes"));
 const snapshot = { tables: {
+  news_categories: [{ id: "default", name: "Umum" }],
+  news_tags: [{ id: "tag-1", name: "Panen" }],
+  news_article_tags: [{ article_id: "article-1", tag_id: "tag-1" }],
   news_articles: [{ id: "article-1", status: "draft", body_html: "<p>Berita uji</p>" }],
   app_roles: [{ id: "administrator", name: "Administrator", is_administrator: 1, menu_permissions: "[]" }],
   employees: [{ nip: "198001012005011001", name: "Pegawai Uji" }],
@@ -80,10 +83,13 @@ try {
   const bytes = Buffer.concat(chunks); assert(bytes.length > 4.5 * 1024 * 1024, "Exercise a backup above Vercel's buffered payload limit");
   assert.equal(bytes.length, Number(response.headers.get("x-backup-bytes"))); assert.equal(createHash("sha256").update(bytes).digest("hex"), response.headers.get("x-backup-sha256"));
   const files = extract(bytes), manifest = JSON.parse(files.get("manifest.json"));
-  assert.equal(manifest.tableCount, 13); assert.equal(manifest.documentCount, 8); assert.equal(manifest.unlinkedStorageObjectCount, 1);
+  assert.equal(manifest.tableCount, 16); assert.equal(manifest.documentCount, 8); assert.equal(manifest.unlinkedStorageObjectCount, 1);
   assert.deepEqual(files.get("Perpustakaan/files/library_books/record-book-1.webp"), contents.get(coverName));
   assert.equal(manifest.storageFiles.find(entry => entry.storageName === coverName).storageBucket, "dkpp-library-covers");
   assert.deepEqual(JSON.parse(files.get("Umum/database/news_articles.json")), snapshot.tables.news_articles);
+  assert.deepEqual(JSON.parse(files.get("Umum/database/news_categories.json")), snapshot.tables.news_categories);
+  assert.deepEqual(JSON.parse(files.get("Umum/database/news_tags.json")), snapshot.tables.news_tags);
+  assert.deepEqual(JSON.parse(files.get("Umum/database/news_article_tags.json")), snapshot.tables.news_article_tags);
   assert.deepEqual(JSON.parse(files.get("Kepegawaian/database/employees.json")), snapshot.tables.employees);
   assert.deepEqual(JSON.parse(files.get("Sistem/database/users.json")), snapshot.tables.users);
   for (const table of ["library_books", "library_visitors", "library_visits", "library_loans"])

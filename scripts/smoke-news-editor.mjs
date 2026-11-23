@@ -8,6 +8,16 @@ assert.match(html, /Ketahanan Pangan dan Pertanian/i);
 assert.match(html, /\/login/);
 const nav = html.match(/<nav aria-label="Navigasi publik">([\s\S]*?)<\/nav>/)?.[1] ?? '';
 assert.match(nav, /<a\b[^>]*href="\/perpustakaan"[^>]*>Perpustakaan<\/a>/, 'Navigasi utama harus menautkan Perpustakaan');
+assert.doesNotMatch(nav, /Open Data|Publikasi/i);
+for (const section of ['profil', 'sotk', 'berita', 'galeri', 'kontak']) assert.ok(html.includes(`id="${section}"`), section);
+const photos = [...new Set(Array.from(html.matchAll(/href="(\/galeri\/[a-z-]+\.webp)"/g), match => match[1]))];
+assert.equal(photos.length, 12);
+await Promise.all(photos.map(async photo => {
+  const response = await fetch(base + photo);
+  assert.equal(response.status, 200, photo);
+  assert.match(response.headers.get('content-type'), /^image\/webp/);
+  assert.equal(Buffer.from(await response.arrayBuffer()).toString('ascii', 8, 12), 'WEBP', photo);
+}));
 const library = await fetch(base + '/perpustakaan', { redirect: 'manual' });
 assert.equal(library.status, 200, 'Katalog perpustakaan harus dapat dibuka tanpa login');
 assert.match(await library.text(), /id="katalog"/);

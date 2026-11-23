@@ -6,6 +6,11 @@ assert.equal(home.status, 200, 'Portal berita harus dapat diakses tanpa login');
 const html = await home.text();
 assert.match(html, /Ketahanan Pangan dan Pertanian/i);
 assert.match(html, /\/login/);
+const nav = html.match(/<nav aria-label="Navigasi publik">([\s\S]*?)<\/nav>/)?.[1] ?? '';
+assert.match(nav, /<a\b[^>]*href="\/perpustakaan"[^>]*>Perpustakaan<\/a>/, 'Navigasi utama harus menautkan Perpustakaan');
+const library = await fetch(base + '/perpustakaan', { redirect: 'manual' });
+assert.equal(library.status, 200, 'Katalog perpustakaan harus dapat dibuka tanpa login');
+assert.match(await library.text(), /id="katalog"/);
 const links = [...new Set(Array.from(html.matchAll(/href="(\/berita\/[^"?#]+)"/g), m => m[1]))];
 assert.ok(links.length >= 6, 'Database kosong harus menampilkan enam artikel contoh');
 for (const href of links.slice(0, 6)) {

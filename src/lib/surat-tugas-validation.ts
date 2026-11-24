@@ -13,13 +13,15 @@ export type TugasEmployee = { nip: string; name: string; rank: string; position:
 export const TUGAS_SIGNER = "RORY FIRMANSYAH, S.STP, M.Si.";
 export const TUGAS_TITLE = "Plt. Kepala Dinas Ketahanan Pangan dan Pertanian Kabupaten Indramayu";
 
-export const suratTugasAiInput = z.object({
+export const SURAT_TUGAS_SOURCE_MAX_BYTES = 4 * 1024 * 1024;
+
+export const suratTugasAiInput = (hasSource = false) => z.object({
   dasar: z.string().trim().max(1600),
-  tugas: z.string().trim().min(8, "Isi konteks penugasan minimal 8 karakter.").max(2400),
+  tugas: z.string().trim().min(hasSource ? 0 : 8, "Isi konteks penugasan minimal 8 karakter.").max(2400),
 }).strict().refine(value => !Object.values(value).some(text => /(?:[0-9][\s.-]*){16,}/.test(text)), "Hapus NIP atau rangkaian nomor identitas dari catatan AI.");
 
 export const suratTugasAiResult = z.object({
   dasar: z.array(line(400)).max(8),
-  tugas: z.array(line(600)).min(1).max(10),
+  tugas: z.array(line(600)).max(10),
 }).strict();
 export type SuratTugasAiResult = z.infer<typeof suratTugasAiResult>;

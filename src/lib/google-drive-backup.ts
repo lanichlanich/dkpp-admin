@@ -1,4 +1,5 @@
 import "server-only";
+import { readSuratTugasArchiveFile, suratTugasDirectory } from "@/lib/surat-tugas-documents";
 
 import { gzipSync } from "node:zlib";
 import { createBackupSnapshot } from "@/lib/database";
@@ -51,6 +52,7 @@ const TABLE_CATEGORY: Record<string, Category> = {
   position_map_plans: "Kepegawaian",
   surat_pengantar_documents: "Persuratan",
   surat_perbantuan_documents: "Persuratan",
+  surat_tugas_documents: "Persuratan",
   surat_lupa_absen_documents: "Persuratan",
   service_archive_documents: "Persuratan",
   users: "Sistem",
@@ -76,6 +78,7 @@ const DOCUMENT_TABLES = new Set([
   "wfh_documents",
   "surat_pengantar_documents",
   "surat_perbantuan_documents",
+  "surat_tugas_documents",
   "surat_lupa_absen_documents",
   "kerjaku_request_documents",
   "official_statement_documents",
@@ -97,6 +100,7 @@ const LOCAL_DOCUMENT_DIRECTORIES: Record<string, string> = {
   wfh_documents: "wfh-documents",
   surat_pengantar_documents: "surat-pengantar-documents",
   surat_perbantuan_documents: "surat-perbantuan-documents",
+  surat_tugas_documents: suratTugasDirectory,
   surat_lupa_absen_documents: "surat-lupa-absen-documents",
   kerjaku_request_documents: "kerjaku-request-documents",
   official_statement_documents: "official-statement-documents",
@@ -361,11 +365,13 @@ export async function createBackupContent() {
     const fallbackDirectory = LOCAL_DOCUMENT_DIRECTORIES[table];
     const filePath = fallbackDirectory ? `data/${fallbackDirectory}/${storageName}` : undefined;
     const storageBucket = table === "library_books" ? LIBRARY_COVER_BUCKET : table === "planning_records" ? "dkpp-planning" : undefined;
-    const bytes = await downloadStorageObject(storageName, filePath, storageBucket);
+    const localOnly = table === "surat_tugas_documents";
+    const bytes = localOnly ? await readSuratTugasArchiveFile(storageName) : await downloadStorageObject(storageName, filePath, storageBucket);
     return {
       category: TABLE_CATEGORY[table]!,
       storageName,
       storageBucket,
+      storageDirectory: localOnly ? `data/${suratTugasDirectory}` : undefined,
       archiveFile: { path: `files/${table}/record-${safeId(row.id, index)}.${extensionFor(row, table)}`, bytes },
     };
   });
@@ -396,7 +402,7 @@ export async function createBackupContent() {
     unlinkedStorageObjectCount: downloadedOrphans.length,
     storageFiles: [
       ...newsFiles.map(file => ({ path: `Umum/${file.path}`, storageName: file.storageName, storageDirectory: `data/${NEWS_MEDIA_DIRECTORY}` })),
-      ...downloadedDocuments.map(item => ({ path: `${item.category}/${item.archiveFile.path}`, storageName: item.storageName, storageBucket: item.storageBucket })),
+      ...downloadedDocuments.map(item => ({ path: `${item.category}/${item.archiveFile.path}`, storageName: item.storageName, storageBucket: item.storageBucket, storageDirectory: item.storageDirectory })),
       ...downloadedOrphans.map(item => ({ path: `Sistem/${item.archivePath}`, storageName: item.storageName })),
     ],
   };

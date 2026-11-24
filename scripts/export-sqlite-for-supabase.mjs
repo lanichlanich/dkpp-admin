@@ -23,6 +23,7 @@ const tables = [
   { name: "wfh_documents", key: (row) => row.id },
   { name: "surat_pengantar_documents", key: (row) => row.id },
   { name: "surat_perbantuan_documents", key: (row) => row.id },
+  { name: "surat_tugas_documents", key: (row) => row.id },
   { name: "kerjaku_request_documents", key: (row) => row.id },
   { name: "kak_documents", key: (row) => row.id },
   { name: "official_statement_documents", key: (row) => row.id },

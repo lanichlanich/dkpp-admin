@@ -1,11 +1,15 @@
 import "server-only";
 
 const failure = (message: string, status: number) => Response.json({ message }, { status });
-export async function readSuratTugasRequest(request: Request, maxBytes: number): Promise<Response | { payload: unknown }> {
+export function isSuratTugasSameOrigin(request: Request) {
   const url = new URL(request.url);
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || url.host;
   const protocol = request.headers.get("x-forwarded-proto") || url.protocol.slice(0, -1);
-  if (request.headers.get("sec-fetch-site") === "cross-site" || request.headers.get("origin") !== `${protocol}://${host}`) return failure("Sumber permintaan tidak valid.", 403);
+  return request.headers.get("sec-fetch-site") !== "cross-site" && request.headers.get("origin") === `${protocol}://${host}`;
+}
+
+export async function readSuratTugasRequest(request: Request, maxBytes: number): Promise<Response | { payload: unknown }> {
+  if (!isSuratTugasSameOrigin(request)) return failure("Sumber permintaan tidak valid.", 403);
   if (!request.headers.get("content-type")?.startsWith("application/json")) return failure("Gunakan format JSON.", 415);
   const reader = request.body?.getReader();
   let raw = "", size = 0;

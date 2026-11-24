@@ -38,6 +38,7 @@ const documentStores = [
   { table: "wfh_documents", directory: "wfh-documents", storedName: (row) => row.storage_name },
   { table: "surat_pengantar_documents", directory: "surat-pengantar-documents", storedName: (row) => row.storage_name },
   { table: "surat_perbantuan_documents", directory: "surat-perbantuan-documents", storedName: (row) => row.storage_name },
+  { table: "surat_tugas_documents", directory: "surat-tugas-documents", storedName: (row) => row.storage_name },
   { table: "kerjaku_request_documents", directory: "kerjaku-request-documents", storedName: (row) => row.storage_name },
   { table: "kak_documents", directory: "kak-documents", storedName: (row) => row.storage_name },
   { table: "kak_documents", directory: "kak-documents", storedName: (row) => row.source_storage_name, recordedSize: (row) => row.source_file_size, originalName: (row) => row.source_name },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, BadgeCheck, ClipboardList, Download, FileText, LoaderCircle, Plus, Search, UsersRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ function Lines({ label, entries, change, max, limit, hint }: { label: string; en
 }
 
 export function SuratTugasForm({ employees, today }: { employees: TugasEmployee[]; today: string }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<TugasEmployee[]>([]);
   const [dasar, setDasar] = useState<Entry[]>([{ id: 0, text: "" }]);
@@ -58,7 +60,8 @@ export function SuratTugasForm({ employees, today }: { employees: TugasEmployee[
       anchor.download = `Surat-Tugas-${parsed.data.tanggal}.docx`;
       anchor.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
-      setResult({ ok: true, message: "Unduhan Word dimulai. TTE belum dibubuhkan." });
+      setResult({ ok: true, message: "Surat tersimpan di daftar dan unduhan Word dimulai. TTE belum dibubuhkan." });
+      router.refresh();
     } catch (error) { setResult({ ok: false, message: error instanceof Error ? error.message : "Surat belum dapat diunduh." }); }
     finally { busy.current = false; setPending(false); }
   }
@@ -74,7 +77,7 @@ export function SuratTugasForm({ employees, today }: { employees: TugasEmployee[
         {!selected.length ? <p className="text-sm text-muted-foreground">Belum ada pegawai dipilih.</p> : <ol className="divide-y rounded-lg border">{selected.map((person, i) => <li key={person.nip} className="flex flex-wrap items-center justify-between gap-2 p-2.5"><div className="min-w-0"><p className="break-words text-sm font-semibold">{i+1}. {person.name}</p><p className="break-words text-xs text-muted-foreground">{person.nip} · {person.position}</p></div><div className="flex gap-1"><Button type="button" size="icon" variant="ghost" aria-label={`Naikkan ${person.name}`} disabled={!i} onClick={() => move(i,-1)}><ArrowUp aria-hidden/></Button><Button type="button" size="icon" variant="ghost" aria-label={`Turunkan ${person.name}`} disabled={i === selected.length-1} onClick={() => move(i,1)}><ArrowDown aria-hidden/></Button><Button type="button" size="icon" variant="destructive" aria-label={`Hapus ${person.name}`} onClick={() => setSelected(selected.filter(x => x.nip !== person.nip))}><X aria-hidden/></Button></div></li>)}</ol>}
       </CardContent></Card>
       <Card><CardHeader><CardTitle className="flex items-center gap-2"><ClipboardList className="size-4 text-sky-600" aria-hidden/> Dasar dan rincian tugas</CardTitle></CardHeader><CardContent className="space-y-4"><SuratTugasAiPanel apply={(field, items) => (field === "dasar" ? setDasar : setTugas)(items.map((text, id) => ({ id, text })))}/><Lines label="Dasar" entries={dasar} change={setDasar} max={400} limit={8} hint="Cantumkan landasan tugas, misalnya nomor dan tanggal surat undangan."/><Lines label="Untuk" entries={tugas} change={setTugas} max={600} limit={10} hint="Cantumkan kegiatan yang ditugaskan, waktu, tempat, atau kewajiban pelaporan bila relevan."/></CardContent></Card>
-      <Card><CardHeader><CardTitle className="flex items-center gap-2"><BadgeCheck className="size-4 text-amber-600" aria-hidden/> Penandatangan dan unduhan</CardTitle><CardDescription>Word memakai kop DKPP dan penanda TTE. Dokumen tidak ditandatangani, dikirim, atau diarsipkan otomatis.</CardDescription></CardHeader><CardContent className="space-y-3">
+      <Card><CardHeader><CardTitle className="flex items-center gap-2"><BadgeCheck className="size-4 text-amber-600" aria-hidden/> Penandatangan dan unduhan</CardTitle><CardDescription>Word memakai kop DKPP dan penanda TTE. Dokumen Word otomatis masuk daftar Surat Tugas, tanpa membubuhkan TTE atau mengirim surat.</CardDescription></CardHeader><CardContent className="space-y-3">
         <p className="text-sm font-semibold">{TUGAS_SIGNER} <span className="font-normal text-muted-foreground">· Plt. Kepala Dinas</span></p>
         <label className="flex items-start gap-2 text-sm"><input className="mt-1 size-4 shrink-0 accent-primary" type="checkbox" name="signer" required/> Saya telah memastikan pejabat ini berwenang menandatangani pada tanggal surat.</label>
         <Button type="submit" size="lg" disabled={pending || !selected.length}>{pending ? <LoaderCircle className="animate-spin" aria-hidden/> : <Download aria-hidden/>}{pending ? "Menyiapkan Word…" : "Buat dan unduh Word"}</Button>

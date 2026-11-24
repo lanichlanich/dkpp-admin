@@ -376,6 +376,22 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS surat_perbantuan_documents_user_idx
     ON surat_perbantuan_documents(user_id);
 
+  CREATE TABLE IF NOT EXISTS surat_tugas_documents (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_by TEXT NOT NULL,
+    nomor_surat TEXT NOT NULL,
+    tanggal_surat TEXT NOT NULL,
+    penugasan TEXT NOT NULL,
+    recipient_count INTEGER NOT NULL CHECK (recipient_count BETWEEN 1 AND 20),
+    file_name TEXT NOT NULL,
+    storage_name TEXT NOT NULL UNIQUE,
+    file_size INTEGER NOT NULL CHECK (file_size BETWEEN 1 AND 4194304),
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS surat_tugas_documents_created_idx
+    ON surat_tugas_documents(created_at DESC, id DESC);
+
   CREATE TABLE IF NOT EXISTS surat_lupa_absen_documents (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

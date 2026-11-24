@@ -11,11 +11,13 @@ globalThis.fetch = async () => { throw new Error("Local backup must not call Goo
 delete process.env.BACKUP_ADMIN_USERNAMES;
 process.env.GOOGLE_DRIVE_BACKUP_ADMIN_USERNAMES = "admin1";
 delete process.env.GOOGLE_DRIVE_CLIENT_ID; delete process.env.GOOGLE_DRIVE_CLIENT_SECRET; delete process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
+const tugasName = "abcdef01-1234-1234-1234-123456789abc.docx";
 const poName = "12345678-1234-1234-1234-123456789abc.docx";
 const coverName = "87654321-1234-1234-1234-123456789abc.webp";
 const newsImage = "11111111-2222-3333-4444-555555555555.webp";
 const contents = new Map(["employee.pdf", "kak.docx", "rka.pdf", poName, "report.docx", "kgb.docx", "kgb-signed.pdf"].map(name => [name, Buffer.from(`Original bytes for ${name}`)]));
 contents.set("orphan.pdf", randomBytes(5 * 1024 * 1024));
+contents.set(tugasName, Buffer.from("Surat Tugas fixture bytes"));
 contents.set(newsImage, Buffer.from("News fixture bytes"));
 contents.set(coverName, Buffer.from("Cover fixture bytes"));
 const snapshot = { tables: {
@@ -23,6 +25,7 @@ const snapshot = { tables: {
   news_tags: [{ id: "tag-1", name: "Panen" }],
   news_article_tags: [{ article_id: "article-1", tag_id: "tag-1" }],
   news_articles: [{ id: "article-1", status: "draft", cover_url: `/api/news/media/${newsImage}`, body_html: `<img src="/api/news/media/${newsImage}" alt="uji" />` }],
+  surat_tugas_documents: [{ id: "tugas-1", storage_name: tugasName, file_name: "Surat-Tugas.docx" }],
   app_roles: [{ id: "administrator", name: "Administrator", is_administrator: 1, menu_permissions: "[]" }],
   employees: [{ nip: "198001012005011001", name: "Pegawai Uji" }],
   users: [{ id: "admin", username: "admin1", password_hash: "restore-hash" }],
@@ -35,11 +38,14 @@ const snapshot = { tables: {
   library_visitors: [{ id: "visitor-1", name: "Pengunjung Uji" }],
   library_visits: [{ id: "visit-1", visitor_id: "visitor-1" }],
   library_loans: [{ id: "loan-1", book_id: "book-1", visitor_id: "visitor-1" }],
-}, storageObjects: [...contents.keys()].filter(name => name !== coverName && name !== newsImage).map(name => ({ name, metadata: { size: contents.get(name).length } })) };
+}, storageObjects: [...contents.keys()].filter(name => name !== coverName && name !== newsImage && name !== tugasName).map(name => ({ name, metadata: { size: contents.get(name).length } })) };
 function setup(user = { id: "admin", username: "admin1" }, failure = false) {
   const state = { snapshots: 0, downloads: [] }, cache = new Map();
   cache.set(path.resolve("src/lib/session.ts"), { exports: { getCurrentUser: async () => user ? { isAdministrator: user.username === "admin1", menuPermissions: [], ...user } : null } });
   cache.set(path.resolve("src/lib/database.ts"), { exports: { createBackupSnapshot: async () => { state.snapshots++; return snapshot; } } });
+  cache.set(path.resolve("src/lib/surat-tugas-documents.ts"), { exports: { suratTugasDirectory: "surat-tugas-documents", readSuratTugasArchiveFile: async name => {
+    assert.equal(name, tugasName); state.downloads.push(name); if (failure) throw new Error("Unreadable file"); return contents.get(name);
+  } } });
   cache.set(path.resolve("src/lib/storage.ts"), { exports: { downloadStorageObject: async (name, localPath, bucket) => {
     state.downloads.push(name);
     if (failure) throw new Error("Unreadable file");
@@ -86,7 +92,9 @@ try {
   const bytes = Buffer.concat(chunks); assert(bytes.length > 4.5 * 1024 * 1024, "Exercise a backup above Vercel's buffered payload limit");
   assert.equal(bytes.length, Number(response.headers.get("x-backup-bytes"))); assert.equal(createHash("sha256").update(bytes).digest("hex"), response.headers.get("x-backup-sha256"));
   const files = extract(bytes), manifest = JSON.parse(files.get("manifest.json"));
-  assert.equal(manifest.tableCount, 16); assert.equal(manifest.documentCount, 9); assert.equal(manifest.unlinkedStorageObjectCount, 1);
+  assert.equal(manifest.tableCount, 17); assert.equal(manifest.documentCount, 10); assert.equal(manifest.unlinkedStorageObjectCount, 1);
+  assert.equal(manifest.storageFiles.find(entry => entry.storageName === tugasName).storageDirectory, "data/surat-tugas-documents");
+  assert.deepEqual(files.get("Persuratan/files/surat_tugas_documents/record-tugas-1.docx"), contents.get(tugasName));
   assert.deepEqual(files.get("Perpustakaan/files/library_books/record-book-1.webp"), contents.get(coverName));
   assert.deepEqual(files.get(`Umum/files/news-media/${newsImage}`), contents.get(newsImage));
   assert.equal(manifest.storageFiles.find(entry => entry.storageName === newsImage).storageDirectory, "data/news-media");

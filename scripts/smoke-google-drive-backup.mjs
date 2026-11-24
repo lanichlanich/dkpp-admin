@@ -6,6 +6,7 @@ import { gunzipSync } from "node:zlib";
 import ts from "typescript";
 
 const require = createRequire(import.meta.url);
+const tugasName = "abcdef01-1234-1234-1234-123456789abc.docx";
 const poName = "12345678-1234-1234-1234-123456789abc.docx";
 const sourceNames = ["employee.pdf", "kak.docx", "rka.pdf", poName, "report-1.docx", "perbantuan.docx", "plt.pdf", "wfh-letter.pdf", "kgb.docx", "kgb-signed.pdf", "orphan.pdf"];
 const fixtureBytes = name => Buffer.from(`Fixture content: ${name}`);
@@ -32,6 +33,7 @@ const snapshot = {
     wfh_schedule_letters: [{ id: "letter-1", storage_name: "wfh-letter.pdf", original_file_name: "Surat-Tugas.pdf", period: "2026-11" }],
     anjab_abk_plans: [{ year: 2026, data_json: { version: 1, reviewed: true }, revision: 2 }],
     position_map_plans: [{ year: 2026, data_json: { positions: { "peta-2026-001": { required: 1, staffed: 1 } } }, revision: 3 }],
+    surat_tugas_documents: [{ id: "tugas-1", storage_name: tugasName, file_name: "Surat-Tugas.docx" }],
     surat_perbantuan_documents: [{ id: "perbantuan-1", storage_name: "perbantuan.docx", file_name: "Surat-Perbantuan.docx" }],
     users: [{ id: "user-1", username: "admin1" }],
     library_books: [{ id: "book-1", inventory_code: "000123", copies: 2 }],
@@ -56,6 +58,9 @@ function setup({ tokenError, tokenStatus = 400, permissions = [{ type: "user" }]
   cache.set(path.resolve("src/lib/database.ts"), { exports: {
     createBackupSnapshot: async () => { state.snapshots++; return snapshot; },
   } });
+  cache.set(path.resolve("src/lib/surat-tugas-documents.ts"), { exports: { suratTugasDirectory: "surat-tugas-documents", readSuratTugasArchiveFile: async name => {
+    assert.equal(name, tugasName); state.downloads.push(name); return fixtureBytes(name);
+  } } });
   cache.set(path.resolve("src/lib/storage.ts"), { exports: {
     downloadStorageObject: async name => { state.downloads.push(name); return fixtureBytes(name); },
   } });
@@ -175,10 +180,10 @@ try {
   const result = await actions.runGoogleDriveBackupAction();
   assert.equal(result.status, "success"); assert.match(result.message, /\.tar\.gz/);
   assert.equal(state.snapshots, 1);
-  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 21);
-  assert.equal(result.documentCount, 10); assert.equal(result.unlinkedStorageObjectCount, 1);
+  assert.equal(result.archiveCount, 6); assert.equal(result.tableCount, 22);
+  assert.equal(result.documentCount, 11); assert.equal(result.unlinkedStorageObjectCount, 1);
   assert.equal(state.tokenCalls, 1, "Reuse the access token across folder creation and uploads");
-  assert.deepEqual([...state.downloads].sort(), [...sourceNames].sort());
+  assert.deepEqual([...state.downloads].sort(), [...sourceNames, tugasName].sort());
   assert.equal(state.folders.length, 7); assert.equal(state.uploads.length, 6);
   assert.deepEqual(state.folders[0].parents, ["fixture-root"]);
   assert.match(state.folders[0].name, /^Backup \d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/);
@@ -212,6 +217,7 @@ try {
   assert.deepEqual(archives.get("Umum").get("files/wfh_reports/record-report-1.docx"), fixtureBytes("report-1.docx"));
   assert.deepEqual(archives.get("Umum").get("files/wfh_schedule_letters/record-letter-1.pdf"), fixtureBytes("wfh-letter.pdf"));
   assert.deepEqual(JSON.parse(archives.get("Umum").get("database/wfh_schedule_letters.json")), snapshot.tables.wfh_schedule_letters);
+  assert.deepEqual(archives.get("Persuratan").get("files/surat_tugas_documents/record-tugas-1.docx"), fixtureBytes(tugasName));
   assert.deepEqual(JSON.parse(archives.get("Persuratan").get("database/surat_perbantuan_documents.json")), snapshot.tables.surat_perbantuan_documents);
   assert.deepEqual(archives.get("Persuratan").get("files/surat_perbantuan_documents/record-perbantuan-1.docx"), fixtureBytes("perbantuan.docx"));
   const system = archives.get("Sistem"), orphan = JSON.parse(system.get("database/unlinked-storage-index.json"))[0];

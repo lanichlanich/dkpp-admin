@@ -40,7 +40,7 @@ function strictResponseSchema(schema: z.core.JSONSchema._JSONSchema): object {
   };
 }
 
-export async function requestOpenAiJson(instructions: string, content: OpenAiPart[], schema: z.ZodType) {
+export async function requestOpenAiJson(instructions: string, content: OpenAiPart[], schema: z.ZodType, options?: { timeoutMs?: number; maxOutputTokens?: number }) {
   const key = process.env.OPENAI_API_KEY?.trim();
   const model = process.env.OPENAI_MODEL?.trim() || "gpt-5.4-mini";
   if (!key) throw new OpenAiApiError("API key OpenAI belum dikonfigurasi di server.", 503);
@@ -52,13 +52,13 @@ export async function requestOpenAiJson(instructions: string, content: OpenAiPar
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       cache: "no-store",
-      signal: AbortSignal.timeout(120_000),
+      signal: AbortSignal.timeout(options?.timeoutMs ?? 120_000),
       body: JSON.stringify({
         model,
         instructions,
         input: [{ role: "user", content }],
         store: false,
-        max_output_tokens: 8192,
+        max_output_tokens: options?.maxOutputTokens ?? 8192,
         text: { format },
       }),
     });

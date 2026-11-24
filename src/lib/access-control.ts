@@ -8,7 +8,7 @@ export const MENU_CATALOG = [
   ].map(([id, label]) => ({ id, label, group: "Kepegawaian", path: `/dashboard/${id}` })),
   ...[["daftar-wfh", "Daftar WFH/WFO"], ["laporan-pegawai-wfh-wfo", "Laporan Pegawai WFH/WFO"], ["wfh", "Surat Tugas WFH"], ["laporan-wfh", "Laporan WFH"], ["spj-pelayanan-umum", "SPJ Pelayanan Umum Kantor"]]
     .map(([id, label]) => ({ id, label, group: "Umum", path: `/dashboard/${id}` })),
-  ...[["klasifikasi-surat", "Klasifikasi Surat"], ["arsip-dinas", "Arsip Dinas"], ["surat-pengantar", "Surat Pengantar"], ["surat-perbantuan", "Surat Perbantuan"], ["surat-lupa-absen-pulang", "Surat Lupa Absen Pulang"]]
+  ...[["klasifikasi-surat", "Klasifikasi Surat"], ["arsip-dinas", "Arsip Dinas"], ["surat-pengantar", "Surat Pengantar"], ["surat-tugas", "Surat Tugas"], ["surat-perbantuan", "Surat Perbantuan"], ["surat-lupa-absen-pulang", "Surat Lupa Absen Pulang"]]
     .map(([id, label]) => ({ id, label, group: "Persuratan", path: `/dashboard/${id}` })),
   { id: "pembuatan-kak", label: "Pembuatan PO dan KAK", group: "Perencanaan", path: "/dashboard/pembuatan-kak" },
   { id: "pagu-target-realisasi", label: "Pagu, Target & Realisasi", group: "Perencanaan", path: "/dashboard/pagu-target-realisasi" },

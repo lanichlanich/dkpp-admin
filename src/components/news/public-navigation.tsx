@@ -16,7 +16,7 @@ export function PublicNavigation() {
     <nav className={s.desktopNav} aria-label="Navigasi publik">{items()}</nav>
     <details className={s.mobileNav} ref={menu} onKeyDown={event => { if (event.key === "Escape" && menu.current?.open) { menu.current.open = false; menu.current.querySelector("summary")?.focus(); } }}>
       <summary><Menu size={18} aria-hidden/> Menu</summary>
-      <nav className={s.glass} aria-label="Navigasi publik" onClick={event => { if (event.target instanceof Element && event.target.closest("a") && menu.current) menu.current.open = false; }}>{items()}</nav>
+      <nav className={`${s.dropdownGlass} rounded-[16px] border border-white/40 text-[#F8FAEF] shadow-lg`} aria-label="Navigasi publik" onClick={event => { if (event.target instanceof Element && event.target.closest("a") && menu.current) menu.current.open = false; }}>{items()}</nav>
     </details>
   </>;
 }

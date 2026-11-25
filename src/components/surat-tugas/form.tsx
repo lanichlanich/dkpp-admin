@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SuratTugasLegalSearch } from "./legal-search";
 import { SuratTugasAiPanel } from "./ai-panel";
 import { suratTugasSchema, TUGAS_SIGNER, type TugasEmployee } from "@/lib/surat-tugas-validation";
 
@@ -39,6 +40,14 @@ export function SuratTugasForm({ employees, today }: { employees: TugasEmployee[
     const next = [...selected];
     [next[index], next[index + direction]] = [next[index + direction], next[index]];
     setSelected(next);
+  }
+  function addLegalBasis(text: string) {
+    setDasar(entries => {
+      if (entries.some(entry => entry.text.trim().toLowerCase() === text.toLowerCase())) return entries;
+      const empty = entries.findIndex(entry => !entry.text.trim());
+      if (empty >= 0) return entries.map((entry, index) => index === empty ? { ...entry, text } : entry);
+      return entries.length < 8 ? [...entries, { id: Math.max(...entries.map(entry => entry.id)) + 1, text }] : entries;
+    });
   }
   async function download(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,7 +85,7 @@ export function SuratTugasForm({ employees, today }: { employees: TugasEmployee[
         {key && <div className="max-h-56 space-y-1 overflow-auto rounded-lg border p-2">{hits.length ? hits.slice(0, 12).map(person => <Button key={person.nip} type="button" variant="ghost" className="h-auto w-full justify-start py-2 text-left whitespace-normal" disabled={selected.length >= 20} onClick={() => { setSelected([...selected, person]); setQuery(""); }}><Plus aria-hidden/><span>{person.name}<span className="block text-xs text-muted-foreground">{person.nip} · {person.position}</span></span></Button>) : <p className="p-2 text-sm text-muted-foreground">Tidak ada pegawai aktif yang cocok.</p>}</div>}
         {!selected.length ? <p className="text-sm text-muted-foreground">Belum ada pegawai dipilih.</p> : <ol className="divide-y rounded-lg border">{selected.map((person, i) => <li key={person.nip} className="flex flex-wrap items-center justify-between gap-2 p-2.5"><div className="min-w-0"><p className="break-words text-sm font-semibold">{i+1}. {person.name}</p><p className="break-words text-xs text-muted-foreground">{person.nip} · {person.position}</p></div><div className="flex gap-1"><Button type="button" size="icon" variant="ghost" aria-label={`Naikkan ${person.name}`} disabled={!i} onClick={() => move(i,-1)}><ArrowUp aria-hidden/></Button><Button type="button" size="icon" variant="ghost" aria-label={`Turunkan ${person.name}`} disabled={i === selected.length-1} onClick={() => move(i,1)}><ArrowDown aria-hidden/></Button><Button type="button" size="icon" variant="destructive" aria-label={`Hapus ${person.name}`} onClick={() => setSelected(selected.filter(x => x.nip !== person.nip))}><X aria-hidden/></Button></div></li>)}</ol>}
       </CardContent></Card>
-      <Card><CardHeader><CardTitle className="flex items-center gap-2"><ClipboardList className="size-4 text-sky-600" aria-hidden/> Dasar dan rincian tugas</CardTitle></CardHeader><CardContent className="space-y-4"><SuratTugasAiPanel apply={(field, items) => (field === "dasar" ? setDasar : setTugas)(items.map((text, id) => ({ id, text })))}/><Lines label="Dasar" entries={dasar} change={setDasar} max={400} limit={8} hint="Cantumkan landasan tugas, misalnya nomor dan tanggal surat undangan."/><Lines label="Untuk" entries={tugas} change={setTugas} max={600} limit={10} hint="Cantumkan kegiatan yang ditugaskan, waktu, tempat, atau kewajiban pelaporan bila relevan."/></CardContent></Card>
+      <Card><CardHeader><CardTitle className="flex items-center gap-2"><ClipboardList className="size-4 text-sky-600" aria-hidden/> Dasar dan rincian tugas</CardTitle></CardHeader><CardContent className="space-y-4"><SuratTugasLegalSearch entries={dasar.map(entry => entry.text)} add={addLegalBasis}/><SuratTugasAiPanel apply={(field, items) => (field === "dasar" ? setDasar : setTugas)(items.map((text, id) => ({ id, text })))}/><Lines label="Dasar" entries={dasar} change={setDasar} max={400} limit={8} hint="Cantumkan landasan tugas, misalnya nomor dan tanggal surat undangan."/><Lines label="Untuk" entries={tugas} change={setTugas} max={600} limit={10} hint="Cantumkan kegiatan yang ditugaskan, waktu, tempat, atau kewajiban pelaporan bila relevan."/></CardContent></Card>
       <Card><CardHeader><CardTitle className="flex items-center gap-2"><BadgeCheck className="size-4 text-amber-600" aria-hidden/> Penandatangan dan unduhan</CardTitle><CardDescription>Word memakai kop DKPP dan penanda TTE. Dokumen Word otomatis masuk daftar Surat Tugas, tanpa membubuhkan TTE atau mengirim surat.</CardDescription></CardHeader><CardContent className="space-y-3">
         <p className="text-sm font-semibold">{TUGAS_SIGNER} <span className="font-normal text-muted-foreground">· Plt. Kepala Dinas</span></p>
         <label className="flex items-start gap-2 text-sm"><input className="mt-1 size-4 shrink-0 accent-primary" type="checkbox" name="signer" required/> Saya telah memastikan pejabat ini berwenang menandatangani pada tanggal surat.</label>

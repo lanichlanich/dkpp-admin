@@ -146,3 +146,42 @@ if (process.env.SURAT_TUGAS_OPENAI_LIVE === '1') {
   } finally { globalThis.fetch = original; }
   console.log('PASS Surat Tugas OpenAI: auth, origin, limits, no personnel payload, no invented blank reference and provider failure');
 }
+
+const { POST: searchLegal } = load('src/app/api/surat-tugas/search-dasar/route.ts');
+const legalQuery = 'Peraturan Bupati Indramayu Nomor 30 Tahun 2024 tata naskah dinas';
+const sendLegal = (body = { query: legalQuery }, origin = 'https://example.test') => searchLegal(new Request('https://example.test/api/surat-tugas/search-dasar', { method: 'POST', headers: { origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
+access = 401; assert.equal((await sendLegal()).status, 401);
+access = 403; assert.equal((await sendLegal()).status, 403);
+access = 0; assert.equal((await sendLegal(undefined, 'https://other.test')).status, 403);
+assert.equal((await sendLegal({ query: `${legalQuery} ${first}` })).status, 422);
+assert.equal((await sendLegal({ query: legalQuery, extra: 'private' })).status, 422);
+userId = 'legal';
+if (process.env.SURAT_TUGAS_OPENAI_LIVE === '1') {
+  const result = await sendLegal(); const payload = await result.json();
+  assert.equal(result.status, 200, JSON.stringify(payload));
+  assert.ok(payload.results.some(r => /30.*2024/i.test(r.dasar)), JSON.stringify(payload));
+  console.log('PASS live regulation search:', payload.results.map(r => r.url));
+} else {
+  const source = 'https://jdih.indramayukab.go.id/detail/regulation-test';
+  const fake = 'https://peraturan.bpk.go.id/Details/unretrieved';
+  const bad = 'https://peraturan.bpk.go.id.evil.test/details';
+  const originalFetch = globalThis.fetch;
+  let searched = true;
+  globalThis.fetch = async (endpoint, init) => {
+    assert.equal(endpoint, 'https://api.openai.com/v1/responses');
+    const request = JSON.parse(init.body);
+    assert.equal(request.tools[0].type, 'web_search');
+    assert.ok(request.tools[0].filters.allowed_domains.includes('jdih.indramayukab.go.id'));
+    assert.equal(request.store, false);
+    assert.equal(request.input[0].content[0].text, legalQuery);
+    return Response.json({ status:'completed', output:[...(searched ? [{ type:'web_search_call', status:'completed', action:{ type:'search', sources:[{url:source},{url:bad}] } }] : []), { type:'message', role:'assistant', content:[{ type:'output_text', text:JSON.stringify({ results:[source, fake, bad, source].map(url => ({ dasar:legalQuery, url })) }) }] }] });
+  };
+  try {
+    const result = await sendLegal(); assert.equal(result.status, 200);
+    assert.deepEqual((await result.json()).results, [{ dasar: legalQuery, url: source }]);
+    assert.equal((await sendLegal()).status, 429);
+    userId = 'no-web'; searched = false;
+    assert.equal((await sendLegal()).status, 502);
+  } finally { globalThis.fetch = originalFetch; }
+  console.log('PASS legal search: permission, origin, privacy, grounding, allowlist, deduplication, rate limit');
+}

@@ -6,10 +6,11 @@ export type OpenAiPart =
   | { type: "input_file"; filename: string; file_data: string; detail: "high" }
   | { type: "input_image"; image_url: string; detail: "high" };
 
+type OpenAiCitation = { type?: string; url?: string };
 type OpenAiResponse = {
   status?: string;
   model?: string;
-  output?: { type: string; role?: string; content?: { type: string; text?: string }[] }[];
+  output?: { type: string; role?: string; status?: string; action?: { url?: string; sources?: { url?: string }[] }; content?: { type: string; text?: string; annotations?: OpenAiCitation[] }[] }[];
 };
 
 export class OpenAiApiError extends Error {
@@ -40,7 +41,7 @@ function strictResponseSchema(schema: z.core.JSONSchema._JSONSchema): object {
   };
 }
 
-export async function requestOpenAiJson(instructions: string, content: OpenAiPart[], schema: z.ZodType, options?: { timeoutMs?: number; maxOutputTokens?: number }) {
+export async function requestOpenAiJson(instructions: string, content: OpenAiPart[], schema: z.ZodType, options?: { timeoutMs?: number; maxOutputTokens?: number; webSearchDomains?: readonly string[] }) {
   const key = process.env.OPENAI_API_KEY?.trim();
   const model = process.env.OPENAI_MODEL?.trim() || "gpt-5.4-mini";
   if (!key) throw new OpenAiApiError("API key OpenAI belum dikonfigurasi di server.", 503);
@@ -60,6 +61,12 @@ export async function requestOpenAiJson(instructions: string, content: OpenAiPar
         store: false,
         max_output_tokens: options?.maxOutputTokens ?? 8192,
         text: { format },
+        ...(options?.webSearchDomains ? {
+          tools: [{ type: "web_search", filters: { allowed_domains: options.webSearchDomains } }],
+          tool_choice: { type: "web_search" },
+          include: ["web_search_call.action.sources"],
+          max_tool_calls: 6,
+        } : {}),
       }),
     });
   } catch {
@@ -81,7 +88,9 @@ export async function requestOpenAiJson(instructions: string, content: OpenAiPar
     const parts = body.output?.filter(item => item.type === "message" && item.role === "assistant").flatMap(item => item.content ?? []) ?? [];
     if (parts.some(part => part.type === "refusal")) throw new OpenAiApiError("OpenAI tidak dapat memproses permintaan ini. Lengkapi isian secara manual atau periksa dokumen.", 422);
     const value: unknown = JSON.parse(parts.filter(part => part.type === "output_text").map(part => part.text ?? "").join(""));
-    return { value, model: body.model || model };
+    const calls = body.output?.filter(item => item.type === "web_search_call" && item.status === "completed") ?? [];
+    const sourceUrls = calls.length ? [...calls.flatMap(call => [call.action?.url, ...(call.action?.sources ?? []).map(source => source.url)]), ...parts.flatMap(part => (part.annotations ?? []).filter(item => item.type === "url_citation").map(item => item.url))].filter((url): url is string => typeof url === "string") : [];
+    return { value, model: body.model || model, searched: calls.length > 0, sourceUrls };
   } catch (error) {
     if (error instanceof OpenAiApiError) throw error;
     throw new OpenAiApiError(invalidResponse);

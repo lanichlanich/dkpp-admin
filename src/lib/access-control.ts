@@ -1,3 +1,5 @@
+import { pdfTools } from "@/lib/pdf-tools-config";
+
 export const MENU_CATALOG = [
   { id: "dashboard", label: "Dashboard", group: "Utama", path: "/dashboard" },
   { id: "berita", label: "Berita", group: "Utama", path: "/dashboard/berita" },
@@ -15,6 +17,7 @@ export const MENU_CATALOG = [
   { id: "simulasi-gaji-pns", label: "Simulasi Gaji PNS", group: "Keuangan", path: "/dashboard/simulasi-gaji-pns" },
   ...[["statistik", "Dashboard Statistik"], ["buku", "Daftar Buku"], ["pengunjung", "Daftar Pengunjung"], ["peminjaman", "Daftar Peminjaman"]]
     .map(([id, label]) => ({ id: `perpustakaan-${id}`, label, group: "Perpustakaan", path: `/dashboard/perpustakaan/${id}` })),
+  ...pdfTools.map(tool => ({ id: tool.slug, label: tool.label, group: "Tools", path: `/dashboard/tools/${tool.slug}` })),
   { id: "backup-lokal", label: "Backup ke Lokal", group: "Sistem", path: "/dashboard/backup-lokal" },
   { id: "backup", label: "Backup Google Drive", group: "Sistem", path: "/dashboard/backup" },
   { id: "log-audit", label: "Log Audit Perubahan Data", group: "Sistem", path: "/dashboard/log-audit" },

@@ -43,3 +43,9 @@ bash scripts/link-release-storage.sh "$release" /var/lib/dkpp-admin/data
 ```
 
 Jangan memakai `ln -s TARGET RILIS/data` tanpa `-T`: `data/.gitkeep` dari arsip Git membuat direktori `data` sudah ada, sehingga tautan akan bersarang di `data/data`. Skrip menolak menimpa direktori yang berisi data runtime atau tautan ke lokasi lain. Pertahankan pemeriksaan `ExecStartPre` untuk tautan langsung ke storage VPS saat mengganti konfigurasi rilis. Setelah aktivasi, uji minimal satu URL cover publik yang benar-benar dirujuk katalog dan periksa status serta tipe gambarnya; untuk dokumen privat, pertahankan pemeriksaan otorisasi.
+
+### Tools PDF (produksi VPS)
+
+Dependensi host: `apt-get install --no-install-recommends ghostscript qpdf poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-ind` (Node/npm tidak berubah). Pertahankan AppArmor dan `PrivateTmp=true` milik `dkpp-admin`. Jangan arahkan `TMPDIR` layanan ke direktori tersembunyi Hermes: profil bawaan Ubuntu membatasi akses QPDF dan Ghostscript. Unggahan hanya berada di direktori temporer privat per permintaan; pemrosesan tidak memakai database, Drive, atau API eksternal. Hasil dikirim kembali ke browser dan direktori kerja dihapus.
+
+Uji engine dengan `systemd-run --wait --pipe --collect -p PrivateTmp=yes --working-directory=/root/develop/dkpp-admin /root/.local/share/dkpp-admin/node/bin/node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/smoke-pdf-tools.mjs`. Verifikasi setiap menu dan API memakai izin `compress-pdf`, `merge-pdf`, atau `split-pdf`; administrator memiliki akses, role lain memerlukan izin fitur. PDF dengan tanda tangan digital/kolom TTE, PDF terenkripsi, formulir XFA, atau aksi aktif tertentu ditolak. Simpan salinan asli dokumen.

@@ -1,12 +1,13 @@
 "use client";
 
+import { pdfTools } from "@/lib/pdf-tools-config";
 import { canAccessPath } from "@/lib/access-control";
 import { useAccess } from "@/components/dashboard/access-context";
 import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { BookOpen, Archive, Award, BriefcaseBusiness, Building2, Calculator, CalendarDays, ChevronDown, ClipboardList, CloudUpload, FileBarChart2, FileCheck2, FileSignature, FileText, FolderOpen, History, House, LayoutDashboard, ListTree, LoaderCircle, Network, Newspaper, PanelLeftClose, PanelLeftOpen, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, Wallet, X } from "lucide-react";
+import { BookOpen, Archive, Award, BriefcaseBusiness, Building2, Calculator, CalendarDays, ChevronDown, ClipboardList, CloudUpload, FileBarChart2, FileCheck2, FileSignature, FileText, FolderOpen, History, House, LayoutDashboard, Merge, Scissors, Wrench, FileArchive, ListTree, LoaderCircle, Network, Newspaper, PanelLeftClose, PanelLeftOpen, Scale, ScrollText, Send, type LucideIcon, UserRound, UsersRound, Wallet, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,9 @@ const libraryNavigation = [
   { label: "Daftar Peminjaman", href: "/dashboard/perpustakaan/peminjaman", icon: ClipboardList },
 ];
 
+const toolIcons = { compress: FileArchive, merge: Merge, split: Scissors };
+const toolsNavigation = pdfTools.map(tool => ({ label: tool.label, href: `/dashboard/tools/${tool.slug}`, icon: toolIcons[tool.operation] }));
+
 const navigation = [
   { label: "Manajemen User", href: "/dashboard/manajemen-user", icon: UsersRound },
   { label: "Backup ke Lokal", href: "/dashboard/backup-lokal", icon: Archive },
@@ -106,6 +110,7 @@ function CompactSidebar({ onToggle }: { onToggle?: () => void }) {
   const navigationItems = navigation.filter(allowed);
   const libraryItems = libraryNavigation.filter(allowed);
   const planningItems = planningNavigation.filter(allowed);
+  const toolItems = toolsNavigation.filter(allowed);
   const pathname = usePathname();
   return <div className="flex h-full flex-col bg-gradient-to-b from-emerald-600 via-green-700 to-sky-700 text-emerald-50">
     <div className="flex h-20 shrink-0 items-center justify-center border-b border-white/20 bg-white/[0.08]" title="DKPP-Admin · Administrasi DKPP"><span className="grid size-12 place-items-center rounded-xl bg-white p-1 shadow-lg ring-1 ring-amber-200/70"><Image src="/dkpp-admin-logo.png" alt="DKPP-Admin" width={44} height={44} className="size-11 object-contain" priority /></span></div>
@@ -119,6 +124,7 @@ function CompactSidebar({ onToggle }: { onToggle?: () => void }) {
       {planningItems.length > 0 && <CompactGroup label="Perencanaan" icon={ClipboardList} items={planningItems} />}
       {canAccessPath(access, "/dashboard/simulasi-gaji-pns") && <CompactGroup label="Keuangan" icon={Wallet} items={[{ label: "Simulasi Gaji PNS", href: "/dashboard/simulasi-gaji-pns", icon: Calculator }]} />}
       {libraryItems.length > 0 && <CompactGroup label="Perpustakaan" icon={BookOpen} items={libraryItems} />}
+      {toolItems.length > 0 && <CompactGroup label="Tools" icon={Wrench} items={toolItems} />}
       {navigationItems.map(item => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         return <Link key={item.href} href={item.href} title={item.label} aria-label={item.label} aria-current={active ? "page" : undefined} className={cn("grid size-12 shrink-0 place-items-center rounded-xl focus-visible:outline-2 focus-visible:outline-amber-300", active ? "bg-white text-emerald-800" : "hover:bg-white/15")}><NavigationIcon icon={item.icon} className="size-5" /></Link>;
@@ -137,6 +143,7 @@ export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { on
   const navigationItems = navigation.filter(allowed);
   const libraryItems = libraryNavigation.filter(allowed);
   const planningItems = planningNavigation.filter(allowed);
+  const toolItems = toolsNavigation.filter(allowed);
   const pathname = usePathname();
   const personnelActive = personnelNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
   const generalActive = generalNavigation.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -151,6 +158,8 @@ export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { on
   const [financeOpen, setFinanceOpen] = useState(financeActive);
   const libraryActive = pathname.startsWith("/dashboard/perpustakaan/");
   const [libraryOpen, setLibraryOpen] = useState(libraryActive);
+  const toolsActive = pathname.startsWith("/dashboard/tools/");
+  const [toolsOpen, setToolsOpen] = useState(toolsActive);
   if (collapsed) return <CompactSidebar onToggle={onToggle} />;
   return (
     <div className="flex h-full flex-col bg-gradient-to-b from-emerald-600 via-green-700 to-sky-700 text-emerald-50">
@@ -218,6 +227,10 @@ export function SidebarContent({ onNavigate, collapsed = false, onToggle }: { on
           <Wallet aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} /><span className="min-w-0 flex-1 leading-5">Keuangan</span><ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", financeOpen && "rotate-180")} />
         </button>}
         {canAccessPath(access, "/dashboard/simulasi-gaji-pns") && financeOpen && <div className="ml-3 border-l border-amber-200/45 pl-3"><Link href="/dashboard/simulasi-gaji-pns" onClick={onNavigate} aria-current={financeActive ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300", financeActive ? "bg-white text-emerald-800 shadow-md shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/[0.12] hover:text-white")}><NavigationIcon icon={Calculator} className="size-4 shrink-0" /><span>Simulasi Gaji PNS</span></Link></div>}
+        {toolItems.length > 0 && <div>
+          <button type="button" aria-expanded={toolsOpen} onClick={() => setToolsOpen(open => !open)} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-amber-300", toolsActive && "bg-white/15")}><Wrench aria-hidden="true" className="size-5 shrink-0" /><span className="flex-1">Tools</span><ChevronDown aria-hidden="true" className={cn("size-4", toolsOpen && "rotate-180")} /></button>
+          {toolsOpen && <div className="ml-3 space-y-1 border-l border-amber-200/45 pl-3">{toolItems.map(item => <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={pathname === item.href ? "page" : undefined} className={cn("flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-amber-300", pathname === item.href && "bg-white font-semibold text-emerald-900 hover:bg-white")}><NavigationIcon icon={item.icon} className="size-4" />{item.label}</Link>)}</div>}
+        </div>}
         {navigationItems.map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;

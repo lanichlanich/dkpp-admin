@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { scheduleUnitColors, scheduleUnitKey } from '../src/lib/wfh-unit-colors.ts';
+const units = ['Pangan', ' Pertanian ', 'PANGAN', 'Pangan  Lokal', 'Pangan Lokal', '', '   ', 'Peternakan'];
+const colors = scheduleUnitColors(units);
+assert.deepEqual(colors, scheduleUnitColors([...units].reverse()));
+assert.equal(colors.size, 5);
+assert.equal(new Set([...colors.values()].map(c => c.backgroundColor)).size, colors.size);
+assert.equal(scheduleUnitKey('  PaNgAn   Lokal  '), 'pangan lokal');
+assert.deepEqual(colors.get(scheduleUnitKey('')), {backgroundColor:'#f8fafc', accent:'#64748b'});
+const many = scheduleUnitColors(Array.from({length:24}, (_,i)=>`Unit ${i}`));
+assert.equal(new Set([...many.values()].map(c=>c.backgroundColor)).size, 24);
+console.log('PASS unit row colors: consistent by unit, distinct, normalized, neutral missing unit');

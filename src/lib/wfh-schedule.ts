@@ -65,10 +65,11 @@ export async function getScheduleMonths() {
 export async function getScheduleEntries(period: string) {
   if (!validPeriod(period)) return [];
   return await db.prepare(
-    `SELECT period, employee_nip AS employeeNip, employee_name AS employeeName,
-            position, unit, sort_order AS sortOrder, CAST(friday_date AS TEXT) AS fridayDate, status
-     FROM wfh_schedule_entries WHERE period = ?
-     ORDER BY sort_order, employee_name, employee_nip, friday_date`,
+    `SELECT s.period, s.employee_nip AS employeeNip, COALESCE(e.name, s.employee_name) AS employeeName,
+            COALESCE(e.position, s.position) AS position, COALESCE(e.unit, s.unit) AS unit,
+            s.sort_order AS sortOrder, CAST(s.friday_date AS TEXT) AS fridayDate, s.status
+     FROM wfh_schedule_entries AS s LEFT JOIN employees AS e ON e.nip = s.employee_nip
+     WHERE s.period = ? ORDER BY s.sort_order, s.employee_name, s.employee_nip, s.friday_date`,
   ).all(period) as ScheduleEntry[];
 }
 

@@ -43,6 +43,17 @@ try {
   assert.equal((await actions.addScheduleEmployee("2026-11",a,"WFH")).success,true); assert.equal(entries("2026-11",a).length,4); assert(entries("2026-11",a).every(row=>row.status==="WFH"));
   assert.equal((await actions.addScheduleEmployee("2026-11",b)).success,true); assert(entries("2026-11",b)[0].sort_order>entries("2026-11",a)[0].sort_order);
   assert.equal((await actions.setScheduleStatus("2026-11",a,"2026-11-06","WFO")).success,true);
+  const snapshot = entries("2026-11",a);
+  db.prepare("UPDATE employees SET name=?, position=?, unit=? WHERE nip=?").run("Nama master baru", "Jabatan baru", "Unit baru", a);
+  for (const period of ["2026-10","2026-11"]) {
+    const synced = (await schedule.getScheduleEntries(period)).filter(row => row.employeeNip === a);
+    assert(synced.length > 0);
+    assert(synced.every(row => row.employeeName === "Nama master baru" && row.position === "Jabatan baru" && row.unit === "Unit baru"), "Schedule uses live employee identity");
+  }
+  assert.deepEqual(entries("2026-11",a),snapshot,"Master update leaves stored schedule/status untouched");
+  db.prepare("DELETE FROM employees WHERE nip=?").run(a);
+  assert.equal((await schedule.getScheduleEntries("2026-11")).find(row => row.employeeNip===a).employeeName,"Pegawai Satu","Missing master retains snapshot");
+  db.prepare("INSERT INTO employees VALUES(?,?, 'Jabatan baru','Unit baru','Aktif')").run(a,"Nama master baru");
   const saved = entries("2026-11",a); assert.equal((await actions.addScheduleEmployee("2026-11",a,"WFH")).success,false); assert.deepEqual(entries("2026-11",a),saved,"Duplicate add preserves manual statuses");
   for (const args of [["2026-11",a],["2026-11",a,"true"],["2026-13",a,true],["2026-11","invalid",true]]) assert.equal((await actions.removeScheduleEmployee(...args)).success,false);
   assert.deepEqual(entries("2026-11",a),saved,"Unconfirmed and invalid deletes do not mutate data");

@@ -1,3 +1,4 @@
+import { requireMenuAccess } from "@/lib/authorization";
 import "server-only";
 
 import { cache } from "react";
@@ -57,6 +58,14 @@ export const getEmployees = cache(async () => {
   const rows = await db.prepare("SELECT * FROM employees ORDER BY name COLLATE NOCASE").all() as EmployeeRow[];
   return rows.map(mapEmployee);
 });
+
+export async function getScheduleEmployeeEditors(period: string) {
+  await requireMenuAccess("pegawai");
+  const rows = await db.prepare(`SELECT e.* FROM employees e WHERE EXISTS (
+    SELECT 1 FROM wfh_schedule_entries s WHERE s.period = ? AND s.employee_nip = e.nip
+  )`).all(period) as EmployeeRow[];
+  return rows.map(mapEmployee);
+}
 
 export const getHukdisEmployees = cache(async (): Promise<Employee[]> => {
   await requireUser();

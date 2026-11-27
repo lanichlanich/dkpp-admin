@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url), cache = new Map(), db = new Data
 db.pragma("foreign_keys=ON");
 db.exec("CREATE TABLE users(id TEXT PRIMARY KEY); INSERT INTO users VALUES('letter-test'); CREATE TABLE wfh_schedule_months(period TEXT PRIMARY KEY); INSERT INTO wfh_schedule_months VALUES('2026-10'),('2026-11');");
 db.exec(readFileSync("src/lib/db.ts", "utf8").match(/CREATE TABLE IF NOT EXISTS wfh_schedule_letters \([\s\S]*?\);/)[0]);
-db.exec("CREATE TABLE wfh_schedule_entries(period TEXT,employee_nip TEXT,employee_name TEXT,position TEXT,unit TEXT,sort_order INTEGER,friday_date TEXT,status TEXT)");
+db.exec("CREATE TABLE employees(nip TEXT PRIMARY KEY,name TEXT,position TEXT,unit TEXT); CREATE TABLE wfh_schedule_entries(period TEXT,employee_nip TEXT,employee_name TEXT,position TEXT,unit TEXT,sort_order INTEGER,friday_date TEXT,status TEXT)");
 const objects = new Map(), invalidations = [], generated = [];
 let access = "allowed", failInsert = false, failUpload = false, queries = 0;
 const adapter = { prepare(sql) {

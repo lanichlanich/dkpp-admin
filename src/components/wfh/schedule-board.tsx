@@ -14,7 +14,10 @@ import { ScheduleEmployeeDialog } from "@/components/wfh/schedule-employee-dialo
 import { TableHorizontalScroll } from "@/components/ui/table-horizontal-scroll";
 import type { ScheduleEmployee, ScheduleEntry, WorkLocation } from "@/lib/wfh-schedule";
 
-import { sortScheduleRows, type ScheduleRow, type ScheduleSort, type ScheduleSortKey } from "@/lib/wfh-schedule-sorting";
+import { EmployeeFormDialog } from "@/components/employees/employee-form-dialog";
+import type { Employee } from "@/lib/db";
+import type { EmployeeOptions } from "@/lib/employees";
+import { filterScheduleRows, sortScheduleRows, type ScheduleRow, type ScheduleSort, type ScheduleSortKey } from "@/lib/wfh-schedule-sorting";
 
 const sortableColumns = [
   { key: "name", label: "Nama", width: "min-w-48" },
@@ -28,7 +31,7 @@ function shortDate(date: string) {
 }
 
 export function ScheduleBoard({
-  period, label, dates, previous, next, nextExists, nextLabel, exists, sourcePeriod, entries, activeEmployees,
+  period, label, dates, previous, next, nextExists, nextLabel, exists, sourcePeriod, entries, activeEmployees, masterEmployees, employeeOptions,
 }: {
   period: string;
   label: string;
@@ -41,11 +44,15 @@ export function ScheduleBoard({
   sourcePeriod: string | null;
   entries: ScheduleEntry[];
   activeEmployees: ScheduleEmployee[];
+  masterEmployees?: Employee[];
+  employeeOptions?: EmployeeOptions;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [busyCell, setBusyCell] = useState("");
   const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const masterByNip = useMemo(() => new Map(masterEmployees?.map(employee => [employee.nip, employee])), [masterEmployees]);
   const [sort, setSort] = useState<ScheduleSort | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [toRemove, setToRemove] = useState<ScheduleEmployee | null>(null), [removeError, setRemoveError] = useState("");
@@ -65,10 +72,9 @@ export function ScheduleBoard({
     return [...byNip.values()];
   }, [entries]);
   const selectedNips = new Set(rows.map((row) => row.employee.nip));
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return sortScheduleRows(rows.filter(row => `${row.employee.name} ${row.employee.nip} ${row.employee.unit}`.toLowerCase().includes(query)), sort, statusOverrides);
-  }, [rows, search, sort, statusOverrides]);
+  const filtered = useMemo(() => sortScheduleRows(filterScheduleRows(rows, search, filters, statusOverrides), sort, statusOverrides), [rows, search, filters, sort, statusOverrides]);
+  const filterActive = Object.values(filters).some(value => value.trim());
+  const updateFilter = (key: string, value: string) => setFilters(current => ({ ...current, [key]: value }));
   function sortableHeader(key: ScheduleSortKey, label: string, className: string, date?: string) {
     const direction = sort?.key === key ? sort.direction : undefined;
     const Icon = direction === "asc" ? ArrowUp : direction === "desc" ? ArrowDown : ArrowUpDown;
@@ -76,6 +82,9 @@ export function ScheduleBoard({
       <Button type="button" variant="ghost" size="sm" className={`min-h-10 text-inherit hover:bg-emerald-100 focus-visible:ring-emerald-700 ${direction ? "bg-emerald-100" : ""}`} aria-label={`${label}: urutkan ${direction === "asc" ? "menurun" : "menaik"}`} onClick={() => setSort({ key, direction: direction === "asc" ? "desc" : "asc" })}>
         {date ? <span className="leading-tight">Jumat<br/>{shortDate(date)}</span> : label}<Icon aria-hidden="true" className={`size-4 ${direction ? "" : "opacity-60"}`}/>
       </Button>
+      {date ? <select aria-label={`Filter status ${label}`} value={filters[key] ?? ""} onChange={event => updateFilter(key, event.target.value)} className="mt-1 block h-8 w-full rounded-md border border-emerald-300 bg-white px-1 text-xs font-normal focus-visible:ring-2 focus-visible:ring-emerald-700">
+        <option value="">Semua</option><option>WFH</option><option>WFO</option>
+      </select> : <Input aria-label={`Filter ${label}`} placeholder="Semua" value={filters[key] ?? ""} onChange={event => updateFilter(key, event.target.value)} className="mt-1 h-8 min-w-28 bg-white font-normal"/>}
     </th>;
   }
   const availableEmployees = activeEmployees.filter(employee => !selectedNips.has(employee.nip));
@@ -156,13 +165,14 @@ export function ScheduleBoard({
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4">
         <div className="relative w-full sm:max-w-md"><Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, NIP, atau unit..." aria-label="Cari pegawai dalam jadwal" className="pl-9" /></div>
-        <div className="flex flex-wrap items-center gap-2">{sort && <Button type="button" variant="outline" onClick={() => setSort(null)}>Reset urutan</Button>}<Button type="button" disabled={pending} onClick={() => setAddOpen(true)} className="bg-emerald-700 text-white hover:bg-emerald-800"><Plus aria-hidden="true" className="size-4" />Tambah pegawai</Button></div>
+        <div className="flex flex-wrap items-center gap-2">{(filterActive || search.trim()) && <Button type="button" variant="outline" onClick={() => { setFilters({}); setSearch(""); }}>Reset filter</Button>}{sort && <Button type="button" variant="outline" onClick={() => setSort(null)}>Reset urutan</Button>}<Button type="button" disabled={pending} onClick={() => setAddOpen(true)} className="bg-emerald-700 text-white hover:bg-emerald-800"><Plus aria-hidden="true" className="size-4" />Tambah pegawai</Button></div>
       </div>
 
+      <p role="status" className="text-sm text-zinc-600">{filtered.length} dari {rows.length} pegawai · Rekap mencakup seluruh daftar.</p>
       <div className="overflow-clip rounded-xl border bg-white">
         <TableHorizontalScroll label="tabel WFH/WFO" aria-label="Daftar pegawai WFH/WFO" className="w-full min-w-[980px] border-collapse text-left text-sm">
           <thead className="bg-emerald-50 text-emerald-950"><tr><th scope="col" className="p-3">No</th>{sortableColumns.map(({ key, label, width }) => sortableHeader(key, label, width))}{dates.map(date => sortableHeader(date as ScheduleSortKey, `Jumat ${shortDate(date)}`, "min-w-24 text-center", date))}<th scope="col" className="min-w-28 p-3">Aksi</th></tr></thead>
-          <tbody>{filtered.map((row, index) => <tr key={row.employee.nip} className="border-t hover:bg-zinc-50"><td className="p-3 text-zinc-500">{index + 1}</td><td className="p-3 font-medium">{row.employee.name}</td><td className="whitespace-nowrap p-3 font-mono text-xs">{row.employee.nip}</td><td className="p-3 text-xs">{row.employee.position}</td><td className="p-3 text-xs">{row.employee.unit}</td>{dates.map((date) => { const key = `${row.employee.nip}:${date}`; const status = statusOverrides[key] ?? row.statuses[date] ?? "WFO"; return <td key={date} className="p-2 text-center"><button type="button" disabled={pending} aria-label={`${row.employee.name}, ${shortDate(date)}: ${status}. Ubah menjadi ${status === "WFH" ? "WFO" : "WFH"}`} onClick={() => changeStatus(row.employee.nip, date, status === "WFH" ? "WFO" : "WFH")} className={`inline-flex min-w-16 items-center justify-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${status === "WFH" ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : "bg-sky-100 text-sky-800 hover:bg-sky-200"}`}>{busyCell === key ? <LoaderCircle className="size-3 animate-spin" /> : status === "WFH" ? "✓" : "✕"}{status}</button></td>; })}<td className="p-3"><Button type="button" variant="destructive" size="sm" disabled={pending} aria-label={`Hapus ${row.employee.name} dari jadwal ${label}`} onClick={() => { setToRemove(row.employee); setRemoveError(""); }}><Trash2 aria-hidden="true" className="size-3.5" />Hapus</Button></td></tr>)}</tbody>
+          <tbody>{filtered.map((row, index) => { const master = masterByNip.get(row.employee.nip); return <tr key={row.employee.nip} className="border-t hover:bg-zinc-50"><td className="p-3 text-zinc-500">{index + 1}</td><td className="p-3 font-medium">{row.employee.name}</td><td className="whitespace-nowrap p-3 font-mono text-xs">{row.employee.nip}</td><td className="p-3 text-xs">{row.employee.position}</td><td className="p-3 text-xs">{row.employee.unit}</td>{dates.map((date) => { const key = `${row.employee.nip}:${date}`; const status = statusOverrides[key] ?? row.statuses[date] ?? "WFO"; return <td key={date} className="p-2 text-center"><button type="button" disabled={pending} aria-label={`${row.employee.name}, ${shortDate(date)}: ${status}. Ubah menjadi ${status === "WFH" ? "WFO" : "WFH"}`} onClick={() => changeStatus(row.employee.nip, date, status === "WFH" ? "WFO" : "WFH")} className={`inline-flex min-w-16 items-center justify-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${status === "WFH" ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : "bg-sky-100 text-sky-800 hover:bg-sky-200"}`}>{busyCell === key ? <LoaderCircle className="size-3 animate-spin" /> : status === "WFH" ? "✓" : "✕"}{status}</button></td>; })}<td className="p-3"><div className="flex items-center gap-2">{master && employeeOptions && <EmployeeFormDialog employee={master} options={employeeOptions} showEditLabel/>}<Button type="button" variant="destructive" size="sm" disabled={pending} aria-label={`Hapus ${row.employee.name} dari jadwal ${label}`} onClick={() => { setToRemove(row.employee); setRemoveError(""); }}><Trash2 aria-hidden="true" className="size-3.5" />Hapus</Button></div></td></tr>; })}</tbody>
           <tfoot className="border-t bg-zinc-50 font-semibold"><tr><td colSpan={5} className="p-3">Jumlah WFH / WFO</td>{counts.map((count, index) => <td key={dates[index]} className="p-3 text-center text-xs">{count} / {rows.length - count}</td>)}<td /></tr></tfoot>
         </TableHorizontalScroll>
         {filtered.length === 0 && <p className="p-6 text-center text-sm text-zinc-500">Pegawai tidak ditemukan.</p>}

@@ -28,7 +28,7 @@ function EmployeeSubmitButton({ editing }: { editing: boolean }) {
   return <Button type="submit" disabled={pending} className="min-w-36 bg-indigo-600 text-white hover:bg-indigo-700">{pending && <LoaderCircle className="size-4 animate-spin" />}{pending ? "Menyimpan..." : editing ? "Simpan perubahan" : "Tambah pegawai"}</Button>;
 }
 
-export function EmployeeFormDialog({ employee, options }: { employee?: Employee; options: EmployeeOptions }) {
+export function EmployeeFormDialog({ employee, options, showEditLabel = false }: { employee?: Employee; options: EmployeeOptions; showEditLabel?: boolean }) {
   const birthPlacesId = useId();
   const editing = Boolean(employee);
   const [open, setOpen] = useState(false);
@@ -65,7 +65,7 @@ export function EmployeeFormDialog({ employee, options }: { employee?: Employee;
   return (
     <>
       {editing ? (
-        <Button variant="ghost" size="icon-sm" onClick={() => setOpen(true)} aria-label={`Edit ${employee?.name}`}><Pencil className="size-3.5" /></Button>
+        <Button variant={showEditLabel ? "outline" : "ghost"} size={showEditLabel ? "sm" : "icon-sm"} onClick={() => setOpen(true)} aria-label={`Edit ${employee?.name}`}><Pencil aria-hidden="true" className="size-3.5" />{showEditLabel && "Edit"}</Button>
       ) : (
         <Button onClick={() => setOpen(true)} className="bg-indigo-600 text-white hover:bg-indigo-700"><Plus className="size-4" />Tambah pegawai</Button>
       )}

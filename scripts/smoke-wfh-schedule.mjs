@@ -63,10 +63,15 @@ try {
   assert.equal((await actions.addScheduleEmployee("2026-11",a,"WFO")).success,true); assert(entries("2026-11",a).every(row=>row.status==="WFO")); assert(entries("2026-11",a)[0].sort_order>entries("2026-11",b)[0].sort_order);
   db.prepare("UPDATE employees SET status='Mutasi' WHERE nip=?").run(b); assert.equal((await actions.removeScheduleEmployee("2026-11",b,true)).success,true,"Inactive historical members remain removable");
   assert.equal(schedule.groupScheduleEntries(await schedule.getScheduleEntries("2026-11")).length,1);
-  assert.equal((await actions.continueScheduleMonth("2026-11")).success,true); assert.equal(entries("2026-12",a).length,4); const december = entries("2026-12",a);
+  await actions.setScheduleStatus("2026-11",a,"2026-11-13","WFH");
+  const sourceBeforeGenerate = entries("2026-11",a);
+  assert.equal((await actions.continueScheduleMonth("2026-11")).success,true);
+  const december = entries("2026-12",a);
+  assert.deepEqual(december.map(row=>row.status), ["WFH","WFO","WFO","WFO"]);
+  assert.deepEqual(entries("2026-11",a), sourceBeforeGenerate, "Generator leaves source month unchanged");
   assert.equal((await actions.removeScheduleEmployee("2026-11",a,true)).success,true); assert.deepEqual(await schedule.getScheduleEntries("2026-11"),[]); assert(db.prepare("SELECT period FROM wfh_schedule_months WHERE period='2026-11'").get()); assert.deepEqual(entries("2026-12",a),december);
   assert.equal((await actions.continueScheduleMonth("2026-11")).success,false); assert.deepEqual(entries("2026-12",a),december,"Empty source does not overwrite next month");
-  assert.equal((await actions.createScheduleMonth("2027-01")).success,true); assert.equal(entries("2027-01",a).length,5);
+  assert.equal((await actions.createScheduleMonth("2027-01")).success,true); assert.deepEqual(entries("2027-01",a).map(row=>row.status), ["WFH","WFO","WFO","WFO","WFH"]);
   for (const mode of ["anonymous","denied"]) { signedIn=mode!=="anonymous"; allowed=false; const before=queries; await assert.rejects(actions.addScheduleEmployee("2026-11",a),/Unauthorized|Forbidden/); await assert.rejects(actions.removeScheduleEmployee("2026-10",a,true),/Unauthorized|Forbidden/); assert.equal(queries,before); }
   assert(paths.includes("/dashboard/daftar-wfh")&&paths.includes("/dashboard/laporan-pegawai-wfh-wfo"));
   console.log("PASS WFH/WFO schedule: active-only add, default/selected status, four/five Fridays, duplicate/manual-status preservation, explicit delete confirmation, month/employee isolation, master preservation, re-add, inactive removal, empty roster, month continuation and server authorization.");

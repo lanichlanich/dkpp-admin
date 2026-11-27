@@ -3,7 +3,7 @@ import { getEmployeeOptions, getScheduleEmployeeEditors } from "@/lib/employees"
 import { requireMenuAccess } from "@/lib/authorization";
 import type { Metadata } from "next";
 import { ScheduleBoard } from "@/components/wfh/schedule-board";
-import { getActiveScheduleEmployees, getScheduleEntries, getScheduleMonths, fridayDates, monthLabel, nextPeriod, validPeriod } from "@/lib/wfh-schedule";
+import { getActiveScheduleEmployees, getScheduleEntries, getScheduleMonths, getSchedulePreview, fridayDates, monthLabel, nextPeriod, validPeriod } from "@/lib/wfh-schedule";
 
 export const metadata: Metadata = { title: "Daftar Pegawai WFH/WFO" };
 
@@ -12,12 +12,13 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   const query = await searchParams;
   const current = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit" }).format(new Date());
   const period = validPeriod(query.bulan ?? "") ? query.bulan! : current < "2026-10" ? "2026-10" : current;
-  const [months, entries, activeEmployees] = await Promise.all([
-    getScheduleMonths(), getScheduleEntries(period), getActiveScheduleEmployees(),
+  const previous = nextPeriod(period, -1);
+  const [months, entries, activeEmployees, previousPreview] = await Promise.all([
+    getScheduleMonths(), getScheduleEntries(period), getActiveScheduleEmployees(), getSchedulePreview(previous),
   ]);
   const month = months.find((item) => item.period === period);
   const edit = month && canAccessMenu(user, "pegawai") ? await Promise.all([getScheduleEmployeeEditors(period), getEmployeeOptions()]) : null;
   return <div className="mx-auto max-w-[100rem] space-y-6"><div><p className="text-sm font-medium text-emerald-700">Kepegawaian</p><h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">Daftar Pegawai WFH/WFO</h1><p className="mt-2 text-sm text-zinc-500">Jadwal setiap Jumat pada {monthLabel(period)}. Status WFH atau WFO dapat diubah untuk setiap pegawai dan tanggal.</p></div>
-    <ScheduleBoard key={period} period={period} label={monthLabel(period)} dates={fridayDates(period)} previous={nextPeriod(period, -1)} next={nextPeriod(period, 1)} nextExists={months.some((item) => item.period === nextPeriod(period, 1))} nextLabel={monthLabel(nextPeriod(period, 1))} exists={Boolean(month)} sourcePeriod={month?.sourcePeriod ?? null} entries={entries} activeEmployees={activeEmployees} masterEmployees={edit?.[0]} employeeOptions={edit?.[1]} />
+    <ScheduleBoard key={period} period={period} label={monthLabel(period)} dates={fridayDates(period)} previous={previous} previousPreview={previousPreview} next={nextPeriod(period, 1)} nextExists={months.some((item) => item.period === nextPeriod(period, 1))} nextLabel={monthLabel(nextPeriod(period, 1))} exists={Boolean(month)} sourcePeriod={month?.sourcePeriod ?? null} entries={entries} activeEmployees={activeEmployees} masterEmployees={edit?.[0]} employeeOptions={edit?.[1]} />
   </div>;
 }

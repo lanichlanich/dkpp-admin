@@ -73,6 +73,23 @@ export async function getScheduleEntries(period: string) {
   ).all(period) as ScheduleEntry[];
 }
 
+export type SchedulePreview = {
+  label: string;
+  dates: string[];
+  statuses: Record<string, Partial<Record<string, WorkLocation>>>;
+};
+
+export async function getSchedulePreview(period: string): Promise<SchedulePreview | null> {
+  if (!validPeriod(period)) return null;
+  const rows = await db.prepare(`SELECT employee_nip AS employeeNip,
+    CAST(friday_date AS TEXT) AS fridayDate, status FROM wfh_schedule_entries WHERE period = ?`)
+    .all(period) as Pick<ScheduleEntry, "employeeNip" | "fridayDate" | "status">[];
+  if (!rows.length) return null;
+  const statuses: SchedulePreview["statuses"] = {};
+  for (const row of rows) (statuses[row.employeeNip] ??= {})[row.fridayDate] = row.status;
+  return { label: monthLabel(period), dates: fridayDates(period), statuses };
+}
+
 export async function getActiveScheduleEmployees() {
   return await db.prepare(
     `SELECT nip, name, position, unit FROM employees

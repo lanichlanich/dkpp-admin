@@ -64,6 +64,12 @@ try {
   db.prepare("UPDATE employees SET status='Mutasi' WHERE nip=?").run(b); assert.equal((await actions.removeScheduleEmployee("2026-11",b,true)).success,true,"Inactive historical members remain removable");
   assert.equal(schedule.groupScheduleEntries(await schedule.getScheduleEntries("2026-11")).length,1);
   await actions.setScheduleStatus("2026-11",a,"2026-11-13","WFH");
+  const preview = await schedule.getSchedulePreview("2026-11");
+  assert.deepEqual(preview.dates, schedule.fridayDates("2026-11"));
+  assert.equal(preview.label, schedule.monthLabel("2026-11"));
+  assert.equal(preview.statuses[a]["2026-11-13"], "WFH");
+  assert.equal(preview.statuses[b], undefined, "Absent employee is not shown as WFO");
+  assert.equal(await schedule.getSchedulePreview("2026-09"), null);
   const sourceBeforeGenerate = entries("2026-11",a);
   assert.equal((await actions.continueScheduleMonth("2026-11")).success,true);
   const december = entries("2026-12",a);

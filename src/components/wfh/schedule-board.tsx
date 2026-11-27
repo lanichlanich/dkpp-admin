@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { ChevronLeft, ChevronRight, FileDown, LoaderCircle, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, FileDown, LoaderCircle, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { continueScheduleMonth, createScheduleMonth, removeScheduleEmployee, setScheduleStatus } from "@/actions/wfh-schedule";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -14,10 +14,14 @@ import { ScheduleEmployeeDialog } from "@/components/wfh/schedule-employee-dialo
 import { TableHorizontalScroll } from "@/components/ui/table-horizontal-scroll";
 import type { ScheduleEmployee, ScheduleEntry, WorkLocation } from "@/lib/wfh-schedule";
 
-type Row = {
-  employee: ScheduleEmployee;
-  statuses: Record<string, WorkLocation>;
-};
+import { sortScheduleRows, type ScheduleRow, type ScheduleSort, type ScheduleSortKey } from "@/lib/wfh-schedule-sorting";
+
+const sortableColumns = [
+  { key: "name", label: "Nama", width: "min-w-48" },
+  { key: "nip", label: "NIP", width: "" },
+  { key: "position", label: "Jabatan", width: "min-w-48" },
+  { key: "unit", label: "Unit Organisasi", width: "min-w-56" },
+] as const;
 
 function shortDate(date: string) {
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
@@ -42,12 +46,13 @@ export function ScheduleBoard({
   const [pending, startTransition] = useTransition();
   const [busyCell, setBusyCell] = useState("");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<ScheduleSort | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [toRemove, setToRemove] = useState<ScheduleEmployee | null>(null), [removeError, setRemoveError] = useState("");
   const [statusOverrides, setStatusOverrides] = useState<Record<string, WorkLocation>>({});
   const [continueOpen, setContinueOpen] = useState(false);
   const rows = useMemo(() => {
-    const byNip = new Map<string, Row>();
+    const byNip = new Map<string, ScheduleRow>();
     for (const entry of entries) {
       if (!byNip.has(entry.employeeNip)) {
         byNip.set(entry.employeeNip, {
@@ -60,7 +65,19 @@ export function ScheduleBoard({
     return [...byNip.values()];
   }, [entries]);
   const selectedNips = new Set(rows.map((row) => row.employee.nip));
-  const filtered = rows.filter((row) => `${row.employee.name} ${row.employee.nip} ${row.employee.unit}`.toLowerCase().includes(search.toLowerCase()));
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return sortScheduleRows(rows.filter(row => `${row.employee.name} ${row.employee.nip} ${row.employee.unit}`.toLowerCase().includes(query)), sort, statusOverrides);
+  }, [rows, search, sort, statusOverrides]);
+  function sortableHeader(key: ScheduleSortKey, label: string, className: string, date?: string) {
+    const direction = sort?.key === key ? sort.direction : undefined;
+    const Icon = direction === "asc" ? ArrowUp : direction === "desc" ? ArrowDown : ArrowUpDown;
+    return <th key={key} scope="col" className={`px-2 py-1.5 ${className}`} aria-sort={direction === "asc" ? "ascending" : direction === "desc" ? "descending" : undefined}>
+      <Button type="button" variant="ghost" size="sm" className={`min-h-10 text-inherit hover:bg-emerald-100 focus-visible:ring-emerald-700 ${direction ? "bg-emerald-100" : ""}`} aria-label={`${label}: urutkan ${direction === "asc" ? "menurun" : "menaik"}`} onClick={() => setSort({ key, direction: direction === "asc" ? "desc" : "asc" })}>
+        {date ? <span className="leading-tight">Jumat<br/>{shortDate(date)}</span> : label}<Icon aria-hidden="true" className={`size-4 ${direction ? "" : "opacity-60"}`}/>
+      </Button>
+    </th>;
+  }
   const availableEmployees = activeEmployees.filter(employee => !selectedNips.has(employee.nip));
   const counts = dates.map((date) => rows.reduce((count, row) => count + Number((statusOverrides[`${row.employee.nip}:${date}`] ?? row.statuses[date]) === "WFH"), 0));
 
@@ -139,19 +156,19 @@ export function ScheduleBoard({
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4">
         <div className="relative w-full sm:max-w-md"><Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, NIP, atau unit..." aria-label="Cari pegawai dalam jadwal" className="pl-9" /></div>
-        <Button type="button" disabled={pending} onClick={() => setAddOpen(true)} className="bg-emerald-700 text-white hover:bg-emerald-800"><Plus aria-hidden="true" className="size-4" />Tambah pegawai</Button>
+        <div className="flex flex-wrap items-center gap-2">{sort && <Button type="button" variant="outline" onClick={() => setSort(null)}>Reset urutan</Button>}<Button type="button" disabled={pending} onClick={() => setAddOpen(true)} className="bg-emerald-700 text-white hover:bg-emerald-800"><Plus aria-hidden="true" className="size-4" />Tambah pegawai</Button></div>
       </div>
 
       <div className="overflow-clip rounded-xl border bg-white">
         <TableHorizontalScroll label="tabel WFH/WFO" aria-label="Daftar pegawai WFH/WFO" className="w-full min-w-[980px] border-collapse text-left text-sm">
-          <thead className="bg-emerald-50 text-emerald-950"><tr><th className="p-3">No</th><th className="min-w-48 p-3">Nama</th><th className="p-3">NIP</th><th className="min-w-48 p-3">Jabatan</th><th className="min-w-56 p-3">Unit Organisasi</th>{dates.map((date) => <th key={date} className="min-w-24 p-3 text-center">Jumat<br />{shortDate(date)}</th>)}<th className="min-w-28 p-3">Aksi</th></tr></thead>
+          <thead className="bg-emerald-50 text-emerald-950"><tr><th scope="col" className="p-3">No</th>{sortableColumns.map(({ key, label, width }) => sortableHeader(key, label, width))}{dates.map(date => sortableHeader(date as ScheduleSortKey, `Jumat ${shortDate(date)}`, "min-w-24 text-center", date))}<th scope="col" className="min-w-28 p-3">Aksi</th></tr></thead>
           <tbody>{filtered.map((row, index) => <tr key={row.employee.nip} className="border-t hover:bg-zinc-50"><td className="p-3 text-zinc-500">{index + 1}</td><td className="p-3 font-medium">{row.employee.name}</td><td className="whitespace-nowrap p-3 font-mono text-xs">{row.employee.nip}</td><td className="p-3 text-xs">{row.employee.position}</td><td className="p-3 text-xs">{row.employee.unit}</td>{dates.map((date) => { const key = `${row.employee.nip}:${date}`; const status = statusOverrides[key] ?? row.statuses[date] ?? "WFO"; return <td key={date} className="p-2 text-center"><button type="button" disabled={pending} aria-label={`${row.employee.name}, ${shortDate(date)}: ${status}. Ubah menjadi ${status === "WFH" ? "WFO" : "WFH"}`} onClick={() => changeStatus(row.employee.nip, date, status === "WFH" ? "WFO" : "WFH")} className={`inline-flex min-w-16 items-center justify-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${status === "WFH" ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : "bg-sky-100 text-sky-800 hover:bg-sky-200"}`}>{busyCell === key ? <LoaderCircle className="size-3 animate-spin" /> : status === "WFH" ? "✓" : "✕"}{status}</button></td>; })}<td className="p-3"><Button type="button" variant="destructive" size="sm" disabled={pending} aria-label={`Hapus ${row.employee.name} dari jadwal ${label}`} onClick={() => { setToRemove(row.employee); setRemoveError(""); }}><Trash2 aria-hidden="true" className="size-3.5" />Hapus</Button></td></tr>)}</tbody>
           <tfoot className="border-t bg-zinc-50 font-semibold"><tr><td colSpan={5} className="p-3">Jumlah WFH / WFO</td>{counts.map((count, index) => <td key={dates[index]} className="p-3 text-center text-xs">{count} / {rows.length - count}</td>)}<td /></tr></tfoot>
         </TableHorizontalScroll>
         {filtered.length === 0 && <p className="p-6 text-center text-sm text-zinc-500">Pegawai tidak ditemukan.</p>}
       </div>
       <DailyDownloads period={period} totals={dates.map((date, index) => ({ date, wfh: counts[index], wfo: rows.length - counts[index] }))} />
-      <p className="text-xs text-zinc-500">Klik status pada tanggal Jumat untuk mengganti WFH ↔ WFO. Perubahan langsung disimpan untuk bulan yang dipilih.</p>
+      <p className="text-xs text-zinc-500">Klik judul kolom untuk mengurutkan daftar. Klik status pada tanggal Jumat untuk mengganti WFH ↔ WFO. Perubahan langsung disimpan untuk bulan yang dipilih.</p>
     </>}
     {addOpen && <ScheduleEmployeeDialog period={period} label={label} employees={availableEmployees} onClose={() => setAddOpen(false)} onAdded={clearEmployeeOverrides} />}
     <AlertDialog open={Boolean(toRemove)} onOpenChange={open => { if (!open && !pending) setToRemove(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Hapus pegawai dari jadwal?</AlertDialogTitle><AlertDialogDescription>{toRemove?.name} ({toRemove?.nip}) akan dihapus dari seluruh jadwal Jumat pada {label}. Data induk pegawai dan jadwal bulan lain tetap tersimpan.</AlertDialogDescription></AlertDialogHeader>{removeError && <p role="alert" className="text-sm text-rose-700">{removeError}</p>}<AlertDialogFooter><AlertDialogCancel disabled={pending}>Batal</AlertDialogCancel><AlertDialogAction onClick={event => { event.preventDefault(); removeEmployee(); }} disabled={pending} className="bg-rose-700 text-white hover:bg-rose-800">{pending ? <><LoaderCircle aria-hidden="true" className="size-4 animate-spin" />Menghapus…</> : "Ya, hapus dari jadwal"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>

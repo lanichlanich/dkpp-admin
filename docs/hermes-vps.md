@@ -30,7 +30,7 @@ ssh -N -L 3000:127.0.0.1:3000 user@vps
 
 ## Verifikasi perubahan
 
-Jalankan smoke test fitur yang diubah dan `npm run build -- --webpack`. Periksa diff sebelum push dan sertakan migrasi yang diperlukan jika skema ikut berubah. Untuk menguji ekstraksi dokumen, simpan API key khusus pengembangan di `.env.local` dan gunakan dokumen uji sintetis.
+Jalankan smoke test fitur yang diubah dan `npm run build -- --webpack`. Pada VPS dengan RAM terbatas, set `DKPP_LOW_MEMORY_BUILD=1` untuk kompilasi Webpack berurutan tanpa cache dan gunakan batas cgroup yang menyisakan ruang untuk layanan produksi. Periksa diff sebelum push dan sertakan migrasi yang diperlukan jika skema ikut berubah. Untuk menguji ekstraksi dokumen, simpan API key khusus pengembangan di `.env.local` dan gunakan dokumen uji sintetis.
 
 ## Storage rilis produksi VPS
 
@@ -46,6 +46,6 @@ Jangan memakai `ln -s TARGET RILIS/data` tanpa `-T`: `data/.gitkeep` dari arsip 
 
 ### Tools PDF (produksi VPS)
 
-Dependensi host: `apt-get install --no-install-recommends ghostscript qpdf poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-ind` (Node/npm tidak berubah). Pertahankan AppArmor dan `PrivateTmp=true` milik `dkpp-admin`. Jangan arahkan `TMPDIR` layanan ke direktori tersembunyi Hermes: profil bawaan Ubuntu membatasi akses QPDF dan Ghostscript. Unggahan hanya berada di direktori temporer privat per permintaan; pemrosesan tidak memakai database, Drive, atau API eksternal. Hasil dikirim kembali ke browser dan direktori kerja dihapus.
+Dependensi host: `apt-get install --no-install-recommends ghostscript qpdf poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-ind` (Node/npm tidak berubah). Pertahankan AppArmor dan `PrivateTmp=true` milik `dkpp-admin`. Jangan arahkan `TMPDIR` layanan ke direktori tersembunyi Hermes: profil bawaan Ubuntu membatasi akses QPDF dan Ghostscript. Unggahan hanya berada di direktori temporer privat per permintaan; pemrosesan tidak memakai database, Drive, atau API eksternal. Hasil dikirim kembali ke browser dan disimpan privat di `data/pdf-tools-documents/`; direktori kerja dan PDF sumber dihapus. Arsip diisolasi per akun, termasuk untuk administrator. Direktori arsip tidak ikut ekspor Backup Lokal atau Google Drive dari dashboard. Cadangkan direktori persisten tersebut secara terpisah bersama database pengguna ke penyimpanan VPS terenkripsi/terbatas; pertahankan ID akun dan izin direktori saat pemulihan.
 
-Uji engine dengan `systemd-run --wait --pipe --collect -p PrivateTmp=yes --working-directory=/root/develop/dkpp-admin /root/.local/share/dkpp-admin/node/bin/node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/smoke-pdf-tools.mjs`. Verifikasi setiap menu dan API memakai izin `compress-pdf`, `merge-pdf`, atau `split-pdf`; administrator memiliki akses, role lain memerlukan izin fitur. PDF dengan tanda tangan digital/kolom TTE, PDF terenkripsi, formulir XFA, atau aksi aktif tertentu ditolak. Simpan salinan asli dokumen.
+Uji engine dengan `systemd-run --wait --pipe --collect -p PrivateTmp=yes --working-directory=/root/develop/dkpp-admin /root/.local/share/dkpp-admin/node/bin/node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/smoke-pdf-tools.mjs`. Verifikasi setiap menu dan API memakai izin `compress-pdf`, `merge-pdf`, atau `split-pdf`; administrator memiliki akses, role lain memerlukan izin fitur dan `pdf-tools-documents` untuk daftar/unduh ulang/ubah nama/hapus. PDF dengan tanda tangan digital/kolom TTE, PDF terenkripsi, formulir XFA, atau aksi aktif tertentu ditolak. Simpan salinan asli dokumen.

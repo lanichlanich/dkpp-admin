@@ -1,4 +1,6 @@
-import { checkApiAccess } from "@/lib/authorization";
+import { canAccessMenu } from "@/lib/access-control";
+import { getCurrentUser } from "@/lib/session";
+import { PdfToolsDocumentError, savePdfToolDocuments } from "@/lib/pdf-tools-documents";
 import { isSuratTugasSameOrigin } from "@/lib/surat-tugas-request";
 import { PdfToolError, processPdf } from "@/lib/pdf-tools";
 import { PDF_TOOLS_MAX_BYTES, pdfTools } from "@/lib/pdf-tools-config";
@@ -41,8 +43,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ ope
   const { operation } = await params;
   const tool = pdfTools.find(item => item.operation === operation);
   if (!tool) return fail("Alat PDF tidak ditemukan.", 404);
-  const denied = await checkApiAccess([tool.slug]);
-  if (denied) return denied;
+  const user = await getCurrentUser();
+  if (!user) return fail("Silakan masuk kembali.", 401);
+  if (!canAccessMenu(user, tool.slug)) return fail("Anda tidak memiliki akses ke fitur ini.", 403);
   if (!isSuratTugasSameOrigin(request)) return fail("Sumber permintaan tidak valid.", 403);
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().startsWith("multipart/form-data;")) return fail("Gunakan formulir unggahan PDF.", 415);
@@ -56,14 +59,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ ope
     const ranges = form.get("ranges");
     const profile = form.get("profile");
     if ((ranges !== null && typeof ranges !== "string") || (profile !== null && typeof profile !== "string")) return fail("Opsi PDF tidak valid.", 400);
-    const results = await processPdf(tool.operation, files, { ranges: ranges ?? undefined, profile: profile ?? undefined, signal: request.signal });
+    const selection = form.get("order");
+    let order: unknown;
+    if (selection !== null) {
+      if (tool.operation !== "merge" || typeof selection !== "string" || selection.length > 4096) return fail("Urutan halaman tidak valid.", 400);
+      try { order = JSON.parse(selection); } catch { return fail("Urutan halaman tidak valid.", 400); }
+    }
+    const results = await processPdf(tool.operation, files, { ranges: ranges ?? undefined, profile: profile ?? undefined, order, signal: request.signal });
+    request.signal.throwIfAborted();
+    const archived = await savePdfToolDocuments(user.id, tool.operation, results);
+
     const body = new FormData();
     // Send titles separately from binary filenames to preserve Unicode consistently.
-    body.set("metadata", JSON.stringify(results.map(({ name, pages, originalSize }) => ({ name, pages, originalSize }))));
+    body.set("metadata", JSON.stringify(results.map(({ name, pages, originalSize }, index) => ({ name, pages, originalSize, id: archived[index].id }))));
     results.forEach(({ bytes }, i) => body.append("results", new Blob([new Uint8Array(bytes)], { type: "application/pdf" }), `${i + 1}.pdf`));
     return new Response(body, { headers: noCache });
   } catch (error) {
-    if (error instanceof PdfToolError) return fail(error.message, error.status);
+    if (error instanceof PdfToolError || error instanceof PdfToolsDocumentError) return fail(error.message, error.status);
     return fail("Tools PDF tidak tersedia. Coba lagi atau hubungi administrator.", 503);
   } finally { inUse = false; }
 }

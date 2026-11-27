@@ -1,6 +1,6 @@
 "use client";
 
-import { pdfTools } from "@/lib/pdf-tools-config";
+import { PDF_DOCUMENTS_PATH, pdfTools } from "@/lib/pdf-tools-config";
 import { canAccessPath } from "@/lib/access-control";
 import { useAccess } from "@/components/dashboard/access-context";
 import Link, { useLinkStatus } from "next/link";
@@ -67,7 +67,10 @@ const libraryNavigation = [
 ];
 
 const toolIcons = { compress: FileArchive, merge: Merge, split: Scissors };
-const toolsNavigation = pdfTools.map(tool => ({ label: tool.label, href: `/dashboard/tools/${tool.slug}`, icon: toolIcons[tool.operation] }));
+const toolsNavigation = [
+  ...pdfTools.map(tool => ({ label: tool.label, href: `/dashboard/tools/${tool.slug}`, icon: toolIcons[tool.operation] })),
+  { label: "Daftar Dokumen", href: PDF_DOCUMENTS_PATH, icon: FolderOpen },
+];
 
 const navigation = [
   { label: "Manajemen User", href: "/dashboard/manajemen-user", icon: UsersRound },

@@ -1,4 +1,4 @@
-import { pdfTools } from "@/lib/pdf-tools-config";
+import { PDF_DOCUMENTS_MENU, PDF_DOCUMENTS_PATH, pdfTools } from "@/lib/pdf-tools-config";
 
 export const MENU_CATALOG = [
   { id: "dashboard", label: "Dashboard", group: "Utama", path: "/dashboard" },
@@ -18,6 +18,7 @@ export const MENU_CATALOG = [
   ...[["statistik", "Dashboard Statistik"], ["buku", "Daftar Buku"], ["pengunjung", "Daftar Pengunjung"], ["peminjaman", "Daftar Peminjaman"]]
     .map(([id, label]) => ({ id: `perpustakaan-${id}`, label, group: "Perpustakaan", path: `/dashboard/perpustakaan/${id}` })),
   ...pdfTools.map(tool => ({ id: tool.slug, label: tool.label, group: "Tools", path: `/dashboard/tools/${tool.slug}` })),
+  { id: PDF_DOCUMENTS_MENU, label: "Daftar Dokumen", group: "Tools", path: PDF_DOCUMENTS_PATH },
   { id: "backup-lokal", label: "Backup ke Lokal", group: "Sistem", path: "/dashboard/backup-lokal" },
   { id: "backup", label: "Backup Google Drive", group: "Sistem", path: "/dashboard/backup" },
   { id: "log-audit", label: "Log Audit Perubahan Data", group: "Sistem", path: "/dashboard/log-audit" },

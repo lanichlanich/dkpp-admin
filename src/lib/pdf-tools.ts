@@ -4,10 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { PDF_TOOLS_MAX_BYTES, PDF_TOOLS_MAX_FILES, type PdfTool } from "./pdf-tools-config";
+import { PDF_TARGET_ONE_MB, PDF_TOOLS_MAX_BYTES, PDF_TOOLS_MAX_FILES, PDF_TOOLS_MAX_PAGES, type PdfTool } from "./pdf-tools-config";
 
 const exec = promisify(execFile);
-const MAX_PAGES = 150;
 const MAX_OUTPUT = 32 * 1024 * 1024;
 type Result = { name: string; bytes: Buffer; pages: number; originalSize?: number };
 export class PdfToolError extends Error {
@@ -55,28 +54,59 @@ function describe(text: string) {
 
 function ranges(value: string, count: number) {
   const parts = value.trim().split(";");
-  if (value.length > 160 || parts.length > 8) throw new PdfToolError("Maksimal 8 bagian per proses.");
+  if (value.length > 1200 || parts.length > 8) throw new PdfToolError("Maksimal 8 bagian per proses.");
   const used = new Set<number>();
   return parts.map(part => {
-    const match = /^(\d{1,3})(?:\s*-\s*(\d{1,3}))?$/.exec(part.trim());
-    if (!match) throw new PdfToolError("Gunakan rentang halaman seperti 1-3; 4-6; 8.");
-    const first = Number(match[1]), last = Number(match[2] ?? match[1]);
-    if (first < 1 || last < first || last > count) throw new PdfToolError(`Rentang harus antara halaman 1 dan ${count}.`);
-    for (let p = first; p <= last; p++) {
-      if (used.has(p)) throw new PdfToolError(`Halaman ${p} dipilih lebih dari sekali.`);
-      used.add(p);
-    }
-    return { first, last, count: last - first + 1, range: first === last ? `${first}` : `${first}-${last}` };
+    const segments = part.split(",");
+    let firstPage = 0, secondPage = 0, total = 0;
+    const normalized = segments.map(segment => {
+      const match = /^(\d{1,3})(?:\s*-\s*(\d{1,3}))?$/.exec(segment.trim());
+      if (!match) throw new PdfToolError("Gunakan rentang halaman seperti 1-3,5; 7-9.");
+      const first = Number(match[1]), last = Number(match[2] ?? match[1]);
+      if (first < 1 || last < first || last > count) throw new PdfToolError(`Rentang harus antara halaman 1 dan ${count}.`);
+      for (let p = first; p <= last; p++) {
+        if (used.has(p)) throw new PdfToolError(`Halaman ${p} dipilih lebih dari sekali.`);
+        used.add(p);
+        if (total === 0) firstPage = p;
+        if (total === 1) secondPage = p;
+        total++;
+      }
+      return first === last ? `${first}` : `${first}-${last}`;
+    });
+    const range = normalized.join(",");
+    const label = range.length <= 24 ? range : `${firstPage} dst (${total} halaman)`;
+    return { first: firstPage, last: secondPage === firstPage + 1 ? secondPage : firstPage, count: total, range, label };
   });
 }
 
-export async function processPdf(operation: PdfTool["operation"], files: File[], options: { ranges?: string; profile?: string; signal?: AbortSignal } = {}): Promise<Result[]> {
+function mergeArgs(sources: { path: string; pages: number }[], order: unknown) {
+  if (order === undefined) return sources.flatMap(item => [item.path, "1-z"]);
+  const count = sources.reduce((sum, source) => sum + source.pages, 0);
+  const badOrder = () => new PdfToolError("Urutan harus memuat setiap halaman tepat satu kali.");
+  if (!Array.isArray(order) || order.length !== count) throw badOrder();
+  const seen = new Set<string>();
+  const groups: { file: number; pages: number[] }[] = [];
+  for (const pair of order) {
+    if (!Array.isArray(pair) || pair.length !== 2) throw badOrder();
+    const [file, page] = pair;
+    if (!Number.isInteger(file) || !Number.isInteger(page) || !sources[file] || page < 1 || page > sources[file].pages) throw badOrder();
+    const key = `${file}:${page}`;
+    if (seen.has(key)) throw badOrder();
+    seen.add(key);
+    const tail = groups.at(-1);
+    if (tail && tail.file === file) tail.pages.push(page);
+    else groups.push({ file, pages: [page] });
+  }
+  return groups.flatMap(({ file, pages }) => [sources[file].path, pages.join(",")]);
+}
+
+export async function processPdf(operation: PdfTool["operation"], files: File[], options: { ranges?: string; profile?: string; order?: unknown; signal?: AbortSignal } = {}): Promise<Result[]> {
   if (operation === "merge" && (files.length < 2 || files.length > PDF_TOOLS_MAX_FILES)) throw new PdfToolError("Gabungkan minimal 2 dan maksimal 8 PDF.");
   if (operation !== "merge" && files.length !== 1) throw new PdfToolError("Pilih satu berkas PDF.");
   if (files.some(file => file.size === 0)) throw new PdfToolError("Salah satu PDF kosong.");
   if (files.reduce((sum, file) => sum + file.size, 0) > PDF_TOOLS_MAX_BYTES) throw new PdfToolError("Total ukuran PDF maksimal 20 MB.", 413);
   const profile = options.profile ?? "balanced";
-  if (profile !== "balanced" && profile !== "small") throw new PdfToolError("Tingkat kompresi tidak valid.");
+  if (profile !== "balanced" && profile !== "small" && profile !== "target1mb") throw new PdfToolError("Tingkat kompresi tidak valid.");
   const signal = AbortSignal.any([AbortSignal.timeout(65_000), ...(options.signal ? [options.signal] : [])]);
   const dir = await mkdtemp(join(tmpdir(), "dkpp-pdf-"));
   const run = async (program: string, args: string[], timeout = 10_000) => {
@@ -131,18 +161,19 @@ export async function processPdf(operation: PdfTool["operation"], files: File[],
       const pages = await inspect(path);
       if (!Number.isSafeInteger(pages) || pages < 1) throw new PdfToolError("PDF tidak memiliki halaman yang valid.");
       totalPages += pages;
-      if (totalPages > MAX_PAGES) throw new PdfToolError("Total maksimal 150 halaman per proses.", 413);
+      if (totalPages > PDF_TOOLS_MAX_PAGES) throw new PdfToolError("Total maksimal 150 halaman per proses.", 413);
       sources.push({ path, pages, size: file.size });
     }
     const source = sources[0];
     if (operation === "merge") {
+      const orderedPages = mergeArgs(sources, options.order);
       const descriptors = [];
       for (const item of sources) descriptors.push(await extract(item.path, 1, Math.min(item.pages, 2)));
       const titles = [...new Set(descriptors.map(item => item.title).filter(Boolean))];
       const identified = descriptors[0].person;
       const person = identified && descriptors.every(item => item.person.toLowerCase() === identified.toLowerCase()) ? identified : "";
       const title = titles.length === 1 ? titles[0] : titles.length === 2 ? short(titles.join(" dan "), 64) : "Gabungan Dokumen";
-      await run("qpdf", ["--empty", "--pages", ...sources.flatMap(item => [item.path, "1-z"]), "--", "merged.pdf"], 20_000);
+      await run("qpdf", ["--empty", "--pages", ...orderedPages, "--", "merged.pdf"], 20_000);
       return [await output(join(dir, "merged.pdf"), totalPages, nameFor(title, person))];
     }
     const selection = operation === "split" ? ranges(options.ranges ?? "", source.pages) : [];
@@ -150,18 +181,35 @@ export async function processPdf(operation: PdfTool["operation"], files: File[],
     if (operation === "split") {
       const results = [];
       for (const [i, part] of selection.entries()) {
-        const detail = part.first === 1 && part.last > 1 ? descriptor : await extract(source.path, part.first, Math.min(part.last, part.first + 1));
+        const detail = part.first === 1 && part.last === 2 ? descriptor : await extract(source.path, part.first, Math.min(part.last, part.first + 1));
         const sameDocument = !detail.title || detail.title === descriptor.title;
         const person = detail.person || (sameDocument && !detail.ambiguous ? descriptor.person : "");
         const path = `part-${i}.pdf`;
         await run("qpdf", ["--empty", "--pages", source.path, part.range, "--", path]);
-        results.push(await output(join(dir,path), part.count, nameFor(detail.title || descriptor.title || "Dokumen", person, ` - Hal ${part.range}`)));
+        results.push(await output(join(dir,path), part.count, nameFor(detail.title || descriptor.title || "Dokumen", person, ` - Hal ${part.label}`)));
       }
       return results;
     }
-    await run("gs", ["-q", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dPDFSTOPONERROR", "-sDEVICE=pdfwrite", `-dPDFSETTINGS=/${profile === "small" ? "screen" : "ebook"}`, "-dAutoRotatePages=/None", "-sOutputFile=compressed.pdf", "-f", source.path], 30_000);
-    const compressed = join(dir, "compressed.pdf");
-    return [await output((await stat(compressed)).size < source.size ? compressed : join(dir,source.path), source.pages, nameFor(descriptor.title || "Dokumen", descriptor.person), source.size)];
+    const target = profile === "target1mb";
+    const original = join(dir, source.path);
+    const name = nameFor(descriptor.title || "Dokumen", descriptor.person);
+    if (target && source.size < PDF_TARGET_ONE_MB) return [await output(original, source.pages, name, source.size)];
+    const attempts = target ? [140, 105, 80, 60, 45] : [0];
+    for (const dpi of attempts) {
+      const compressed = join(dir, "compressed.pdf");
+      const density = dpi ? ["-dPassThroughJPEGImages=false", "-dPassThroughJPXImages=false",
+        ...["Color", "Gray", "Mono"].flatMap(kind => [`-dDownsample${kind}Images=true`, `-d${kind}ImageResolution=${kind === "Mono" ? Math.max(dpi, 90) : dpi}`, `-d${kind}ImageDownsampleThreshold=1.0`]),
+      ] : [];
+      try {
+        await run("gs", ["-q", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dPDFSTOPONERROR", "-sDEVICE=pdfwrite", `-dPDFSETTINGS=/${profile === "balanced" ? "ebook" : "screen"}`, "-dAutoRotatePages=/None", ...density, "-sOutputFile=compressed.pdf", "-f", source.path], target ? 12_000 : 30_000);
+        const compressedSize = (await stat(compressed)).size;
+        if (!target) return [await output(compressedSize < source.size ? compressed : original, source.pages, name, source.size)];
+        if (compressedSize > 0 && compressedSize < PDF_TARGET_ONE_MB) return [await output(compressed, source.pages, name, source.size)];
+      } catch (error) {
+        if (!target || error instanceof PdfToolError || signal.aborted) throw error;
+      } finally { await rm(compressed, { force: true }); }
+    }
+    throw new PdfToolError("PDF tidak dapat dikompres hingga di bawah 1 MB. Kurangi halaman atau resolusi sumber. Tidak ada hasil yang disimpan.", 422);
   } catch (error) {
     if (error instanceof PdfToolError) throw error;
     if (signal.aborted || (error as { killed?: boolean }).killed) throw new PdfToolError("Waktu pemrosesan habis. Coba dengan PDF lebih kecil.", 422);
